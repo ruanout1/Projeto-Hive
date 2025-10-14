@@ -1,9 +1,9 @@
 import { Activity, Users, ClipboardList, TrendingUp, Heart, Bot, Eye, EyeOff } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LabelList } from 'recharts';
 import { useState } from 'react';
-import AIAssistant from './AIAssistant';
+import AIAssistant from '../../components/AIAssistant';
 import React from 'react';
 
 

@@ -534,7 +534,7 @@ export default function ServiceRequestScreen() {
                   <Button
                     key={service.id}
                     variant="outline"
-                    className="h-auto p-0 border-2 hover:border-current hover:shadow-lg transition-all"
+                    className="h-auto p-0 border-2 hover:border-current hover:shadow-lg transition-all overflow-hidden"
                     onClick={() => handleServiceSelect(service.id)}
                   >
                     <div className="border rounded-lg p-4 w-full text-left">
@@ -544,7 +544,7 @@ export default function ServiceRequestScreen() {
                           style={{ color: getCategoryColor(service.category) }} 
                         />
                         <div>
-                          <h4 className="text-black">{service.name}</h4>
+                          <h4 className="text-black truncate" title={service.name}>{service.name}</h4>
                           <Badge 
                             className="text-xs border-none"
                             style={getCategoryStyle(service.category)}
@@ -553,7 +553,7 @@ export default function ServiceRequestScreen() {
                           </Badge>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600 mb-2">{service.description}</p>
+                      <p className="text-sm text-gray-600 mb-2 break-words h-10">{service.description}</p>
                       <p className="text-xs text-gray-500">⏱️ {service.estimatedTime}</p>
                     </div>
                   </Button>

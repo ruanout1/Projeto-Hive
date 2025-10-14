@@ -2,12 +2,12 @@ import { useState } from 'react';
 import LoginScreen from './components/LoginScreen';
 import Navigation from './components/Navigation';
 import Sidebar from './components/Sidebar';
-import DashboardScreen from './components/DashboardScreen';
+import DashboardScreen from './screens/administrador/DashboardScreen';
 import UserProfilesScreen from './components/UserProfilesScreen';
 import PhotoUploadSection from './components/PhotoUploadSection';
-import CommunicationScreen from './components/CommunicationScreen';
-import ClientsScreen from './components/ClientsScreen';
-import ClientRatingsScreen from './components/ClientRatingsScreen';
+import CommunicationScreen from './screens/chat/CommunicationScreen';
+import ClientsScreen from './screens/cliente/ClientsScreen';
+import ClientRatingsScreen from './screens/cliente/ClientRatingsScreen';
 import ServiceRequestScreen from './components/ServiceRequestScreen';
 import RequestsViewScreen from './components/RequestsViewScreen';
 import ProfileSettingsScreen from './components/ProfileSettingsScreen';
@@ -16,11 +16,11 @@ import UserManagementScreen from './components/UserManagementScreen';
 import TeamManagementScreen from './components/TeamManagementScreen';
 import TeamReportsScreen from './components/TeamReportsScreen';
 import ServiceCatalogScreen from './components/ServiceCatalogScreen';
-import AdminRatingsScreen from './components/AdminRatingsScreen';
+import AdminRatingsScreen from './screens/administrador/AdminRatingsScreen';
 import EquipmentScreen from './components/EquipmentScreen';
-import AdminTimeClockScreen from './components/AdminTimeClockScreen';
+import AdminTimeClockScreen from './screens/administrador/AdminTimeClockScreen';
 import ManagerTimeClockScreen from './components/ManagerTimeClockScreen';
-import CollaboratorTimeClockScreen from './components/CollaboratorTimeClockScreen';
+import CollaboratorTimeClockScreen from './screens/colaborador/CollaboratorTimeClockScreen';
 import MyScheduleScreen from './components/MyScheduleScreen';
 import AIAssistant from './components/AIAssistant';
 import { Toaster } from './components/ui/sonner';
@@ -163,7 +163,7 @@ export default function App() {
         <div className="flex flex-col gap-3">
           {/* Tipos de Usuário */}
           <div className="flex justify-center items-center space-x-4">
-            <span className="text-sm text-black">Demonstração - Tipos de Usuário:</span>
+            <span className="text-sm text-black"></span>
             {['administrador', 'gestor', 'colaborador', 'cliente'].map((type) => (
               <button
                 key={type}

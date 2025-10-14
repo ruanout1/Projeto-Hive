@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
-import HiveLogo from './HiveLogo';
+import HiveLogo from './Logo/HiveLogo';
 import React from 'react';
 
 

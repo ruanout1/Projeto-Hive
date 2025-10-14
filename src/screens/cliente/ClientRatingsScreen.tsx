@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Star, Calendar, Search, Bot, MessageSquare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from './ui/dialog';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Textarea } from '../../components/ui/textarea';
+import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '../../components/ui/dialog';
+import { Label } from '../../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import React from 'react';
 
 
@@ -252,7 +252,7 @@ export default function ClientRatingsScreen() {
                 {pendingServices.map((service) => (
                   <div
                     key={service.id}
-                    className="border rounded-lg p-3 w-full text-left hover:shadow-lg transition-shadow bg-white"
+                    className="border rounded-lg p-3 w-full text-left hover:shadow-lg transition-shadow bg-white overflow-hidden"
                   >
                     <h4 className="text-black text-sm mb-2">{service.name}</h4>
                     <p className="text-xs text-gray-600 mb-2">{service.description}</p>

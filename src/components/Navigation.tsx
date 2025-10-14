@@ -3,7 +3,7 @@ import { Bell, LogOut, User, HelpCircle, Shield, Moon, ChevronRight } from 'luci
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
-import HiveSymbol from './HiveSymbol';
+import HiveSymbol from './Logo/HiveSymbol';
 import React from 'react';
 
 

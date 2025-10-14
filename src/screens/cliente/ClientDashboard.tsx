@@ -8,11 +8,11 @@ import {
   Calendar,
   Bot,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Progress } from "./ui/progress";
-import { Button } from "./ui/button";
-import AIAssistant from "./AIAssistant";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { Progress } from "../../components/ui/progress";
+import { Button } from "../../components/ui/button";
+import AIAssistant from "../../components/AIAssistant";
 
 export default function ClientDashboard() {
   const [isAIOpen, setIsAIOpen] = useState(false);
