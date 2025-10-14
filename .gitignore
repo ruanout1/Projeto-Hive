@@ -1,0 +1,25 @@
+# Ambiente Virtual Python
+/env
+
+# Dependências
+/node_modules
+
+# Logs
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Arquivos de build e produção
+/dist
+/build
+
+# Arquivos de ambiente (senhas, chaves de API, etc.)
+.env
+.env.local
+
+# Arquivos de sistema operacional
+.DS_Store
+
+# Arquivos de configuração de editores de código
+.vscode/
+.idea/
