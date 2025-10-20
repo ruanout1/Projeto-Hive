@@ -281,38 +281,40 @@ export default function ServiceRequestScreen() {
   }
 
   return (
-    <div className="p-6 h-screen flex flex-col overflow-hidden">
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h1 className="hive-screen-title">Solicitação de Serviços</h1>
-          <p className="text-black mb-2">
-            Solicite novos serviços e acompanhe o status das suas solicitações.
-          </p>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm text-blue-800">
-              💡 <strong>Importante:</strong> Acompanhe o status da sua solicitação aqui no painel, em até 2 horas será atualizado sobre a disponibilidade dos serviços!
+    // Container principal agora permite scroll e tem padding responsivo
+    <div className="p-4 md:p-6">
+      {/* MUDANÇA: Cabeçalho agora empilha em telemóveis */} 
+      <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-4">
+        <div className = "w-full">
+            <h1 className="hive-screen-title">Solicitação de Serviços</h1>
+            <p className="text-black mb-2">
+              Solicite novos serviços e acompanhe o status das suas solicitações.
             </p>
-          </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-500">
+                💡 <strong>Importante:</strong> Acompanhe o status da sua solicitação aqui no painel, em até 2 horas será atualizado sobre a disponibilidade dos serviços!
+              </p>
+            </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2 w-full md:w-auto flex-shrink-0">
           <Dialog open={isRequestModalOpen} onOpenChange={setIsRequestModalOpen}>
             <DialogTrigger asChild>
               <Button 
-                className="flex items-center space-x-2"
+                className="flex items-center justify-center space-x-2 flex-1"
                 style={{ backgroundColor: '#6400A4', color: 'white' }}
               >
                 <Plus className="h-4 w-4" />
                 <span>Nova Solicitação</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] scrollbar-hide">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Solicitar Novo Serviço</DialogTitle>
                 <DialogDescription>
                   Preencha os dados abaixo para solicitar um novo serviço. Nossa equipe entrará em contato em até 2 horas.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-6 py-4 max-h-[60vh] overflow-y-auto scrollbar-hide">
+              <div className="space-y-6 py-4 max-h-[60vh] overflow-y-auto">
                 <div>
                   <Label htmlFor="service-select">Tipo de Serviço</Label>
                   <Select value={selectedService} onValueChange={setSelectedService}>

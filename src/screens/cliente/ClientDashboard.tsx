@@ -168,11 +168,13 @@ export default function ClientDashboard() {
 
   if (!currentService) return <p className="p-6 text-black">Carregando dados...</p>;
 
-  // 🔹 JSX principal
+  // 🔹 JSX principal (alterações para responsividade)
   return (
-    <div className="p-6 overflow-hidden">
+    // Container principal agora permite scroll vertical e tem padding responsivo.
+    <div className="p-4 md:p-6 h-screen overflow-y-auto">
       {/* Cabeçalho */}
-      <div className="flex justify-between items-start mb-6">
+      {/* Em telemóveis (padrão), os itens ficam em coluna. A partir de `sm`, ficam em linha */}
+      <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
         <div>
           <h1 className="hive-screen-title">Acompanhamento de Serviços</h1>
           <p className="text-black">
@@ -180,7 +182,7 @@ export default function ClientDashboard() {
           </p>
         </div>
         <Button
-          className="flex items-center space-x-2"
+          className="flex items-center space-x-2 w-full sm:w-auto flex-shrink-0" // O botão ocupa a largura toda no telemóvel
           style={{ backgroundColor: "#6400A4", color: "white" }}
           onClick={() => setIsAIOpen(true)}
         >
@@ -283,12 +285,12 @@ export default function ClientDashboard() {
           <div className="space-y-4">
             {serviceHistory.map((service, index) => (
               <div key={index} className="border-b border-gray-200 pb-4 last:border-b-0">
-                <div className="flex items-start justify-between mb-2">
+                <div className="flex flex-col sm:flex-row items-start justify-between mb-2 gap-2">
                   <div className="flex-1">
                     <h4 className="text-black">{service.service}</h4>
                     <p className="text-sm text-black">OS: {service.id}</p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right">
                     <div className="flex items-center space-x-1 mb-1">
                       {renderStars(service.rating)}
                     </div>
@@ -298,7 +300,7 @@ export default function ClientDashboard() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-sm text-black">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm text-black gap-2">
                   <div className="flex items-center space-x-4">
                     <span>📅 {service.date}</span>
                     <span>👥 {service.team}</span>
