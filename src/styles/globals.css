@@ -139,9 +139,19 @@
     scrollbar-width: none;  /* Firefox */
   }
 
-  /* Custom Progress Bar Colors - Hive Yellow */
+  /* Hide scrollbar globally for all elements */
+  * {
+    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;  /* IE and Edge */
+  }
+
+  *::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari, Opera */
+  }
+
+  /* Custom Progress Bar Colors - Hive Purple */
   [data-radix-collection-item] > div > div {
-    background-color: #FFFF20 !important;
+    background-color: #6400A4 !important;
   }
 
   /* Search Highlight Styles */
@@ -231,6 +241,19 @@
   /* Hive Screen Title - Padrão para todas as telas */
   .hive-screen-title {
     color: #6400A4 !important;
+  }
+
+  /* Date and Time Input Icons - Purple Color */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(20%) sepia(100%) saturate(4000%) hue-rotate(270deg) brightness(0.8);
+    cursor: pointer;
+  }
+
+  /* Firefox Date and Time Icons */
+  input[type="date"],
+  input[type="time"] {
+    color-scheme: light;
   }
 
   /* Animação suave para tooltip dos gráficos */
@@ -329,4 +352,22 @@
 
 html {
   font-size: var(--font-size);
+}
+
+/* Animações para o Sidebar Recolhível */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation: fadeIn 0.2s ease-in;
+}
+
+.fade-in {
+  animation: fadeIn 0.2s ease-in;
 }

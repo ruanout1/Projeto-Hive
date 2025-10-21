@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Bell, Check, Trash2, Filter, ChevronRight, MessageSquare, Star, Calendar, Users, FileText, AlertCircle, X } from 'lucide-react';
+import ScreenHeader from './ScreenHeader';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import React from 'react';
-
 
 interface Notification {
   id: string;
@@ -140,7 +139,11 @@ const getNotificationIcon = (type: string) => {
   }
 };
 
-export default function NotificationsScreen() {
+interface NotificationsScreenProps {
+  onBack?: () => void;
+}
+
+export default function NotificationsScreen({ onBack }: NotificationsScreenProps) {
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [activeFilter, setActiveFilter] = useState('todas');
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
@@ -181,20 +184,15 @@ export default function NotificationsScreen() {
       <div className="bg-white border-b border-gray-200 p-6">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(100, 0, 164, 0.1)' }}>
-                <Bell className="h-6 w-6" style={{ color: '#6400A4' }} />
-              </div>
-              <div>
-                <h1 className="hive-screen-title">Notificações</h1>
-                <p className="text-sm text-gray-600">
-                  {unreadCount > 0 ? (
-                    <>Você tem <span style={{ color: '#6400A4' }}>{unreadCount} notificações não lidas</span></>
-                  ) : (
-                    'Todas as notificações foram lidas'
-                  )}
-                </p>
-              </div>
+            <div className="flex-1">
+              <ScreenHeader 
+                title="Notificações"
+                description={unreadCount > 0 
+                  ? `Você tem ${unreadCount} notificações não lidas` 
+                  : 'Todas as notificações foram lidas'
+                }
+                onBack={() => onBack?.()}
+              />
             </div>
             
             {unreadCount > 0 && (
@@ -337,7 +335,7 @@ export default function NotificationsScreen() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                            onClick={(e) => {
                               e.stopPropagation();
                               markAsRead(notification.id);
                             }}
@@ -351,7 +349,7 @@ export default function NotificationsScreen() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                          onClick={(e) => {
                             e.stopPropagation();
                             deleteNotification(notification.id);
                           }}
@@ -362,7 +360,7 @@ export default function NotificationsScreen() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                          onClick={(e) => {
                             e.stopPropagation();
                             openNotification(notification);
                           }}

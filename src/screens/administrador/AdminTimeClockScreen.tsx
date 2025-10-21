@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ScreenHeader from './ScreenHeader';
 import { 
   Clock, 
   Search, 
@@ -28,9 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { HighlightText } from './ui/search-highlight';
-import { toast } from 'sonner';
-import React from 'react';
-
+import { toast } from 'sonner@2.0.3';
 
 interface TimeRecord {
   id: string;
@@ -131,7 +130,11 @@ const mockRecords: TimeRecord[] = [
 const teams = ['Todas', 'Equipe Alpha', 'Equipe Beta', 'Equipe Gamma', 'Equipe Delta'];
 const managers = ['Todos', 'Ana Paula Rodrigues', 'Fernanda Lima', 'Pedro Costa'];
 
-export default function AdminTimeClockScreen() {
+interface AdminTimeClockScreenProps {
+  onBack?: () => void;
+}
+
+export default function AdminTimeClockScreen({ onBack }: AdminTimeClockScreenProps) {
   const [records, setRecords] = useState<TimeRecord[]>(mockRecords);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTeam, setFilterTeam] = useState('Todas');
@@ -144,6 +147,7 @@ export default function AdminTimeClockScreen() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
   const [correctionData, setCorrectionData] = useState({ checkIn: '', checkOut: '', reason: '' });
+  const [originalCorrectionData, setOriginalCorrectionData] = useState({ checkIn: '', checkOut: '', reason: '' });
   
   // Estados para filtros de exportação
   const [exportStartDate, setExportStartDate] = useState('');
@@ -225,12 +229,18 @@ export default function AdminTimeClockScreen() {
 
   const handleCorrect = (record: TimeRecord) => {
     setSelectedRecord(record);
-    setCorrectionData({
+    const initialCorrectionData = {
       checkIn: record.checkInTime !== '-' ? record.checkInTime : '',
       checkOut: record.checkOutTime || '',
       reason: ''
-    });
+    };
+    setCorrectionData(initialCorrectionData);
+    setOriginalCorrectionData(initialCorrectionData);
     setIsCorrectModalOpen(true);
+  };
+
+  const hasCorrectionChanges = () => {
+    return JSON.stringify(correctionData) !== JSON.stringify(originalCorrectionData);
   };
 
   const handleSaveCorrection = () => {
@@ -316,16 +326,12 @@ export default function AdminTimeClockScreen() {
       <div className="bg-white border-b border-gray-200 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(100, 0, 164, 0.1)' }}>
-                <Clock className="h-6 w-6" style={{ color: '#6400A4' }} />
-              </div>
-              <div>
-                <h1 className="hive-screen-title">Controle de Ponto Online</h1>
-                <p className="text-sm text-gray-600">
-                  Monitoramento completo de registro de ponto dos colaboradores
-                </p>
-              </div>
+            <div className="flex-1">
+              <ScreenHeader 
+                title="Controle de Ponto Online"
+                description="Monitoramento completo de registro de ponto dos colaboradores"
+                onBack={() => onBack?.()}
+              />
             </div>
             
             <Button
@@ -659,6 +665,9 @@ export default function AdminTimeClockScreen() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-hide">
           <DialogHeader>
             <DialogTitle className="modal-title-purple">Detalhes do Registro</DialogTitle>
+            <DialogDescription>
+              Visualize todas as informações do registro de ponto
+            </DialogDescription>
           </DialogHeader>
           
           {selectedRecord && (
@@ -863,7 +872,7 @@ export default function AdminTimeClockScreen() {
             <Button
               style={{ backgroundColor: '#6400A4', color: 'white' }}
               onClick={handleSaveCorrection}
-              disabled={!correctionData.reason}
+              disabled={!correctionData.reason || !hasCorrectionChanges()}
             >
               Salvar Correção
             </Button>

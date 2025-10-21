@@ -4,8 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import React from 'react';
-
 
 interface RequestsViewScreenProps {
   category: string;
@@ -167,7 +165,7 @@ export default function RequestsViewScreen({ category, requests, onBack }: Reque
             ) : (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <Calendar className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                  <Calendar className="h-12 w-12 mx-auto mb-3" style={{ color: '#8B20EE', opacity: 0.3 }} />
                   <p className="text-black mb-1">Nenhuma solicitação encontrada</p>
                   <p className="text-sm text-gray-600">
                     {searchTerm ? 'Tente alterar os filtros de busca' : 'Não há solicitações nesta categoria'}

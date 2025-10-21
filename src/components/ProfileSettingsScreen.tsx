@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { User, Bell, Moon, Sun, HelpCircle, Shield, Camera, Mail, Lock, Smartphone, Clock, AlertCircle, CheckCircle } from 'lucide-react';
+import { User, Bell, Moon, Sun, HelpCircle, Shield, Camera, Mail, Lock, Smartphone, Clock, AlertCircle, CheckCircle, Settings, UserCog } from 'lucide-react';
+import ScreenHeader from './ScreenHeader';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -11,23 +12,34 @@ import { Separator } from './ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from './ui/input-otp';
 import { Alert, AlertDescription } from './ui/alert';
-import { toast } from 'sonner';
-import React from 'react';
-
+import { toast } from 'sonner@2.0.3';
 
 interface ProfileSettingsScreenProps {
   userType: string;
+  onBack?: () => void;
 }
 
-export default function ProfileSettingsScreen({ userType }: ProfileSettingsScreenProps) {
+export default function ProfileSettingsScreen({ userType, onBack }: ProfileSettingsScreenProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notifications, setNotifications] = useState({
     push: true,
     email: true,
     sms: false
   });
+  const [originalNotifications, setOriginalNotifications] = useState({
+    push: true,
+    email: true,
+    sms: false
+  });
 
   const [profile, setProfile] = useState({
+    name: 'João Silva',
+    email: 'joao.silva@email.com',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [originalProfile, setOriginalProfile] = useState({
     name: 'João Silva',
     email: 'joao.silva@email.com',
     currentPassword: '',
@@ -46,6 +58,16 @@ export default function ProfileSettingsScreen({ userType }: ProfileSettingsScree
   const [token, setToken] = useState('');
   const [timeLeft, setTimeLeft] = useState(50);
   const [isTimerActive, setIsTimerActive] = useState(false);
+
+  // Permissões de Gestor (apenas para admin)
+  const [managerPermissions, setManagerPermissions] = useState({
+    canEditClients: true,
+    canToggleClientStatus: true
+  });
+  const [originalManagerPermissions, setOriginalManagerPermissions] = useState({
+    canEditClients: true,
+    canToggleClientStatus: true
+  });
 
   // Timer para o token
   useEffect(() => {
@@ -209,21 +231,56 @@ export default function ProfileSettingsScreen({ userType }: ProfileSettingsScree
   const handleSaveNotifications = () => {
     // Implementar lógica de salvar notificações
     console.log('Salvando notificações:', notifications);
+    setOriginalNotifications({...notifications});
+    toast.success('Preferências de notificação salvas com sucesso!');
+  };
+
+  const hasProfileChanges = () => {
+    return profile.name !== originalProfile.name || 
+           profile.email !== originalProfile.email ||
+           profile.currentPassword !== '' ||
+           profile.newPassword !== '' ||
+           profile.confirmPassword !== '';
+  };
+
+  const hasNotificationChanges = () => {
+    return JSON.stringify(notifications) !== JSON.stringify(originalNotifications);
+  };
+
+  const handleManagerPermissionChange = (permission: string, value: boolean) => {
+    setManagerPermissions(prev => ({
+      ...prev,
+      [permission]: value
+    }));
+  };
+
+  const handleSaveManagerPermissions = () => {
+    console.log('Salvando permissões de gestor:', managerPermissions);
+    setOriginalManagerPermissions({...managerPermissions});
+    toast.success('Permissões de gestor salvas com sucesso!');
+  };
+
+  const hasManagerPermissionChanges = () => {
+    return JSON.stringify(managerPermissions) !== JSON.stringify(originalManagerPermissions);
   };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="hive-screen-title">Configurações do Perfil</h1>
-        <p className="text-black">
-          Gerencie suas informações pessoais, notificações e preferências.
-        </p>
+        <ScreenHeader 
+          title="Configurações do Perfil"
+          description="Gerencie suas informações pessoais, notificações e preferências."
+          onBack={() => onBack?.()}
+        />
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className={`grid w-full ${userType === 'Administrador' ? 'grid-cols-6' : 'grid-cols-5'}`}>
           <TabsTrigger value="profile">Meu Perfil</TabsTrigger>
           <TabsTrigger value="notifications">Notificações</TabsTrigger>
+          {userType === 'Administrador' && (
+            <TabsTrigger value="permissions">Permissões</TabsTrigger>
+          )}
           <TabsTrigger value="theme">Tema</TabsTrigger>
           <TabsTrigger value="support">Suporte</TabsTrigger>
           <TabsTrigger value="policies">Políticas</TabsTrigger>
@@ -391,6 +448,7 @@ export default function ProfileSettingsScreen({ userType }: ProfileSettingsScree
                 <Button 
                   onClick={handleSaveProfile}
                   style={{ backgroundColor: '#6400A4', color: 'white' }}
+                  disabled={!hasProfileChanges()}
                 >
                   Salvar Alterações
                 </Button>
@@ -416,7 +474,7 @@ export default function ProfileSettingsScreen({ userType }: ProfileSettingsScree
                   </div>
                   <Switch
                     checked={notifications.push}
-                    onCheckedChange={(checked: boolean) => handleNotificationChange('push', checked)}
+                    onCheckedChange={(checked) => handleNotificationChange('push', checked)}
                   />
                 </div>
 
@@ -432,7 +490,7 @@ export default function ProfileSettingsScreen({ userType }: ProfileSettingsScree
                   </div>
                   <Switch
                     checked={notifications.email}
-                    onCheckedChange={(checked: boolean) => handleNotificationChange('email', checked)}
+                    onCheckedChange={(checked) => handleNotificationChange('email', checked)}
                   />
                 </div>
 
@@ -448,7 +506,7 @@ export default function ProfileSettingsScreen({ userType }: ProfileSettingsScree
                   </div>
                   <Switch
                     checked={notifications.sms}
-                    onCheckedChange={(checked: boolean) => handleNotificationChange('sms', checked)}
+                    onCheckedChange={(checked) => handleNotificationChange('sms', checked)}
                   />
                 </div>
               </div>
@@ -457,6 +515,7 @@ export default function ProfileSettingsScreen({ userType }: ProfileSettingsScree
                 <Button 
                   onClick={handleSaveNotifications}
                   style={{ backgroundColor: '#6400A4', color: 'white' }}
+                  disabled={!hasNotificationChanges()}
                 >
                   Salvar Preferências
                 </Button>
@@ -464,6 +523,68 @@ export default function ProfileSettingsScreen({ userType }: ProfileSettingsScree
             </CardContent>
           </Card>
         </TabsContent>
+
+        {userType === 'Administrador' && (
+          <TabsContent value="permissions" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-black flex items-center">
+                  <UserCog className="h-5 w-5 mr-2" style={{ color: '#6400A4' }} />
+                  Permissões de Gestor
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Alert className="border-purple-200 bg-purple-50">
+                  <Settings className="h-4 w-4" />
+                  <AlertDescription style={{ color: '#6400A4' }}>
+                    Configure as permissões que os gestores terão ao acessar a tela de clientes. 
+                    Apenas administradores podem excluir clientes, independentemente dessas configurações.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label className="text-base">Permitir Edição de Clientes</Label>
+                      <p className="text-sm text-gray-600">
+                        Gestor pode editar informações dos clientes de sua área
+                      </p>
+                    </div>
+                    <Switch
+                      checked={managerPermissions.canEditClients}
+                      onCheckedChange={(checked) => handleManagerPermissionChange('canEditClients', checked)}
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label className="text-base">Permitir Ativar/Desativar Clientes</Label>
+                      <p className="text-sm text-gray-600">
+                        Gestor pode ativar ou desativar clientes de sua área
+                      </p>
+                    </div>
+                    <Switch
+                      checked={managerPermissions.canToggleClientStatus}
+                      onCheckedChange={(checked) => handleManagerPermissionChange('canToggleClientStatus', checked)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={handleSaveManagerPermissions}
+                    style={{ backgroundColor: '#6400A4', color: 'white' }}
+                    disabled={!hasManagerPermissionChanges()}
+                  >
+                    Salvar Permissões
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         <TabsContent value="theme" className="space-y-6">
           <Card>
@@ -670,7 +791,7 @@ export default function ProfileSettingsScreen({ userType }: ProfileSettingsScree
                 <InputOTP
                   maxLength={6}
                   value={token}
-                  onChange={(value: string) => setToken(value)}
+                  onChange={(value) => setToken(value)}
                 >
                   <InputOTPGroup>
                     <InputOTPSlot index={0} />

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Star, MessageSquare, MapPin, TrendingUp, Filter, Search, Send } from 'lucide-react';
+import ScreenHeader from './ScreenHeader';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
@@ -9,9 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { toast } from 'sonner';
-import React from 'react';
-
+import { toast } from 'sonner@2.0.3';
 
 interface Rating {
   id: string;
@@ -107,7 +106,11 @@ const mockRatings: Rating[] = [
 
 const regions = ['Todas', 'Zona Sul', 'Zona Norte', 'Zona Oeste', 'Zona Leste', 'Centro'];
 
-export default function AdminRatingsScreen() {
+interface AdminRatingsScreenProps {
+  onBack?: () => void;
+}
+
+export default function AdminRatingsScreen({ onBack }: AdminRatingsScreenProps) {
   const [ratings, setRatings] = useState<Rating[]>(mockRatings);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRegion, setFilterRegion] = useState('Todas');
@@ -214,16 +217,12 @@ export default function AdminRatingsScreen() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(139, 32, 238, 0.1)' }}>
-              <Star className="h-6 w-6" style={{ color: '#8B20EE' }} />
-            </div>
-            <div>
-              <h1 className="hive-screen-title">Avaliações dos Clientes</h1>
-              <p className="text-sm text-gray-600">
-                Acompanhe as avaliações e responda aos seus clientes
-              </p>
-            </div>
+          <div className="mb-6">
+            <ScreenHeader 
+              title="Avaliações dos Clientes"
+              description="Acompanhe as avaliações e responda aos seus clientes"
+              onBack={() => onBack?.()}
+            />
           </div>
 
           {/* Stats Cards */}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Users, Plus, Edit, Power, Search, Trash2, Check, X, UserPlus, ChevronRight } from 'lucide-react';
+import ScreenHeader from './ScreenHeader';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
@@ -11,9 +12,7 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 import { Checkbox } from './ui/checkbox';
 import { HighlightText } from './ui/search-highlight';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { toast } from 'sonner';
-import React from 'react';
-
+import { toast } from 'sonner@2.0.3';
 
 interface Team {
   id: string;
@@ -73,7 +72,11 @@ const mockTeams: Team[] = [
 type DialogStep = 'name' | 'manager' | 'members' | null;
 type DialogMode = 'create' | 'edit';
 
-export default function TeamManagementScreen() {
+interface TeamManagementScreenProps {
+  onBack?: () => void;
+}
+
+export default function TeamManagementScreen({ onBack }: TeamManagementScreenProps) {
   const [teams, setTeams] = useState<Team[]>(mockTeams);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
@@ -91,6 +94,8 @@ export default function TeamManagementScreen() {
     managerId: '',
     memberIds: [] as string[]
   });
+  
+  const [originalFormData, setOriginalFormData] = useState(formData);
 
   const activeCount = teams.filter(t => t.status === 'active').length;
   const inactiveCount = teams.filter(t => t.status === 'inactive').length;
@@ -126,11 +131,13 @@ export default function TeamManagementScreen() {
       // Modo de edição - formulário simples
       setEditingTeam(team);
       setDialogMode('edit');
-      setFormData({
+      const initialFormData = {
         name: team.name,
         managerId: team.manager.id,
         memberIds: team.members.map(m => m.id)
-      });
+      };
+      setFormData(initialFormData);
+      setOriginalFormData(initialFormData);
       setDialogStep(null); // Não usa steps no modo edição
     } else {
       // Modo de criação - wizard
@@ -167,6 +174,11 @@ export default function TeamManagementScreen() {
     } else if (dialogStep === 'manager') {
       setDialogStep('name');
     }
+  };
+
+  const hasTeamChanges = () => {
+    if (!editingTeam) return true; // Se está criando, sempre habilita
+    return JSON.stringify(formData) !== JSON.stringify(originalFormData);
   };
 
   const handleSaveTeam = () => {
@@ -251,16 +263,12 @@ export default function TeamManagementScreen() {
       <div className="bg-white border-b border-gray-200 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(139, 32, 238, 0.1)' }}>
-                <Users className="h-6 w-6" style={{ color: '#8B20EE' }} />
-              </div>
-              <div>
-                <h1 className="hive-screen-title">Gerenciamento de Equipes</h1>
-                <p className="text-sm text-gray-600">
-                  Crie e gerencie equipes com gestores e colaboradores
-                </p>
-              </div>
+            <div className="flex-1">
+              <ScreenHeader 
+                title="Gerenciamento de Equipes"
+                description="Crie e gerencie equipes com gestores e colaboradores"
+                onBack={() => onBack?.()}
+              />
             </div>
             
             <Button
@@ -551,7 +559,7 @@ export default function TeamManagementScreen() {
                 {/* Gestor Responsável */}
                 <div>
                   <Label htmlFor="manager" style={{ color: '#8B20EE' }}>Gestor Responsável *</Label>
-                  <Select value={formData.managerId} onValueChange={(value: string) => setFormData({ ...formData, managerId: value })}>
+                  <Select value={formData.managerId} onValueChange={(value) => setFormData({ ...formData, managerId: value })}>
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Escolha um gestor" />
                     </SelectTrigger>
@@ -586,7 +594,7 @@ export default function TeamManagementScreen() {
                           <Checkbox
                             checked={formData.memberIds.includes(member.id)}
                             onCheckedChange={() => toggleMember(member.id)}
-                            onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
                           />
                           <Avatar className="h-8 w-8" style={{ backgroundColor: '#35BAE6' }}>
                             <AvatarFallback style={{ backgroundColor: '#35BAE6', color: 'white' }}>
@@ -642,7 +650,7 @@ export default function TeamManagementScreen() {
                     </div>
                     <div>
                       <Label htmlFor="manager" style={{ color: '#8B20EE' }}>Selecione o Gestor Responsável *</Label>
-                      <Select value={formData.managerId} onValueChange={(value: string) => setFormData({ ...formData, managerId: value })}>
+                      <Select value={formData.managerId} onValueChange={(value) => setFormData({ ...formData, managerId: value })}>
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Escolha um gestor" />
                         </SelectTrigger>
@@ -687,7 +695,7 @@ export default function TeamManagementScreen() {
                               <Checkbox
                                 checked={formData.memberIds.includes(member.id)}
                                 onCheckedChange={() => toggleMember(member.id)}
-                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
                               />
                               <Avatar className="h-8 w-8" style={{ backgroundColor: '#35BAE6' }}>
                                 <AvatarFallback style={{ backgroundColor: '#35BAE6', color: 'white' }}>
@@ -721,7 +729,7 @@ export default function TeamManagementScreen() {
                 </Button>
                 <Button
                   onClick={handleSaveTeam}
-                  disabled={!formData.name || !formData.managerId}
+                  disabled={!formData.name || !formData.managerId || !hasTeamChanges()}
                   style={{ backgroundColor: '#8B20EE', color: 'white' }}
                   className="hover:opacity-90"
                 >

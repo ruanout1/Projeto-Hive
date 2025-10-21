@@ -4,18 +4,22 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import HiveLogo from './HiveLogo';
-import React from 'react';
-
+import ForgotPasswordScreen from './ForgotPasswordScreen';
 
 export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onLogin();
   };
+
+  if (showForgotPassword) {
+    return <ForgotPasswordScreen onBackToLogin={() => setShowForgotPassword(false)} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -80,7 +84,7 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
               <Checkbox
                 id="remember"
                 checked={rememberMe}
-                onCheckedChange={(checked: boolean) => setRememberMe(checked as boolean)}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
               />
               <Label htmlFor="remember" className="text-sm text-black">
                 Lembrar-me
@@ -96,10 +100,11 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
             </Button>
 
             <div className="text-center mt-4">
-
               <button
                 type="button"
-                className="text-sm text-black hover:text-gray-800"
+                className="text-sm hover:underline"
+                style={{ color: '#6400A4' }}
+                onClick={() => setShowForgotPassword(true)}
               >
                 Esqueci minha senha
               </button>

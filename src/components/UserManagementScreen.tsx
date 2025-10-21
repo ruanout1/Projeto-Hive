@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Users, Plus, Edit, Power, Search, Filter, Mail, Phone, Calendar, Check, X, Trash2, UserCheck } from 'lucide-react';
+import ScreenHeader from './ScreenHeader';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
@@ -10,9 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { HighlightText } from './ui/search-highlight';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { toast } from 'sonner';
-import React from 'react';
-
+import { toast } from 'sonner@2.0.3';
 
 interface User {
   id: string;
@@ -22,6 +21,7 @@ interface User {
   role: 'gestor' | 'colaborador';
   position?: string; // Cargo obrigatório para colaboradores
   team?: string;
+  areas?: ('norte' | 'sul' | 'leste' | 'oeste' | 'centro')[]; // Áreas de responsabilidade (apenas para gestores)
   status: 'active' | 'inactive';
   createdAt: string;
   lastAccess?: string;
@@ -35,6 +35,7 @@ const mockUsers: User[] = [
     phone: '(11) 98765-4321',
     role: 'gestor',
     team: 'Equipe Alpha',
+    areas: ['norte', 'centro'],
     status: 'active',
     createdAt: '15/01/2025',
     lastAccess: 'Hoje às 14:30'
@@ -58,6 +59,7 @@ const mockUsers: User[] = [
     phone: '(11) 96543-2109',
     role: 'gestor',
     team: 'Equipe Beta',
+    areas: ['sul', 'oeste'],
     status: 'active',
     createdAt: '10/01/2025',
     lastAccess: 'Ontem às 18:20'
@@ -93,6 +95,7 @@ const mockUsers: User[] = [
     phone: '(11) 93210-9876',
     role: 'gestor',
     team: 'Equipe Gamma',
+    areas: ['leste'],
     status: 'active',
     createdAt: '08/01/2025',
     lastAccess: 'Hoje às 11:00'
@@ -126,7 +129,11 @@ const mockUsers: User[] = [
 const teams = ['Equipe Alpha', 'Equipe Beta', 'Equipe Gamma', 'Equipe Delta'];
 const positions = ['Faxineiro(a)', 'Serviços Gerais', 'Porteiro', 'Recepcionista', 'Zelador', 'Segurança Armada', 'Vigia'];
 
-export default function UserManagementScreen() {
+interface UserManagementScreenProps {
+  onBack?: () => void;
+}
+
+export default function UserManagementScreen({ onBack }: UserManagementScreenProps) {
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('todos');
@@ -143,8 +150,11 @@ export default function UserManagementScreen() {
     role: 'colaborador' as 'gestor' | 'colaborador',
     position: '',
     team: '',
+    areas: [] as ('norte' | 'sul' | 'leste' | 'oeste' | 'centro')[],
     status: 'active' as 'active' | 'inactive'
   });
+  
+  const [originalFormData, setOriginalFormData] = useState(formData);
 
   const activeCount = users.filter(u => u.status === 'active').length;
   const inactiveCount = users.filter(u => u.status === 'inactive').length;
@@ -166,15 +176,18 @@ export default function UserManagementScreen() {
   const handleOpenDialog = (user?: User) => {
     if (user) {
       setEditingUser(user);
-      setFormData({
+      const initialFormData = {
         name: user.name,
         email: user.email,
         phone: user.phone,
         role: user.role,
         position: user.position || '',
         team: user.team || '',
+        areas: user.areas || [],
         status: user.status
-      });
+      };
+      setFormData(initialFormData);
+      setOriginalFormData(initialFormData);
     } else {
       setEditingUser(null);
       setFormData({
@@ -184,6 +197,7 @@ export default function UserManagementScreen() {
         role: 'colaborador',
         position: '',
         team: '',
+        areas: [],
         status: 'active'
       });
     }
@@ -195,11 +209,33 @@ export default function UserManagementScreen() {
     setEditingUser(null);
   };
 
+  const hasUserChanges = () => {
+    if (!editingUser) return true; // Se está criando, sempre habilita
+    return JSON.stringify(formData) !== JSON.stringify(originalFormData);
+  };
+
   const handleSaveUser = () => {
+    // Validações
+    if (!formData.name || !formData.email || !formData.phone) {
+      toast.error('Preencha todos os campos obrigatórios!');
+      return;
+    }
+
+    if (formData.role === 'colaborador' && !formData.position) {
+      toast.error('Selecione um cargo para o colaborador!');
+      return;
+    }
+
+    if (formData.role === 'gestor' && formData.areas.length === 0) {
+      toast.error('Selecione pelo menos uma área de responsabilidade para o gestor!');
+      return;
+    }
+
     const userData = {
       ...formData,
       position: formData.position || undefined,
-      team: formData.team || undefined
+      team: formData.team || undefined,
+      areas: formData.role === 'gestor' ? formData.areas : undefined
     };
     
     if (editingUser) {
@@ -268,16 +304,12 @@ export default function UserManagementScreen() {
       <div className="bg-white border-b border-gray-200 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(100, 0, 164, 0.1)' }}>
-                <Users className="h-6 w-6" style={{ color: '#6400A4' }} />
-              </div>
-              <div>
-                <h1 className="hive-screen-title">Gerenciamento de Usuários</h1>
-                <p className="text-sm text-gray-600">
-                  Gerencie gestores e colaboradores da sua equipe
-                </p>
-              </div>
+            <div className="flex-1">
+              <ScreenHeader 
+                title="Gerenciamento de Usuários"
+                description="Gerencie gestores e colaboradores da sua equipe"
+                onBack={() => onBack?.()}
+              />
             </div>
             
             <Button
@@ -441,7 +473,7 @@ export default function UserManagementScreen() {
 
                       <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
                         <div className="flex items-center space-x-1">
-                          <Calendar className="h-3 w-3" />
+                          <Calendar className="h-3 w-3" style={{ color: '#8B20EE' }} />
                           <span>Criado em {user.createdAt}</span>
                         </div>
                         {user.lastAccess && (
@@ -573,7 +605,7 @@ export default function UserManagementScreen() {
 
               <div>
                 <Label htmlFor="team" style={{ color: '#6400A4' }}>Equipe (Opcional)</Label>
-                <Select value={formData.team || 'none'} onValueChange={(value: string) => setFormData({ ...formData, team: value === 'none' ? '' : value })}>
+                <Select value={formData.team || 'none'} onValueChange={(value) => setFormData({ ...formData, team: value === 'none' ? '' : value })}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Selecione uma equipe" />
                   </SelectTrigger>
@@ -587,11 +619,47 @@ export default function UserManagementScreen() {
               </div>
             </div>
 
+            {/* Áreas de responsabilidade (apenas para gestores) */}
+            {formData.role === 'gestor' && (
+              <div>
+                <Label style={{ color: '#6400A4' }}>Áreas de Responsabilidade *</Label>
+                <div className="mt-2 space-y-2 p-3 border rounded-lg max-h-48 overflow-y-auto" style={{ borderColor: 'rgba(100, 0, 164, 0.2)' }}>
+                  {(['norte', 'sul', 'leste', 'oeste', 'centro'] as const).map((area) => {
+                    const isChecked = formData.areas.includes(area);
+                    return (
+                      <div key={area} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`area-${area}`}
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({ ...formData, areas: [...formData.areas, area] });
+                            } else {
+                              setFormData({ ...formData, areas: formData.areas.filter(a => a !== area) });
+                            }
+                          }}
+                          className="h-4 w-4 rounded"
+                          style={{ accentColor: '#6400A4' }}
+                        />
+                        <Label htmlFor={`area-${area}`} className="text-sm cursor-pointer">
+                          {area.charAt(0).toUpperCase() + area.slice(1)}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  O gestor receberá apenas solicitações das áreas selecionadas
+                </p>
+              </div>
+            )}
+
             {/* Position (obrigatório apenas para colaboradores) */}
             {formData.role === 'colaborador' && (
               <div>
                 <Label htmlFor="position" style={{ color: '#35BAE6' }}>Cargo *</Label>
-                <Select value={formData.position || 'none'} onValueChange={(value: string) => setFormData({ ...formData, position: value === 'none' ? '' : value })}>
+                <Select value={formData.position || 'none'} onValueChange={(value) => setFormData({ ...formData, position: value === 'none' ? '' : value })}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Selecione o cargo do colaborador" />
                   </SelectTrigger>
@@ -641,7 +709,8 @@ export default function UserManagementScreen() {
                 !formData.email || 
                 !formData.phone || 
                 !formData.role || 
-                (formData.role === 'colaborador' && !formData.position)
+                (formData.role === 'colaborador' && !formData.position) ||
+                !hasUserChanges()
               }
             >
               <Check className="h-4 w-4 mr-2" />
