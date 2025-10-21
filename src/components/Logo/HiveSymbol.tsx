@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function HiveSymbol() {
   return (
     <div className="relative w-20 h-20">

@@ -1,25 +1,24 @@
 import AdminDashboard from './AdminDashboard';
-import ManagerDashboard from '../../components/ManagerDashboard'; 
-import CollaboratorDashboard from '../colaborador/CollaboratorDashboard';
-import ClientDashboard from '../cliente/ClientDashboard';
-import React from 'react';
-
+import ManagerDashboard from './ManagerDashboard'; 
+import CollaboratorDashboard from './CollaboratorDashboard';
+import ClientDashboard from './ClientDashboard';
 
 interface DashboardScreenProps {
   userType: string;
+  onSectionChange?: (section: string, params?: any) => void;
 }
 
-export default function DashboardScreen({ userType }: DashboardScreenProps) {
+export default function DashboardScreen({ userType, onSectionChange }: DashboardScreenProps) {
   switch (userType) {
     case 'administrador':
-      return <AdminDashboard />;
+      return <AdminDashboard onSectionChange={onSectionChange} />;
     case 'gestor':
-      return <ManagerDashboard />;
+      return <ManagerDashboard onSectionChange={onSectionChange} />;
     case 'colaborador':
-      return <CollaboratorDashboard />;
+      return <CollaboratorDashboard onSectionChange={onSectionChange} />;
     case 'cliente':
-      return <ClientDashboard />;
+      return <ClientDashboard onSectionChange={onSectionChange} />;
     default:
-      return <AdminDashboard />;
+      return <AdminDashboard onSectionChange={onSectionChange} />;
   }
 }

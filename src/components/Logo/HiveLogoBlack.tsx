@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function HiveLogoBlack() {
   return (
     <div className="flex flex-col items-center gap-3">

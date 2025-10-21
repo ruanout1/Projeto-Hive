@@ -3,9 +3,7 @@ import { Bell, LogOut, User, HelpCircle, Shield, Moon, ChevronRight } from 'luci
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
-import HiveSymbol from './Logo/HiveSymbol';
-import React from 'react';
-
+import HiveSymbol from './HiveSymbol';
 
 interface NavigationProps {
   activeTab: string;
@@ -13,7 +11,7 @@ interface NavigationProps {
   onLogout: () => void;
   userType: string;
   onProfileSettings?: () => void;
-  onSectionChange?: (section: string) => void;
+  onSectionChange?: (section: string, params?: any) => void;
 }
 
 export default function Navigation({ activeTab, onTabChange, onLogout, userType, onProfileSettings, onSectionChange }: NavigationProps) {
@@ -26,7 +24,7 @@ export default function Navigation({ activeTab, onTabChange, onLogout, userType,
 
   return (
     <nav className="bg-white border-b border-gray-200 px-3 py-0">
-      <div className="flex items-center justify-between h-10">
+      <div className="flex items-center justify-between h-14">
         {/* Logo */}
         <div className="flex items-center">
           <div className="scale-[0.35] -ml-2">
@@ -51,16 +49,19 @@ export default function Navigation({ activeTab, onTabChange, onLogout, userType,
               
               <DropdownMenuItem 
                 className="p-1.5 cursor-pointer focus:bg-transparent hover:bg-transparent"
-                onClick={() => onSectionChange?.('comunicacao')}
+                onClick={() => {
+                  setNotificationsOpen(false);
+                  onSectionChange?.('solicitar-servicos', { tab: 'minhas-solicitacoes' });
+                }}
               >
                 <div className="flex items-start justify-between space-x-2 p-2.5 w-full" style={{ backgroundColor: 'rgba(255, 255, 32, 0.2)', borderRadius: '16px' }}>
                   <div className="flex-1 min-w-0 rounded-[10px] p-[5px] bg-[rgba(255,255,32,0.75)]">
-                    <p className="text-sm font-medium text-center mb-1" style={{ color: '#6400A4' }}>Nova mensagem de João Silva</p>
-                    <p className="text-xs text-black mt-0.5">Solicitação sobre orçamento para manutenção</p>
-                    <p className="text-xs mt-1" style={{ color: '#6400A4' }}>5 min atrás</p>
+                    <p className="text-sm font-medium text-center mb-1 text-white">Confirmação de Data Necessária</p>
+                    <p className="text-xs text-white mt-0.5">O gestor propôs uma nova data para seu serviço</p>
+                    <p className="text-xs mt-1 text-white">Agora</p>
                   </div>
                   <div className="flex-shrink-0">
-                    <ChevronRight className="h-4 w-4 text-gray-600" />
+                    <ChevronRight className="h-4 w-4 text-white" />
                   </div>
                 </div>
               </DropdownMenuItem>
@@ -71,12 +72,28 @@ export default function Navigation({ activeTab, onTabChange, onLogout, userType,
               >
                 <div className="flex items-start justify-between space-x-2 p-2.5 w-full" style={{ backgroundColor: 'rgba(255, 255, 32, 0.2)', borderRadius: '16px' }}>
                   <div className="flex-1 min-w-0 rounded-[10px] p-[5px] bg-[rgba(255,255,32,0.75)]">
-                    <p className="text-sm font-medium text-center mb-1" style={{ color: '#6400A4' }}>Equipe Beta respondeu</p>
-                    <p className="text-xs text-black mt-0.5">Confirmação de disponibilidade para serviço</p>
-                    <p className="text-xs mt-1" style={{ color: '#6400A4' }}>15 min atrás</p>
+                    <p className="text-sm font-medium text-center mb-1 text-white">Nova mensagem de João Silva</p>
+                    <p className="text-xs text-white mt-0.5">Solicitação sobre orçamento para manutenção</p>
+                    <p className="text-xs mt-1 text-white">5 min atrás</p>
                   </div>
                   <div className="flex-shrink-0">
-                    <ChevronRight className="h-4 w-4 text-gray-600" />
+                    <ChevronRight className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem 
+                className="p-1.5 cursor-pointer focus:bg-transparent hover:bg-transparent"
+                onClick={() => onSectionChange?.('comunicacao')}
+              >
+                <div className="flex items-start justify-between space-x-2 p-2.5 w-full" style={{ backgroundColor: 'rgba(255, 255, 32, 0.2)', borderRadius: '16px' }}>
+                  <div className="flex-1 min-w-0 rounded-[10px] p-[5px] bg-[rgba(255,255,32,0.75)]">
+                    <p className="text-sm font-medium text-center mb-1 text-white">Equipe Beta respondeu</p>
+                    <p className="text-xs text-white mt-0.5">Confirmação de disponibilidade para serviço</p>
+                    <p className="text-xs mt-1 text-white">15 min atrás</p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <ChevronRight className="h-4 w-4 text-white" />
                   </div>
                 </div>
               </DropdownMenuItem>
@@ -87,12 +104,12 @@ export default function Navigation({ activeTab, onTabChange, onLogout, userType,
               >
                 <div className="flex items-start justify-between space-x-2 p-2.5 w-full" style={{ backgroundColor: 'rgba(255, 255, 32, 0.2)', borderRadius: '16px' }}>
                   <div className="flex-1 min-w-0 rounded-[10px] p-[5px] bg-[rgba(255,255,32,0.75)]">
-                    <p className="text-sm font-medium text-center mb-1" style={{ color: '#6400A4' }}>Nova avaliação recebida</p>
-                    <p className="text-xs text-black mt-0.5">Cliente Maria deu 5 estrelas para serviço</p>
-                    <p className="text-xs mt-1" style={{ color: '#6400A4' }}>1 hora atrás</p>
+                    <p className="text-sm font-medium text-center mb-1 text-white">Nova avaliação recebida</p>
+                    <p className="text-xs text-white mt-0.5">Cliente Maria deu 5 estrelas para serviço</p>
+                    <p className="text-xs mt-1 text-white">1 hora atrás</p>
                   </div>
                   <div className="flex-shrink-0">
-                    <ChevronRight className="h-4 w-4 text-gray-600" />
+                    <ChevronRight className="h-4 w-4 text-white" />
                   </div>
                 </div>
               </DropdownMenuItem>

@@ -7,18 +7,21 @@ import {
   StopCircle,
   Calendar,
   AlertCircle,
-  History
+  History,
+  Coffee,
+  Filter,
+  X
 } from 'lucide-react';
-import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
-import { Label } from '../../components/ui/label';
-import { Textarea } from '../../components/ui/textarea';
-import { Avatar, AvatarFallback } from '../../components/ui/avatar';
-import { toast } from 'sonner';
-import React from 'react';
-
+import ScreenHeader from './ScreenHeader';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { Avatar, AvatarFallback } from './ui/avatar';
+import { Input } from './ui/input';
+import { toast } from 'sonner@2.0.3';
 
 interface TimeRecord {
   id: string;
@@ -27,8 +30,10 @@ interface TimeRecord {
   checkInLocation?: { lat: number; lng: number; address: string };
   checkOutTime?: string;
   checkOutLocation?: { lat: number; lng: number; address: string };
+  breakStartTime?: string;
+  breakEndTime?: string;
   totalHours?: string;
-  status: 'present' | 'late' | 'absent' | 'on-duty' | 'pending-justification';
+  status: 'present' | 'late' | 'absent' | 'on-duty' | 'pending-justification' | 'on-break';
   justification?: { reason: string; document?: string; date: string };
 }
 
@@ -38,6 +43,8 @@ const mockHistory: TimeRecord[] = [
     date: '29/09/2025',
     checkInTime: '08:00',
     checkInLocation: { lat: -23.5505, lng: -46.6333, address: 'Shopping Center Norte, São Paulo - SP' },
+    breakStartTime: '12:00',
+    breakEndTime: '13:00',
     checkOutTime: '17:00',
     checkOutLocation: { lat: -23.5505, lng: -46.6333, address: 'Shopping Center Norte, São Paulo - SP' },
     totalHours: '9h 00m',
@@ -48,6 +55,8 @@ const mockHistory: TimeRecord[] = [
     date: '28/09/2025',
     checkInTime: '08:05',
     checkInLocation: { lat: -23.5505, lng: -46.6333, address: 'Shopping Center Norte, São Paulo - SP' },
+    breakStartTime: '12:15',
+    breakEndTime: '13:10',
     checkOutTime: '17:10',
     checkOutLocation: { lat: -23.5505, lng: -46.6333, address: 'Shopping Center Norte, São Paulo - SP' },
     totalHours: '9h 05m',
@@ -74,6 +83,8 @@ const mockHistory: TimeRecord[] = [
     date: '25/09/2025',
     checkInTime: '07:55',
     checkInLocation: { lat: -23.5505, lng: -46.6333, address: 'Shopping Center Norte, São Paulo - SP' },
+    breakStartTime: '12:00',
+    breakEndTime: '13:00',
     checkOutTime: '17:00',
     checkOutLocation: { lat: -23.5505, lng: -46.6333, address: 'Shopping Center Norte, São Paulo - SP' },
     totalHours: '9h 05m',
@@ -81,16 +92,27 @@ const mockHistory: TimeRecord[] = [
   }
 ];
 
-export default function CollaboratorTimeClockScreen() {
+interface CollaboratorTimeClockScreenProps {
+  onBack?: () => void;
+}
+
+export default function CollaboratorTimeClockScreen({ onBack }: CollaboratorTimeClockScreenProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isOnDuty, setIsOnDuty] = useState(false);
+  const [isOnBreak, setIsOnBreak] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [checkInLocation, setCheckInLocation] = useState<string>('');
+  const [breakStartTime, setBreakStartTime] = useState<string | null>(null);
+  const [breakStartLocation, setBreakStartLocation] = useState<string>('');
+  const [breakEndTime, setBreakEndTime] = useState<string | null>(null);
+  const [breakEndLocation, setBreakEndLocation] = useState<string>('');
   const [history, setHistory] = useState<TimeRecord[]>(mockHistory);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<'check-in' | 'check-out'>('check-in');
+  const [confirmAction, setConfirmAction] = useState<'check-in' | 'check-out' | 'break-start' | 'break-end'>('check-in');
   const [pendingLocation, setPendingLocation] = useState({ lat: -23.5505, lng: -46.6333, address: 'Shopping Center Norte, São Paulo - SP' });
+  const [filterStartDate, setFilterStartDate] = useState<string>('');
+  const [filterEndDate, setFilterEndDate] = useState<string>('');
 
   // Update current time every second
   useEffect(() => {
@@ -113,6 +135,22 @@ export default function CollaboratorTimeClockScreen() {
     const location = { lat: -23.5505, lng: -46.6333, address: 'Shopping Center Norte, São Paulo - SP' };
     setPendingLocation(location);
     setConfirmAction('check-out');
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleRequestBreakStart = () => {
+    // Simulate GPS location capture
+    const location = { lat: -23.5505, lng: -46.6333, address: 'Shopping Center Norte, São Paulo - SP' };
+    setPendingLocation(location);
+    setConfirmAction('break-start');
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleRequestBreakEnd = () => {
+    // Simulate GPS location capture
+    const location = { lat: -23.5505, lng: -46.6333, address: 'Shopping Center Norte, São Paulo - SP' };
+    setPendingLocation(location);
+    setConfirmAction('break-end');
     setIsConfirmModalOpen(true);
   };
 
@@ -143,6 +181,8 @@ export default function CollaboratorTimeClockScreen() {
       date: currentTime.toLocaleDateString('pt-BR'),
       checkInTime: checkInTime || '',
       checkInLocation: { lat: -23.5505, lng: -46.6333, address: checkInLocation },
+      breakStartTime: breakStartTime || undefined,
+      breakEndTime: breakEndTime || undefined,
       checkOutTime: time,
       checkOutLocation: { lat: pendingLocation.lat, lng: pendingLocation.lng, address: pendingLocation.address },
       totalHours,
@@ -152,10 +192,40 @@ export default function CollaboratorTimeClockScreen() {
     setHistory([newRecord, ...history]);
     setCheckInTime(null);
     setCheckInLocation('');
+    setBreakStartTime(null);
+    setBreakStartLocation('');
+    setBreakEndTime(null);
+    setBreakEndLocation('');
     setIsConfirmModalOpen(false);
     
     toast.success('Ponto de saída registrado!', {
       description: `Hora: ${time} | Total trabalhado: ${totalHours}`
+    });
+  };
+
+  const handleConfirmBreakStart = () => {
+    const time = currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    
+    setBreakStartTime(time);
+    setBreakStartLocation(pendingLocation.address);
+    setIsOnBreak(true);
+    setIsConfirmModalOpen(false);
+    
+    toast.success('Saída para intervalo registrada!', {
+      description: `Hora: ${time} | Aproveite seu descanso!`
+    });
+  };
+
+  const handleConfirmBreakEnd = () => {
+    const time = currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    
+    setBreakEndTime(time);
+    setBreakEndLocation(pendingLocation.address);
+    setIsOnBreak(false);
+    setIsConfirmModalOpen(false);
+    
+    toast.success('Retorno do intervalo registrado!', {
+      description: `Hora: ${time} | Bem-vindo de volta!`
     });
   };
 
@@ -165,6 +235,7 @@ export default function CollaboratorTimeClockScreen() {
       'late': { label: 'Atraso', bgColor: 'bg-yellow-100', textColor: 'text-yellow-800' },
       'absent': { label: 'Falta', bgColor: 'bg-red-100', textColor: 'text-red-800' },
       'on-duty': { label: 'Em Jornada', bgColor: 'bg-blue-100', textColor: 'text-blue-800' },
+      'on-break': { label: 'Em Intervalo', bgColor: 'bg-orange-100', textColor: 'text-orange-800' },
       'pending-justification': { label: 'Pendente Justificativa', bgColor: 'bg-orange-100', textColor: 'text-orange-800' }
     };
     
@@ -179,20 +250,54 @@ export default function CollaboratorTimeClockScreen() {
     day: 'numeric' 
   });
 
+  // Parse date from DD/MM/YYYY to Date object
+  const parseDate = (dateStr: string): Date | null => {
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return null;
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+    const year = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+  };
+
+  // Filter history based on date range
+  const filteredHistory = history.filter((record) => {
+    if (!filterStartDate && !filterEndDate) return true;
+    
+    const recordDate = parseDate(record.date);
+    if (!recordDate) return true;
+
+    const startDate = filterStartDate ? new Date(filterStartDate) : null;
+    const endDate = filterEndDate ? new Date(filterEndDate) : null;
+
+    if (startDate && endDate) {
+      return recordDate >= startDate && recordDate <= endDate;
+    } else if (startDate) {
+      return recordDate >= startDate;
+    } else if (endDate) {
+      return recordDate <= endDate;
+    }
+
+    return true;
+  });
+
+  const clearFilters = () => {
+    setFilterStartDate('');
+    setFilterEndDate('');
+  };
+
   return (
     <div className="h-full bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(100, 0, 164, 0.1)' }}>
-                <Clock className="h-6 w-6" style={{ color: '#6400A4' }} />
-              </div>
-              <div>
-                <h1 className="hive-screen-title">Registro de Ponto</h1>
-                <p className="text-sm text-gray-600 capitalize">{todayDate}</p>
-              </div>
+            <div className="flex-1">
+              <ScreenHeader 
+                title="Registro de Ponto"
+                description={todayDate}
+                onBack={() => onBack?.()}
+              />
             </div>
             
             <Button
@@ -225,7 +330,7 @@ export default function CollaboratorTimeClockScreen() {
                 <p className="text-gray-600 mt-2">Horário Atual</p>
               </div>
 
-              {isOnDuty && checkInTime && (
+              {isOnDuty && checkInTime && !isOnBreak && (
                 <div className="mt-4 p-4 rounded-lg" style={{ backgroundColor: 'rgba(53, 186, 230, 0.1)' }}>
                   <div className="flex items-center justify-center space-x-2 mb-2">
                     <PlayCircle className="h-5 w-5" style={{ color: '#35BAE6' }} />
@@ -237,6 +342,22 @@ export default function CollaboratorTimeClockScreen() {
                   <p className="text-xs text-gray-500 flex items-center justify-center mt-1">
                     <MapPin className="h-3 w-3 mr-1" />
                     {checkInLocation}
+                  </p>
+                </div>
+              )}
+
+              {isOnBreak && breakStartTime && (
+                <div className="mt-4 p-4 rounded-lg" style={{ backgroundColor: 'rgba(255, 165, 0, 0.1)' }}>
+                  <div className="flex items-center justify-center space-x-2 mb-2">
+                    <Coffee className="h-5 w-5 text-orange-600" />
+                    <p className="text-orange-600">Em Intervalo</p>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Saída para intervalo às <strong>{breakStartTime}</strong>
+                  </p>
+                  <p className="text-xs text-gray-500 flex items-center justify-center mt-1">
+                    <MapPin className="h-3 w-3 mr-1" />
+                    {breakStartLocation}
                   </p>
                 </div>
               )}
@@ -263,16 +384,46 @@ export default function CollaboratorTimeClockScreen() {
 
           <Button
             onClick={handleRequestCheckOut}
-            disabled={!isOnDuty}
+            disabled={!isOnDuty || isOnBreak}
             className="h-32 text-lg"
             style={{ 
-              backgroundColor: !isOnDuty ? '#9CA3AF' : '#EF4444', 
+              backgroundColor: (!isOnDuty || isOnBreak) ? '#9CA3AF' : '#EF4444', 
               color: 'white' 
             }}
           >
             <div className="flex flex-col items-center space-y-2">
               <StopCircle className="h-12 w-12" />
               <span>Registrar Saída</span>
+            </div>
+          </Button>
+
+          <Button
+            onClick={handleRequestBreakStart}
+            disabled={!isOnDuty || isOnBreak}
+            className="h-32 text-lg"
+            style={{ 
+              backgroundColor: (!isOnDuty || isOnBreak) ? '#9CA3AF' : '#F97316', 
+              color: 'white' 
+            }}
+          >
+            <div className="flex flex-col items-center space-y-2">
+              <Coffee className="h-12 w-12" />
+              <span>Saída para Intervalo</span>
+            </div>
+          </Button>
+
+          <Button
+            onClick={handleRequestBreakEnd}
+            disabled={!isOnBreak}
+            className="h-32 text-lg"
+            style={{ 
+              backgroundColor: !isOnBreak ? '#9CA3AF' : '#8B20EE', 
+              color: 'white' 
+            }}
+          >
+            <div className="flex flex-col items-center space-y-2">
+              <CheckCircle className="h-12 w-12" />
+              <span>Retorno do Intervalo</span>
             </div>
           </Button>
         </div>
@@ -284,7 +435,7 @@ export default function CollaboratorTimeClockScreen() {
               <CardTitle className="text-black">Resumo do Dia</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div>
                   <p className="text-sm text-gray-600">Entrada</p>
                   <p className="text-xl" style={{ color: '#6400A4' }}>{checkInTime}</p>
@@ -292,8 +443,14 @@ export default function CollaboratorTimeClockScreen() {
                 <div>
                   <p className="text-sm text-gray-600">Status</p>
                   <div className="flex justify-center mt-1">
-                    {getStatusBadge('on-duty')}
+                    {getStatusBadge(isOnBreak ? 'on-break' : 'on-duty')}
                   </div>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Intervalo</p>
+                  <p className="text-xl text-orange-600">
+                    {breakStartTime && breakEndTime ? `${breakStartTime} - ${breakEndTime}` : breakStartTime ? `${breakStartTime} - ...` : '--:--'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Tempo Trabalhado</p>
@@ -340,6 +497,12 @@ export default function CollaboratorTimeClockScreen() {
                             {record.checkInTime} - {record.checkOutTime} ({record.totalHours})
                           </p>
                         )}
+                        {record.breakStartTime && record.breakEndTime && (
+                          <p className="text-xs text-orange-600 flex items-center">
+                            <Coffee className="h-3 w-3 mr-1" />
+                            Intervalo: {record.breakStartTime} - {record.breakEndTime}
+                          </p>
+                        )}
                         {record.checkInTime && !record.checkOutTime && (
                           <p className="text-sm text-gray-600">Entrada: {record.checkInTime}</p>
                         )}
@@ -373,6 +536,7 @@ export default function CollaboratorTimeClockScreen() {
                 <ul className="text-sm text-gray-700 mt-2 space-y-1 list-disc list-inside">
                   <li>Registre seu ponto dentro do horário estabelecido</li>
                   <li>A localização é capturada automaticamente pelo GPS</li>
+                  <li>Registre saída e retorno de intervalo conforme política da empresa</li>
                   <li>Em caso de atrasos ou faltas, seu gestor será notificado</li>
                   <li>Para justificar ausências, entre em contato com seu gestor</li>
                 </ul>
@@ -392,8 +556,76 @@ export default function CollaboratorTimeClockScreen() {
             </DialogDescription>
           </DialogHeader>
           
+          {/* Date Filters */}
+          <div className="space-y-4 pt-4 pb-2 border-b border-gray-200">
+            <div className="flex items-center space-x-2 mb-3">
+              <Filter className="h-4 w-4" style={{ color: '#6400A4' }} />
+              <span className="text-sm" style={{ color: '#6400A4' }}>Filtrar por Período</span>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="filter-start-date" className="text-sm text-gray-700 mb-1">
+                  Data Inicial
+                </Label>
+                <Input
+                  id="filter-start-date"
+                  type="date"
+                  value={filterStartDate}
+                  onChange={(e) => setFilterStartDate(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="filter-end-date" className="text-sm text-gray-700 mb-1">
+                  Data Final
+                </Label>
+                <Input
+                  id="filter-end-date"
+                  type="date"
+                  value={filterEndDate}
+                  onChange={(e) => setFilterEndDate(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                {filteredHistory.length} {filteredHistory.length === 1 ? 'registro encontrado' : 'registros encontrados'}
+              </p>
+              
+              {(filterStartDate || filterEndDate) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="flex items-center space-x-1"
+                >
+                  <X className="h-3 w-3" />
+                  <span>Limpar Filtros</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-3 py-4">
-            {history.map((record) => (
+            {filteredHistory.length === 0 ? (
+              <div className="text-center py-12">
+                <Calendar className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                <p className="text-gray-600">Nenhum registro encontrado no período selecionado</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="mt-4"
+                >
+                  Limpar Filtros
+                </Button>
+              </div>
+            ) : (
+              filteredHistory.map((record) => (
               <div 
                 key={record.id} 
                 className="p-4 bg-gray-50 rounded-lg border-2 border-transparent hover:border-gray-200 transition-colors"
@@ -420,6 +652,15 @@ export default function CollaboratorTimeClockScreen() {
                   </div>
                 )}
 
+                {record.breakStartTime && (
+                  <div className="ml-8 space-y-1 mt-2">
+                    <p className="text-sm text-orange-600 flex items-center">
+                      <Coffee className="h-4 w-4 mr-1" />
+                      <strong>Intervalo:</strong> {record.breakStartTime} - {record.breakEndTime || '...'}
+                    </p>
+                  </div>
+                )}
+
                 {record.checkOutTime && (
                   <div className="ml-8 space-y-1 mt-2">
                     <p className="text-sm text-gray-600">
@@ -440,7 +681,7 @@ export default function CollaboratorTimeClockScreen() {
 
 
               </div>
-            ))}
+            )))}
           </div>
 
           <DialogFooter>
@@ -456,7 +697,10 @@ export default function CollaboratorTimeClockScreen() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="modal-title-purple">
-              {confirmAction === 'check-in' ? 'Confirmar Entrada' : 'Confirmar Saída'}
+              {confirmAction === 'check-in' && 'Confirmar Entrada'}
+              {confirmAction === 'check-out' && 'Confirmar Saída'}
+              {confirmAction === 'break-start' && 'Confirmar Saída para Intervalo'}
+              {confirmAction === 'break-end' && 'Confirmar Retorno do Intervalo'}
             </DialogTitle>
             <DialogDescription>
               Confirme sua localização antes de registrar o ponto
@@ -532,7 +776,12 @@ export default function CollaboratorTimeClockScreen() {
             </Button>
             <Button
               style={{ backgroundColor: '#6400A4', color: 'white' }}
-              onClick={confirmAction === 'check-in' ? handleConfirmCheckIn : handleConfirmCheckOut}
+              onClick={() => {
+                if (confirmAction === 'check-in') handleConfirmCheckIn();
+                else if (confirmAction === 'check-out') handleConfirmCheckOut();
+                else if (confirmAction === 'break-start') handleConfirmBreakStart();
+                else if (confirmAction === 'break-end') handleConfirmBreakEnd();
+              }}
             >
               <CheckCircle className="h-4 w-4 mr-2" />
               Confirmar Registro

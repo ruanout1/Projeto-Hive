@@ -1,6 +1,7 @@
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import ScreenHeader from './ScreenHeader';
 import { 
   Shield, 
   Users, 
@@ -14,10 +15,12 @@ import {
   Edit,
   Trash2
 } from 'lucide-react';
-import React from 'react';
 
+interface UserProfilesScreenProps {
+  onBack?: () => void;
+}
 
-export default function UserProfilesScreen() {
+export default function UserProfilesScreen({ onBack }: UserProfilesScreenProps) {
   const userProfiles = [
     {
       id: 'administrador',
@@ -85,14 +88,11 @@ export default function UserProfilesScreen() {
     <div className="p-6 space-y-6">
       {/* Cabeçalho */}
       <div className="mb-8">
-        <h1 className="hive-screen-title mb-2">
-          Perfis de Usuário
-        </h1>
-        <p className="text-black">
-          Explore os diferentes perfis de usuário no Sistema Hive, cada um com um 
-          conjunto único de funcionalidades e permissões, projetados para otimizar a 
-          gestão de equipes terceirizadas.
-        </p>
+        <ScreenHeader 
+          title="Perfis de Usuário"
+          description="Explore os diferentes perfis de usuário no Sistema Hive, cada um com um conjunto único de funcionalidades e permissões, projetados para otimizar a gestão de equipes terceirizadas."
+          onBack={() => onBack?.()}
+        />
       </div>
 
       {/* Grid de Perfis */}

@@ -1,13 +1,16 @@
-import { Activity, Users, ClipboardList, TrendingUp, Heart, Bot, Eye, EyeOff } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
+import { Activity, Users, ClipboardList, TrendingUp, Heart, Bot, Eye, EyeOff, FileText, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LabelList } from 'recharts';
 import { useState } from 'react';
-import AIAssistant from '../../components/AIAssistant';
-import React from 'react';
+import AIAssistant from './AIAssistant';
 
+interface AdminDashboardProps {
+  onSectionChange?: (section: string) => void;
+}
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ onSectionChange }: AdminDashboardProps) {
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [showLabelsInStatusChart, setShowLabelsInStatusChart] = useState(true);
   const [showLabelsInRegionChart, setShowLabelsInRegionChart] = useState(true);
@@ -297,31 +300,37 @@ export default function AdminDashboard() {
       </div>
 
       {/* KPIs Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {kpis.map((kpi, index) => {
           const IconComponent = kpi.icon;
+          const bgColors = [
+            'from-purple-50 to-purple-100',
+            'from-purple-50 to-purple-100', 
+            'from-blue-50 to-blue-100',
+            'from-green-50 to-green-100'
+          ];
+          const borderColors = ['#6400A4', '#8B20EE', '#35BAE6', '#16a34a'];
+          const textColors = ['#6400A4', '#8B20EE', '#35BAE6', '#16a34a'];
+          
           return (
-            <Card key={index}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm text-black">
-                  {kpi.title}
-                </CardTitle>
-                <IconComponent 
-                  className="h-4 w-4" 
-                  style={{ color: kpi.color }}
-                />
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-baseline space-x-3">
-                  <div className="text-2xl" style={{ color: '#6400A4' }}>
-                    {kpi.value}
+            <div key={index} className={`bg-gradient-to-br ${bgColors[index]} rounded-xl p-4 border-2`} style={{ borderColor: borderColors[index] }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">{kpi.title}</p>
+                  <div className="flex items-baseline space-x-2">
+                    <p className="text-2xl" style={{ color: textColors[index] }}>
+                      {kpi.value}
+                    </p>
+                    {kpi.change && (
+                      <Badge className="text-xs bg-green-100 text-green-800">
+                        {kpi.change}
+                      </Badge>
+                    )}
                   </div>
-                  <span className="text-sm text-green-600">
-                    {kpi.change}
-                  </span>
                 </div>
-              </CardContent>
-            </Card>
+                <IconComponent className="h-8 w-8" style={{ color: textColors[index], opacity: 0.5 }} />
+              </div>
+            </div>
           );
         })}
       </div>
@@ -450,6 +459,50 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Card de Ação Rápida - Solicitações */}
+      <Card 
+        className="mb-8 cursor-pointer hover:shadow-lg transition-shadow border-2"
+        style={{ borderColor: '#FFFF20' }}
+        onClick={() => onSectionChange?.('gerenciar-solicitacoes')}
+      >
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div 
+                className="p-4 rounded-full"
+                style={{ backgroundColor: 'rgba(255, 255, 32, 0.2)' }}
+              >
+                <FileText className="h-8 w-8" style={{ color: '#6400A4' }} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-black">
+                  Gerenciar Solicitações de Serviço
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Visualize, aprove e gerencie todas as solicitações dos clientes
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <Badge 
+                  className="text-lg px-4 py-2 border-none"
+                  style={{ backgroundColor: '#FFFF20', color: '#000' }}
+                >
+                  2 Pendentes
+                </Badge>
+                <p className="text-xs text-gray-500 mt-1">Novas solicitações</p>
+              </div>
+              <Button
+                style={{ backgroundColor: '#6400A4', color: 'white' }}
+              >
+                Acessar
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Atividades Recentes - Seção inferior */}
       <Card>

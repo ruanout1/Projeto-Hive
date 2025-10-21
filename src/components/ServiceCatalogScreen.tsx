@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ClipboardList, Plus, Edit, Power, Search, Trash2, Check, FolderPlus, Grid3x3, List } from 'lucide-react';
+import ScreenHeader from './ScreenHeader';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
@@ -10,9 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { Textarea } from './ui/textarea';
 import { HighlightText } from './ui/search-highlight';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { toast } from 'sonner';
-import React from 'react';
-
+import { toast } from 'sonner@2.0.3';
 
 interface Service {
   id: string;
@@ -112,7 +111,11 @@ const mockServices: Service[] = [
   }
 ];
 
-export default function ServiceCatalogScreen() {
+interface ServiceCatalogScreenProps {
+  onBack?: () => void;
+}
+
+export default function ServiceCatalogScreen({ onBack }: ServiceCatalogScreenProps) {
   const [services, setServices] = useState<Service[]>(mockServices);
   const [categories, setCategories] = useState<Category[]>(mockCategories);
   const [searchTerm, setSearchTerm] = useState('');
@@ -133,6 +136,8 @@ export default function ServiceCatalogScreen() {
     duration: '',
     durationType: 'horas' as 'diaria' | 'semanal' | 'quinzenal' | 'mensal' | 'anual' | 'horas'
   });
+  
+  const [originalFormData, setOriginalFormData] = useState(formData);
 
   const [categoryFormData, setCategoryFormData] = useState({
     name: '',
@@ -156,14 +161,16 @@ export default function ServiceCatalogScreen() {
   const handleOpenServiceDialog = (service?: Service) => {
     if (service) {
       setEditingService(service);
-      setFormData({
+      const initialFormData = {
         name: service.name,
         description: service.description,
         category: service.category,
         price: service.price.toString(),
         duration: service.duration.toString(),
         durationType: service.durationType
-      });
+      };
+      setFormData(initialFormData);
+      setOriginalFormData(initialFormData);
     } else {
       setEditingService(null);
       setFormData({
@@ -181,6 +188,11 @@ export default function ServiceCatalogScreen() {
   const handleCloseServiceDialog = () => {
     setIsServiceDialogOpen(false);
     setEditingService(null);
+  };
+
+  const hasServiceChanges = () => {
+    if (!editingService) return true; // Se está criando, sempre habilita
+    return JSON.stringify(formData) !== JSON.stringify(originalFormData);
   };
 
   const handleSaveService = () => {
@@ -299,16 +311,12 @@ export default function ServiceCatalogScreen() {
       <div className="bg-white border-b border-gray-200 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(139, 32, 238, 0.1)' }}>
-                <ClipboardList className="h-6 w-6" style={{ color: '#8B20EE' }} />
-              </div>
-              <div>
-                <h1 className="hive-screen-title">Catálogo de Serviços</h1>
-                <p className="text-sm text-gray-600">
-                  Gerencie serviços, categorias e preços
-                </p>
-              </div>
+            <div className="flex-1">
+              <ScreenHeader 
+                title="Catálogo de Serviços"
+                description="Gerencie serviços, categorias e preços"
+                onBack={() => onBack?.()}
+              />
             </div>
             
             <div className="flex space-x-2">
@@ -654,7 +662,7 @@ export default function ServiceCatalogScreen() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="serviceCategory" style={{ color: '#8B20EE' }}>Categoria *</Label>
-                <Select value={formData.category} onValueChange={(value: string) => setFormData({ ...formData, category: value })}>
+                <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
@@ -726,7 +734,7 @@ export default function ServiceCatalogScreen() {
             </Button>
             <Button
               onClick={handleSaveService}
-              disabled={!formData.name || !formData.category || !formData.price || !formData.duration}
+              disabled={!formData.name || !formData.category || !formData.price || !formData.duration || !hasServiceChanges()}
               style={{ backgroundColor: '#8B20EE', color: 'white' }}
               className="hover:opacity-90"
             >

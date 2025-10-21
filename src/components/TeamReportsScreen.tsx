@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { TrendingUp, Download, FileText, CheckCircle, AlertCircle, Search, Calendar, Send, Users, Mail, Phone, Clock } from 'lucide-react';
+import ScreenHeader from './ScreenHeader';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
@@ -10,9 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { Textarea } from './ui/textarea';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { HighlightText } from './ui/search-highlight';
-import { toast } from 'sonner';
-import React from 'react';
-
+import { toast } from 'sonner@2.0.3';
 
 interface TeamMember {
   id: string;
@@ -150,7 +149,11 @@ const mockReports: TeamReport[] = [
   }
 ];
 
-export default function TeamReportsScreen() {
+interface TeamReportsScreenProps {
+  onBack?: () => void;
+}
+
+export default function TeamReportsScreen({ onBack }: TeamReportsScreenProps) {
   const [reports, setReports] = useState<TeamReport[]>(mockReports);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
@@ -283,16 +286,12 @@ export default function TeamReportsScreen() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(139, 32, 238, 0.1)' }}>
-              <TrendingUp className="h-6 w-6" style={{ color: '#8B20EE' }} />
-            </div>
-            <div>
-              <h1 className="hive-screen-title">Relatórios de Equipes</h1>
-              <p className="text-sm text-gray-600">
-                Acompanhe o desempenho e forneça feedback às equipes
-              </p>
-            </div>
+          <div className="mb-6">
+            <ScreenHeader 
+              title="Relatórios de Equipes"
+              description="Acompanhe o desempenho e forneça feedback às equipes"
+              onBack={() => onBack?.()}
+            />
           </div>
 
           {/* Stats Cards */}
@@ -406,10 +405,10 @@ export default function TeamReportsScreen() {
                         )}
                       </div>
                       <div className="flex items-center space-x-4 text-sm text-gray-600">
-                        <span>Gestor: {report.manager.name}</span>
+                        <span>Gestor: <HighlightText text={report.manager.name} searchTerm={searchTerm} highlightClassName="search-highlight" /></span>
                         <span>•</span>
                         <span className="flex items-center">
-                          <Calendar className="h-3 w-3 mr-1" />
+                          <Calendar className="h-3 w-3 mr-1" style={{ color: '#8B20EE' }} />
                           Prazo: {report.dueDate}
                         </span>
                         {report.submittedDate && (
@@ -668,7 +667,7 @@ export default function TeamReportsScreen() {
                     <div>
                       <p className="text-gray-500">Prazo de Envio</p>
                       <p className="flex items-center" style={{ color: '#6400A4' }}>
-                        <Clock className="h-4 w-4 mr-1" />
+                        <Clock className="h-4 w-4 mr-1" style={{ color: '#8B20EE' }} />
                         {selectedReport.dueDate}
                       </p>
                     </div>
