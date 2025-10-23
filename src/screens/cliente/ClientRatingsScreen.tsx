@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Star, Calendar, Search, Bot, MessageSquare, Clock, User, CheckCircle } from 'lucide-react';
-import ScreenHeader from './ScreenHeader';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { Label } from './ui/label';
+import ScreenHeader from '../../components/ScreenHeader';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Textarea } from '../../components/ui/textarea';
+import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
+import { Label } from '../../components/ui/label';
 
 interface ClientRatingsScreenProps {
   onBack?: () => void;
@@ -103,7 +103,7 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
     : '0.0';
   const fiveStarCount = allServices.filter(s => s.rating === 5).length;
 
-  const renderStars = (rating: number, interactive = false, onRate = null) => {
+  const renderStars = (rating: number, interactive = false, onRate: ((rating: number) => void) | null = null) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
         key={i}

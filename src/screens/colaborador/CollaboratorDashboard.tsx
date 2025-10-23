@@ -1,12 +1,12 @@
 import { Clock, CheckSquare, Calendar, MapPin, User, Bot, PlayCircle, StopCircle, CheckCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Progress } from './ui/progress';
-import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import { Progress } from '../../components/ui/progress';
+import { Button } from '../../components/ui/button';
 import { useState, useEffect } from 'react';
-import AIAssistant from './AIAssistant';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { toast } from 'sonner@2.0.3';
+import AIAssistant from '../../components/AIAssistant';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
+import { toast } from 'sonner';
 
 interface CollaboratorDashboardProps {
   onSectionChange?: (section: string, params?: any) => void;
@@ -104,6 +104,8 @@ export default function CollaboratorDashboard({ onSectionChange }: CollaboratorD
     startTime: "13:00",
     endTime: "15:00",
     team: "Equipe Alpha"
+    
+    
   };
 
   const todaySchedule = [
@@ -315,7 +317,7 @@ export default function CollaboratorDashboard({ onSectionChange }: CollaboratorD
 
             <div className="flex items-center space-x-2 text-sm text-black">
               <User className="h-4 w-4" />
-              <span>Líder: {nextTask.leader}</span>
+              
             </div>
             
             <div className="flex gap-2 mt-4">

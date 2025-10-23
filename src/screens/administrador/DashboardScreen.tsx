@@ -1,7 +1,7 @@
-import AdminDashboard from './AdminDashboard';
-import ManagerDashboard from './ManagerDashboard'; 
-import CollaboratorDashboard from './CollaboratorDashboard';
-import ClientDashboard from './ClientDashboard';
+import AdminDashboard from './../administrador/AdminDashboard';
+import ManagerDashboard from '../../components/ManagerDashboard'; 
+import CollaboratorDashboard from './../colaborador/CollaboratorDashboard';
+import ClientDashboard from './../cliente/ClientDashboard';
 
 interface DashboardScreenProps {
   userType: string;

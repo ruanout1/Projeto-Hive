@@ -1,12 +1,44 @@
 import { CheckCircle, Clock, User, MapPin, Star, Calendar, Bot, DollarSign, StickyNote, FileText, TrendingUp, ArrowRight, Camera, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Progress } from './ui/progress';
-import { Button } from './ui/button';
-import { useState } from 'react';
-import AIAssistant from './AIAssistant';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import { Progress } from '../../components/ui/progress';
+import { Button } from '../../components/ui/button';
+import { useState, useEffect } from 'react';
+import AIAssistant from '../../components/AIAssistant';
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
+import { toast } from 'sonner';
+
+interface CurrentService {
+  id: string;
+  title: string;
+  status: string;
+  progress: number;
+  startDate: string;
+  expectedEnd: string;
+  team: string;
+  leader: string;
+  phone: string;
+  location: string;
+}
+
+interface PhotoDocumentation {
+  beforePhotos: string[];
+  afterPhotos: string[];
+  uploadDate: string;
+  uploadedBy: string;
+}
+
+interface ServiceHistoryItem {
+  id: string;
+  service: string;
+  date: string;
+  team: string;
+  status: string;
+  rating: number;
+  duration: string;
+  photoDocumentation: PhotoDocumentation;
+}
 
 interface ClientDashboardProps {
   onSectionChange?: (section: string, params?: any) => void;
@@ -17,6 +49,8 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
   const [expandedPhoto, setExpandedPhoto] = useState<{ photos: string[], currentIndex: number, type: 'before' | 'after' } | null>(null);
   const [photoCarousels, setPhotoCarousels] = useState<{ [key: string]: { currentIndex: number, currentType: 'before' | 'after' } }>({});
   const [openPhotoViewer, setOpenPhotoViewer] = useState<string | null>(null);
+  
+
 
   const currentService = {
     id: "OS-2024-089",
