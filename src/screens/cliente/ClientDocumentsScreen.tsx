@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { FileText, Download, Eye, Search, Filter, File, FileCheck, Calendar, X } from 'lucide-react';
-import ScreenHeader from './ScreenHeader';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Input } from './ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { toast } from 'sonner@2.0.3';
+import ScreenHeader from '../../components/ScreenHeader';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Input } from '../../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { toast } from 'sonner';
 
 type DocumentType = 'contrato' | 'nota-fiscal' | 'ordem-servico' | 'outros';
 

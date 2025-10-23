@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import HiveLogo from './HiveLogo';
+import HiveLogo from './Logo/HiveLogo';
 
 interface ForgotPasswordScreenProps {
   onBackToLogin: () => void;

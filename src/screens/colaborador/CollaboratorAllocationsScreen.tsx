@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { Calendar, Users, Building2, Clock, Plus, Edit, Trash2, ChevronDown, ChevronRight, AlertCircle, CheckCircle } from 'lucide-react';
-import ScreenHeader from './ScreenHeader';
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Input } from './ui/input';
-import { Checkbox } from './ui/checkbox';
-import { toast } from 'sonner@2.0.3';
-import { Separator } from './ui/separator';
-import { Avatar, AvatarFallback } from './ui/avatar';
+import ScreenHeader from '../../components/ScreenHeader';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
+import { Label } from '../../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Input } from '../../components/ui/input';
+import { Checkbox } from '../../components/ui/checkbox';
+import { toast } from 'sonner';
+import { Separator } from '../../components/ui/separator';
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 
 interface Allocation {
   id: number;

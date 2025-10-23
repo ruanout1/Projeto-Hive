@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 interface ScreenHeaderProps {
   title: string;
   description?: string;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export default function ScreenHeader({ title, description, onBack }: ScreenHeaderProps) {

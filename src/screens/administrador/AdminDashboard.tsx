@@ -1,10 +1,10 @@
 import { Activity, Users, ClipboardList, TrendingUp, Heart, Bot, Eye, EyeOff, FileText, AlertCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LabelList } from 'recharts';
 import { useState } from 'react';
-import AIAssistant from './AIAssistant';
+import AIAssistant from '../../components/AIAssistant';
 
 interface AdminDashboardProps {
   onSectionChange?: (section: string) => void;

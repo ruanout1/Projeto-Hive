@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import ScreenHeader from './ScreenHeader';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
+import ScreenHeader from '../../components/ScreenHeader';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Textarea } from '../../components/ui/textarea';
 import { 
   Calendar, 
   Users, 
@@ -27,15 +27,15 @@ import {
   Plus,
   Search
 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { toast } from 'sonner@2.0.3';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from './ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { toast } from 'sonner';
+import { Badge } from '../../components/ui/badge';
+import { Separator } from '../../components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../../components/ui/dialog';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Avatar, AvatarFallback } from './ui/avatar';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 
 interface Report {
   id: string;
@@ -375,7 +375,7 @@ export default function AdminPerformanceReportsScreen({ onBack }: AdminPerforman
           </div>
 
           {/* Tabs Toggle */}
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'performance' | 'timeclock')}>
+          <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'performance' | 'timeclock')}>
             <TabsList className="grid w-full max-w-md grid-cols-2">
               <TabsTrigger value="performance" className="gap-2">
                 <BarChart3 className="h-4 w-4" />
@@ -404,7 +404,7 @@ export default function AdminPerformanceReportsScreen({ onBack }: AdminPerforman
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="filter-period">Período</Label>
-                    <Select value={filters.period} onValueChange={(value) => setFilters(prev => ({ ...prev, period: value }))}>
+                    <Select value={filters.period} onValueChange={(value: string) => setFilters(prev => ({ ...prev, period: value }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="Todos os períodos" />
                       </SelectTrigger>
@@ -419,7 +419,7 @@ export default function AdminPerformanceReportsScreen({ onBack }: AdminPerforman
 
                   <div className="space-y-2">
                     <Label htmlFor="filter-manager">Gestor</Label>
-                    <Select value={filters.manager} onValueChange={(value) => setFilters(prev => ({ ...prev, manager: value }))}>
+                    <Select value={filters.manager} onValueChange={(value: string) => setFilters(prev => ({ ...prev, manager: value }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="Todos os gestores" />
                       </SelectTrigger>
@@ -434,7 +434,7 @@ export default function AdminPerformanceReportsScreen({ onBack }: AdminPerforman
 
                   <div className="space-y-2">
                     <Label htmlFor="filter-team">Equipe</Label>
-                    <Select value={filters.team} onValueChange={(value) => setFilters(prev => ({ ...prev, team: value }))}>
+                    <Select value={filters.team} onValueChange={(value: string) => setFilters(prev => ({ ...prev, team: value }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="Todas as equipes" />
                       </SelectTrigger>
@@ -449,7 +449,7 @@ export default function AdminPerformanceReportsScreen({ onBack }: AdminPerforman
 
                   <div className="space-y-2">
                     <Label htmlFor="filter-status">Status</Label>
-                    <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                    <Select value={filters.status} onValueChange={(value: string) => setFilters(prev => ({ ...prev, status: value }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="Todos os status" />
                       </SelectTrigger>
@@ -961,7 +961,7 @@ export default function AdminPerformanceReportsScreen({ onBack }: AdminPerforman
               {/* Report Type */}
               <div className="space-y-2">
                 <Label>Tipo de Relatório</Label>
-                <Select value={requestType} onValueChange={(value) => setRequestType(value as 'performance' | 'timeclock')}>
+                <Select value={requestType} onValueChange={(value: string) => setRequestType(value as 'performance' | 'timeclock')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

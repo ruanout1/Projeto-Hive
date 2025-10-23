@@ -1,8 +1,8 @@
 import { ArrowLeft, Camera, Download, ZoomIn, X, Calendar, Clock, MapPin, User } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { useState } from 'react';
 
 interface ClientServicePhotosScreenProps {

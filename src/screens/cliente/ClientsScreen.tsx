@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import ScreenHeader from './ScreenHeader';
+import ScreenHeader from '../../components/ScreenHeader';
 import { 
   Building,
   Plus,
@@ -17,19 +17,19 @@ import {
   Star,
   TrendingUp
 } from 'lucide-react';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import { HighlightText } from './ui/search-highlight';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { Switch } from './ui/switch';
-import { toast } from 'sonner@2.0.3';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Textarea } from '../../components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
+import { HighlightText } from '../../components/ui/search-highlight';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../components/ui/alert-dialog';
+import { Switch } from '../../components/ui/switch';
+import { toast } from 'sonner';
 
 interface Address {
   street: string; // Logradouro/Rua
@@ -415,7 +415,10 @@ export default function ClientsScreen({ onBack, userType = 'Administrador', mana
         cnpj: client.cnpj,
         email: client.email,
         phone: client.phone,
-        address: client.address,
+        address: {
+          ...client.address, // Copia todos os campos do endereço
+          complement: client.address.complement || '' // Garante que 'complement' seja uma string
+        },
         area: client.area,
         notes: client.notes || '',
         status: client.status

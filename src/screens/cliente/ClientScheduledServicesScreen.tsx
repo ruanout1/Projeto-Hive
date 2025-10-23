@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { Calendar, Clock, Users, FileText, MapPin, CheckCircle, AlertCircle, Camera, Eye, ChevronLeft, ChevronRight, AlertTriangle, X } from 'lucide-react';
-import ScreenHeader from './ScreenHeader';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { toast } from 'sonner@2.0.3';
+import ScreenHeader from '../../components/ScreenHeader';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Button } from '../../components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
+import { Label } from '../../components/ui/label';
+import { Textarea } from '../../components/ui/textarea';
+import { toast } from 'sonner';
 
 interface PhotoDocumentation {
   beforePhotos: string[];
