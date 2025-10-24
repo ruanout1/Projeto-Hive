@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { ArrowLeft, Calendar, AlertTriangle, CheckCircle, Clock, Plus, Filter } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Input } from './ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Input } from '../../components/ui/input';
 
 interface RequestsViewScreenProps {
   category: string;

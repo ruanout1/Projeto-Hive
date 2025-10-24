@@ -1,17 +1,17 @@
 import { useState } from 'react';
-import ScreenHeader from './ScreenHeader';
+import ScreenHeader from '../../components/ScreenHeader';
 import { FileText, CheckCircle, Clock, XCircle, Users, Upload, MessageSquare, Filter, Search, Eye, Calendar, DollarSign, AlertTriangle, UserCog, Edit, Trash, FileCheck, Trash2, MapPin, Camera } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Textarea } from './ui/textarea';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { toast } from 'sonner@2.0.3';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Textarea } from '../../components/ui/textarea';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { toast } from 'sonner';
 
 type RequestStatus = 'pending' | 'urgent' | 'delegated' | 'refused-by-manager' | 'approved' | 'in-progress' | 'completed' | 'rejected';
 
@@ -37,11 +37,14 @@ interface ServiceRequest {
   assignedCollaborator?: string;
   assignedManager?: string;
   assignedManagerArea?: 'norte' | 'sul' | 'leste' | 'oeste' | 'centro';
+  managerRefusalReason?: string;
   observations?: string;
   availableDates?: string[];
   urgentReason?: string;
   refusalReason?: string;
   refusalDate?: string;
+  scheduledDate?: string;
+  scheduledDescription?: string;
   invoice?: {
     number: string;
     amount: number;
@@ -912,7 +915,7 @@ export default function ServiceRequestsManagement({ onBack }: ServiceRequestsMan
                           <Label>Designar Gestor</Label>
                           <Select 
                             value={selectedRequest.assignedManager || ''} 
-                            onValueChange={(value) => {
+                            onValueChange={(value: string) => {
                               const managerArea = value === 'Ana Paula Silva - Oeste' ? 'oeste' :
                                                  value === 'Roberto Costa - Sul' ? 'sul' :
                                                  value === 'Carlos Mendes - Norte' ? 'norte' : 'centro';

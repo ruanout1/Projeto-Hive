@@ -1,19 +1,28 @@
 import { useState } from 'react';
 import { FileText, CheckCircle, Clock, XCircle, Users, MessageSquare, Filter, Search, Eye, Calendar, UserCog, AlertTriangle, Camera } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Textarea } from './ui/textarea';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Checkbox } from './ui/checkbox';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Calendar as CalendarComponent } from './ui/calendar';
-import { toast } from 'sonner@2.0.3';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Textarea } from '../../components/ui/textarea';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Checkbox } from '../../components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
+import { Calendar as CalendarComponent } from '../../components/ui/calendar';
+import { toast } from 'sonner';
 
 type RequestStatus = 'pending' | 'urgent' | 'delegated' | 'refused-by-manager' | 'approved' | 'awaiting-client-confirmation' | 'in-progress' | 'completed' | 'rejected';
+
+interface StatusConfig {
+  label: string;
+  color: string;
+  style?: React.CSSProperties; // opcional
+  icon: React.ElementType; // o componente do ícone (Clock, CheckCircle, etc)
+}
+
+
 
 interface PhotoDocumentation {
   beforePhotos: string[];
@@ -249,8 +258,8 @@ export default function ManagerServiceRequests() {
     )
   );
 
-  const getStatusConfig = (status: RequestStatus) => {
-    const configs = {
+  const getStatusConfig = (status: RequestStatus): StatusConfig => {
+    const configs: Record<RequestStatus, StatusConfig> = {
       pending: { 
         label: 'Pendente', 
         color: 'bg-yellow-100 text-yellow-800', 
@@ -654,7 +663,7 @@ export default function ManagerServiceRequests() {
                     className="w-full mt-2" 
                     variant="outline"
                     style={{ borderColor: '#6400A4', color: '#6400A4' }}
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                       e.stopPropagation();
                       handleViewRequest(request);
                     }}
@@ -716,7 +725,7 @@ export default function ManagerServiceRequests() {
                           <CalendarComponent
                             mode="single"
                             selected={selectedCalendarDate}
-                            onSelect={(date) => {
+                            onSelect={(date: Date) => {
                               if (date && selectedRequest) {
                                 setSelectedCalendarDate(date);
                                 // Formatar a data para o formato do input
@@ -733,7 +742,7 @@ export default function ManagerServiceRequests() {
                                 }, 100);
                               }
                             }}
-                            disabled={(date) => date < new Date()} // Desabilita datas passadas
+                            disabled={(date: Date) => date < new Date()} // Desabilita datas passadas
                             initialFocus
                           />
                         </PopoverContent>
@@ -844,7 +853,7 @@ export default function ManagerServiceRequests() {
                     <Label>Equipe</Label>
                     <Select
                       value={selectedRequest.assignedTeam || ''}
-                      onValueChange={(value) => {
+                      onValueChange={(value: string) => {
                         setSelectedRequest({
                           ...selectedRequest,
                           assignedTeam: value,
@@ -871,7 +880,7 @@ export default function ManagerServiceRequests() {
                     <Label>Colaborador Único</Label>
                     <Select
                       value={selectedRequest.assignedCollaborator || ''}
-                      onValueChange={(value) => {
+                      onValueChange={(value: string) => {
                         setSelectedRequest({
                           ...selectedRequest,
                           assignedCollaborator: value,
@@ -906,7 +915,7 @@ export default function ManagerServiceRequests() {
                           <Checkbox
                             id={member.id}
                             checked={selectedTeamMembers.includes(member.id)}
-                            onCheckedChange={(checked) => {
+                            onCheckedChange={(checked: string) => {
                               if (checked) {
                                 const newMembers = [...selectedTeamMembers, member.id];
                                 setSelectedTeamMembers(newMembers);

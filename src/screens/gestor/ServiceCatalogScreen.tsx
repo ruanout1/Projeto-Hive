@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { ClipboardList, Plus, Edit, Power, Search, Trash2, Check, FolderPlus, Grid3x3, List } from 'lucide-react';
-import ScreenHeader from './ScreenHeader';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { Textarea } from './ui/textarea';
-import { HighlightText } from './ui/search-highlight';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { toast } from 'sonner@2.0.3';
+import ScreenHeader from '../../components/ScreenHeader';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../../components/ui/dialog';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Textarea } from '../../components/ui/textarea';
+import { HighlightText } from '../../components/ui/search-highlight';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface Service {
   id: string;
@@ -662,7 +662,7 @@ export default function ServiceCatalogScreen({ onBack }: ServiceCatalogScreenPro
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="serviceCategory" style={{ color: '#8B20EE' }}>Categoria *</Label>
-                <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                <Select value={formData.category} onValueChange={(value: string) => setFormData({ ...formData, category: value })}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>

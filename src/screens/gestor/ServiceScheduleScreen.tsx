@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { Calendar, Clock, Users, MapPin, FileText, Eye, Filter, Search, ChevronLeft, ChevronRight, Edit2, XCircle, PlayCircle, CheckCircle, AlertCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Input } from './ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { toast } from 'sonner@2.0.3';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Input } from '../../components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Label } from '../../components/ui/label';
+import { Textarea } from '../../components/ui/textarea';
+import { toast } from 'sonner';
 
 interface ScheduledService {
   id: string;
@@ -407,7 +407,7 @@ export default function ServiceScheduleScreen({ userRole, managerArea }: Service
             <Button
               size="sm"
               variant="ghost"
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
                 handleViewService(service);
               }}
@@ -702,7 +702,7 @@ export default function ServiceScheduleScreen({ userRole, managerArea }: Service
         <CardContent className="pt-6">
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between mb-4">
             {/* Seletor de visualização */}
-            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+            <Tabs value={viewMode} onValueChange={(v: string) => setViewMode(v as ViewMode)}>
               <TabsList>
                 <TabsTrigger value="daily">Diária</TabsTrigger>
                 <TabsTrigger value="weekly">Semanal</TabsTrigger>
@@ -1050,7 +1050,7 @@ export default function ServiceScheduleScreen({ userRole, managerArea }: Service
 
             <div>
               <Label>Equipe</Label>
-              <Select value={editForm.assignedTeam} onValueChange={(value) => setEditForm({ ...editForm, assignedTeam: value })}>
+              <Select value={editForm.assignedTeam} onValueChange={(value: string) => setEditForm({ ...editForm, assignedTeam: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma equipe" />
                 </SelectTrigger>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import ScreenHeader from './ScreenHeader';
+import ScreenHeader from '../../components/ScreenHeader';
 import { 
   FileText, 
   Plus,
@@ -16,16 +16,16 @@ import {
   Filter,
   Search
 } from 'lucide-react';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Card, CardContent } from './ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { toast } from 'sonner@2.0.3';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Card, CardContent } from '../../components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Textarea } from '../../components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { toast } from 'sonner';
 
 interface ServiceItem {
   description: string;
@@ -397,7 +397,7 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
                   />
                 </div>
               </div>
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full md:w-auto">
+              <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as any)} className="w-full md:w-auto">
                 <TabsList className="grid grid-cols-3 w-full md:w-[300px]">
                   <TabsTrigger value="all">Todas</TabsTrigger>
                   <TabsTrigger value="paid">Pagas</TabsTrigger>
@@ -546,7 +546,7 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
                 <Label htmlFor="payment-status">
                   Status de Pagamento <span className="text-red-500">*</span>
                 </Label>
-                <Select value={formPaymentStatus} onValueChange={(v) => setFormPaymentStatus(v as 'paid' | 'pending')}>
+                <Select value={formPaymentStatus} onValueChange={(v: string) => setFormPaymentStatus(v as 'paid' | 'pending')}>
                   <SelectTrigger id="payment-status" className="mt-2">
                     <SelectValue />
                   </SelectTrigger>

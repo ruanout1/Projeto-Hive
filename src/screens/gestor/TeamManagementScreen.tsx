@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { Users, Plus, Edit, Power, Search, Trash2, Check, X, UserPlus, ChevronRight } from 'lucide-react';
-import ScreenHeader from './ScreenHeader';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import { Checkbox } from './ui/checkbox';
-import { HighlightText } from './ui/search-highlight';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { toast } from 'sonner@2.0.3';
+import ScreenHeader from '../../components/ScreenHeader';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../../components/ui/dialog';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
+import { Checkbox } from '../../components/ui/checkbox';
+import { HighlightText } from '../../components/ui/search-highlight';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface Team {
   id: string;
@@ -559,7 +559,7 @@ export default function TeamManagementScreen({ onBack }: TeamManagementScreenPro
                 {/* Gestor Responsável */}
                 <div>
                   <Label htmlFor="manager" style={{ color: '#8B20EE' }}>Gestor Responsável *</Label>
-                  <Select value={formData.managerId} onValueChange={(value) => setFormData({ ...formData, managerId: value })}>
+                  <Select value={formData.managerId} onValueChange={(value: string) => setFormData({ ...formData, managerId: value })}>
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Escolha um gestor" />
                     </SelectTrigger>
@@ -594,7 +594,7 @@ export default function TeamManagementScreen({ onBack }: TeamManagementScreenPro
                           <Checkbox
                             checked={formData.memberIds.includes(member.id)}
                             onCheckedChange={() => toggleMember(member.id)}
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
                           />
                           <Avatar className="h-8 w-8" style={{ backgroundColor: '#35BAE6' }}>
                             <AvatarFallback style={{ backgroundColor: '#35BAE6', color: 'white' }}>
@@ -650,7 +650,7 @@ export default function TeamManagementScreen({ onBack }: TeamManagementScreenPro
                     </div>
                     <div>
                       <Label htmlFor="manager" style={{ color: '#8B20EE' }}>Selecione o Gestor Responsável *</Label>
-                      <Select value={formData.managerId} onValueChange={(value) => setFormData({ ...formData, managerId: value })}>
+                      <Select value={formData.managerId} onValueChange={(value: string) => setFormData({ ...formData, managerId: value })}>
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Escolha um gestor" />
                         </SelectTrigger>
@@ -695,7 +695,7 @@ export default function TeamManagementScreen({ onBack }: TeamManagementScreenPro
                               <Checkbox
                                 checked={formData.memberIds.includes(member.id)}
                                 onCheckedChange={() => toggleMember(member.id)}
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
                               />
                               <Avatar className="h-8 w-8" style={{ backgroundColor: '#35BAE6' }}>
                                 <AvatarFallback style={{ backgroundColor: '#35BAE6', color: 'white' }}>

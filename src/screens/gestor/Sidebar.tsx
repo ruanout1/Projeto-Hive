@@ -23,7 +23,7 @@ import {
   DollarSign,
   StickyNote
 } from 'lucide-react';
-import HiveSymbol from './Logo/HiveSymbol';
+import HiveSymbol from '../../components/Logo/HiveSymbol';
 
 interface SidebarProps {
   activeSection: string;

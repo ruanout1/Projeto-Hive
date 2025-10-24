@@ -1,14 +1,19 @@
 import { MapPin, Clock, CheckCircle, AlertCircle, XCircle, Calendar, Bot, FileText } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
+import { Button } from '../../components/ui/button';
 import { useState } from 'react';
-import AIAssistant from './AIAssistant';
-import { ImageWithFallback } from './figma/ImageWithFallback';
+import AIAssistant from '../../components/AIAssistant';
+import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 
 interface ManagerDashboardProps {
   onSectionChange?: (section: string) => void;
+}
+interface StatusStyle {
+  color: string;
+  label: string;
+  style?: React.CSSProperties;
 }
 
 export default function ManagerDashboard({ onSectionChange }: ManagerDashboardProps) {
@@ -58,7 +63,7 @@ export default function ManagerDashboard({ onSectionChange }: ManagerDashboardPr
   ];
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
+    const statusConfig: Record<string, StatusStyle> = {
       "concluido": { color: "bg-green-100 text-green-800", label: "Concluído" },
       "em-andamento": { color: "", label: "Em Andamento", style: { backgroundColor: 'rgba(53, 186, 230, 0.1)', color: '#35BAE6' } },
       "agendado": { color: "bg-yellow-100 text-yellow-800", label: "Agendado" },

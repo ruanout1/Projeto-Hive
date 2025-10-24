@@ -1,21 +1,21 @@
 import { useState } from 'react';
 import { Plus, Calendar, AlertTriangle, CheckCircle, Bot, Clock, Building2, Shield, TreePine, Droplets, Wrench, UserCheck, MapPin, X } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from './ui/dialog';
-import { Calendar as CalendarComponent } from './ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { toast } from 'sonner@2.0.3';
-import { Toaster } from './ui/sonner';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Textarea } from '../../components/ui/textarea';
+import { Label } from '../../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
+import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '../../components/ui/dialog';
+import { Calendar as CalendarComponent } from '../../components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { toast } from 'sonner';
+import { Toaster } from '../../components/ui/sonner';
 import RequestsViewScreen from './RequestsViewScreen';
-import ScreenHeader from './ScreenHeader';
+import ScreenHeader from '../../components/ScreenHeader';
 
 interface ServiceRequestScreenProps {
   onBack?: () => void;
@@ -557,7 +557,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
                         mode="single"
                         selected={requestedDate}
                         onSelect={setRequestedDate}
-                        disabled={(date) => date < new Date()}
+                        disabled={(date: Date) => date < new Date()}
                         initialFocus
                       />
                     </PopoverContent>

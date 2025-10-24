@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import ScreenHeader from './ScreenHeader';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
+import ScreenHeader from '../../components/ScreenHeader';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Textarea } from '../../components/ui/textarea';
 import { 
   Calendar, 
   Users, 
@@ -24,12 +24,12 @@ import {
   Eye,
   Check
 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { toast } from 'sonner@2.0.3';
-import { Separator } from './ui/separator';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { toast } from 'sonner';
+import { Separator } from '../../components/ui/separator';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
 
 interface ReportRequest {
   id: string;
@@ -214,7 +214,7 @@ export default function ManagerPerformanceReportsScreen({ onBack }: ManagerPerfo
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'create' | 'requests')} className="mb-6">
+        <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'create' | 'requests')} className="mb-6">
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="create" className="gap-2">
               <FileText className="h-4 w-4" />
@@ -254,7 +254,7 @@ export default function ManagerPerformanceReportsScreen({ onBack }: ManagerPerfo
                       <Calendar className="h-4 w-4" style={{ color: '#6400A4' }} />
                       Frequência do Relatório *
                     </Label>
-                    <Select value={formData.reportFrequency} onValueChange={(value) => {
+                    <Select value={formData.reportFrequency} onValueChange={(value: string) => {
                       handleInputChange('reportFrequency', value);
                       handleInputChange('period', '');
                     }}>
@@ -277,7 +277,7 @@ export default function ManagerPerformanceReportsScreen({ onBack }: ManagerPerfo
                     </Label>
                     <Select 
                       value={formData.period} 
-                      onValueChange={(value) => handleInputChange('period', value)}
+                      onValueChange={(value: string) => handleInputChange('period', value)}
                       disabled={!formData.reportFrequency}
                     >
                       <SelectTrigger>
@@ -347,7 +347,7 @@ export default function ManagerPerformanceReportsScreen({ onBack }: ManagerPerfo
                       <Users className="h-4 w-4" style={{ color: '#6400A4' }} />
                       Equipe *
                     </Label>
-                    <Select value={formData.team} onValueChange={(value) => handleInputChange('team', value)}>
+                    <Select value={formData.team} onValueChange={(value: string) => handleInputChange('team', value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a equipe" />
                       </SelectTrigger>
@@ -365,7 +365,7 @@ export default function ManagerPerformanceReportsScreen({ onBack }: ManagerPerfo
                       <MapPin className="h-4 w-4" style={{ color: '#6400A4' }} />
                       Região *
                     </Label>
-                    <Select value={formData.region} onValueChange={(value) => handleInputChange('region', value)}>
+                    <Select value={formData.region} onValueChange={(value: string) => handleInputChange('region', value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a região" />
                       </SelectTrigger>
@@ -555,7 +555,7 @@ export default function ManagerPerformanceReportsScreen({ onBack }: ManagerPerfo
                     <Label htmlFor="fullTeam">
                       Equipe completa em todas as execuções?
                     </Label>
-                    <Select value={formData.fullTeam} onValueChange={(value) => handleInputChange('fullTeam', value)}>
+                    <Select value={formData.fullTeam} onValueChange={(value: string) => handleInputChange('fullTeam', value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
