@@ -10,7 +10,7 @@ import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 type ReminderType = 'one_day_before' | 'two_hours_before' | 'none';
 type ViewMode = 'daily' | 'weekly' | 'monthly';
