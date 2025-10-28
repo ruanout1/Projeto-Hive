@@ -13,21 +13,21 @@ app.use("/src", express.static(path.join(__dirname, "src")));
 // =====================
 const currentService = {
   id: "OS-2024-089",
-  title: "Limpeza Geral - Escritório Corporate (DADO DO BACKEND)",
+  title: "Limpeza Geral - Escritório Corporate",
   status: "em-andamento",
   progress: 70,
   startDate: "23/09/2024",
   expectedEnd: "23/09/2024 - 17:00",
-  team: "Equipe Alpha (Backend)",
+  team: "Equipe Alpha ",
   leader: "Carlos Silva",
   phone: "(11) 99999-8888",
   location: "Av. Paulista, 1000 - 15º andar"
 };
 
 let serviceHistory = [ // Mudei para 'let' para podermos adicionar itens
-  { id: "OS-2024-078", service: "Limpeza Geral (Backend)", date: "20/09/2024", team: "Equipe Beta", status: "completed", rating: 5, duration: "6h" },
-  { id: "OS-2024-065", service: "Limpeza de Vidros (Backend)", date: "15/09/2024", team: "Equipe Alpha", status: "completed", rating: 4, duration: "4h" },
-  { id: "OS-2024-052", service: "Limpeza + Enceramento (Backend)", date: "10/09/2024", team: "Equipe Gamma", status: "completed", rating: 5, duration: "8h" },
+  { id: "OS-2024-078", service: "Limpeza Geral ", date: "20/09/2024", team: "Equipe Beta", status: "completed", rating: 5, duration: "6h" },
+  { id: "OS-2024-065", service: "Limpeza de Vidros ", date: "15/09/2024", team: "Equipe Alpha", status: "completed", rating: 4, duration: "4h" },
+  { id: "OS-2024-052", service: "Limpeza + Enceramento ", date: "10/09/2024", team: "Equipe Gamma", status: "completed", rating: 5, duration: "8h" },
 ];
 
 const timeline = [
@@ -157,7 +157,7 @@ app.get("/api/clientes/ratings", (req, res) => res.json(pastRatingsData));
 app.post("/api/clientes/ratings", (req, res) => {
   const newRating = req.body;
   pastRatingsData.unshift(newRating);
-  console.log("✅ Nova avaliação recebida do frontend:", newRating);
+  console.log(" Nova avaliação recebida do frontend:", newRating);
   res.status(201).json({ message: "Avaliação recebida com sucesso!", data: newRating });
 });
 
@@ -170,7 +170,7 @@ app.post("/api/clientes/history", (req, res) => {
   newService.id = `OS-2025-${Math.floor(Math.random() * 900) + 100}`; 
   newService.service = `${newService.service} (Criado via POST)`; 
 
-  console.log("✅ Novo serviço recebido do frontend:", newService);
+  console.log(" Novo serviço recebido do frontend:", newService);
   
   serviceHistory.unshift(newService); 
   
@@ -191,7 +191,7 @@ app.post("/api/clientes/history", (req, res) => {
 // 🔹 INICIAR SERVIDOR (SEMPRE POR ÚLTIMO)
 // =====================
 app.listen(5000, () => {
-  console.log("🚀 Servidor backend (simulação) rodando na porta 5000");
+  console.log(" Servidor backend rodando na porta 5000");
 });
 
 // 🔹 DADOS - SOLICITAÇÕES DE SERVIÇO
@@ -239,7 +239,7 @@ let serviceRequestsData = [
 
 // Rota GET para carregar as solicitações existentes
 app.get("/api/clientes/requests", (req, res) => {
-  console.log("✅ Enviando lista de solicitações para o frontend");
+  console.log("Enviando lista de solicitações para o frontend");
   res.json(serviceRequestsData);
 });
 
@@ -252,7 +252,7 @@ app.post("/api/clientes/requests", (req, res) => {
   newRequest.status = 'em-analise'; // O backend define o status inicial
   newRequest.requestedAt = new Date().toLocaleString('pt-BR');
   
-  console.log("✅ Nova solicitação recebida do frontend:", newRequest);
+  console.log(" Nova solicitação recebida do frontend:", newRequest);
   
   serviceRequestsData.unshift(newRequest); // Adiciona no início da lista
   
