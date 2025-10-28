@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Importamos 'useEffect'
 import { Plus, Calendar, AlertTriangle, CheckCircle, Bot, Clock, Building2, Shield, TreePine, Droplets, Wrench, UserCheck, MapPin, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -13,15 +13,17 @@ import { Calendar as CalendarComponent } from '../../components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { toast } from 'sonner';
-import { Toaster } from '../../components/ui/sonner';
+import { Toaster } from '../../components/ui/sonner'; 
 import RequestsViewScreen from './RequestsViewScreen';
 import ScreenHeader from '../../components/ScreenHeader';
+import api from '../../lib/api'; // Importamos a API
 
 interface ServiceRequestScreenProps {
   onBack?: () => void;
   initialTab?: string;
 }
 
+// ... (Interface PendingConfirmation e ServiceRequest sem alteração) ...
 interface PendingConfirmation {
   id: string;
   serviceType: string;
@@ -34,8 +36,47 @@ interface PendingConfirmation {
   assignedCollaborator?: string;
 }
 
+interface ServiceRequest {
+  id: string;
+  service: string;
+  date: string;
+  priority: string;
+  status: string;
+  requestedAt: string;
+  description: string;
+  location?: string;
+  area?: string;
+}
+
+// ===================================
+// DADOS MOCK (PENDENTES)
+// Vamos mover os dados mock para fora do componente
+// ===================================
+const MOCK_PENDING_CONFIRMATIONS: PendingConfirmation[] = [
+  {
+    id: 'REQ-2024-156',
+    serviceType: 'Limpeza Geral',
+    description: 'Limpeza completa do escritório incluindo todas as salas, banheiros e área comum',
+    requestedDate: '28/10/2024',
+    proposedDate: '30/10/2024',
+    proposedBy: 'Ana Paula Rodrigues (Gestora)',
+    scheduledDescription: 'Agendamento para quarta-feira, 30/10, às 8h. A equipe Alpha completa estará disponível (4 profissionais). Previsão de duração: 6 horas.',
+    assignedTeam: 'Equipe Alpha'
+  },
+  {
+    id: 'REQ-2024-142',
+    serviceType: 'Jardinagem',
+    description: 'Poda de árvores e manutenção do jardim frontal',
+    requestedDate: '25/10/2024',
+    proposedDate: '27/10/2024',
+    proposedBy: 'Ana Paula Rodrigues (Gestora)',
+    scheduledDescription: 'Devido à previsão de chuva no dia 25/10, propomos reagendar para domingo 27/10 às 7h, com melhor condição climática. Equipe especializada em jardinagem.',
+    assignedCollaborator: 'Pedro Oliveira'
+  }
+];
+
 export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequestScreenProps) {
-  // Simulando cliente logado - em produção viria do contexto/auth
+  // ... (currentClient e estados do formulário sem alteração) ...
   const currentClient = {
     name: 'Prédio Comercial São Paulo',
     locations: [
@@ -53,21 +94,31 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
       }
     ]
   };
-
   const [selectedService, setSelectedService] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [description, setDescription] = useState('');
   const [requestedDate, setRequestedDate] = useState<Date | undefined>(undefined);
   const [priority, setPriority] = useState('');
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
-  const [myRequests, setMyRequests] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<'main' | 'requests'>('main');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedConfirmation, setSelectedConfirmation] = useState<PendingConfirmation | null>(null);
   const [isConfirmationDialogOpen, setIsConfirmationDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [activeTab, setActiveTab] = useState<string>(initialTab || 'solicitar');
+  
+  // Estados dinâmicos (OK)
+  const [allRequests, setAllRequests] = useState<ServiceRequest[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // =============================================================
+  // 1. ALTERAÇÃO: 'pendingConfirmations' agora é um ESTADO
+  // =============================================================
+  const [pendingConfirmations, setPendingConfirmations] = useState<PendingConfirmation[]>(
+    MOCK_PENDING_CONFIRMATIONS // Começa com os dados mock
+  );
+
+  // ... (serviceOptions sem alteração) ...
   const serviceOptions = [
     {
       id: 'limpeza-geral',
@@ -167,62 +218,36 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     }
   ];
 
-  // Mock de solicitações aguardando confirmação de data
-  const pendingConfirmations: PendingConfirmation[] = [
-    {
-      id: 'REQ-2024-156',
-      serviceType: 'Limpeza Geral',
-      description: 'Limpeza completa do escritório incluindo todas as salas, banheiros e área comum',
-      requestedDate: '28/10/2024',
-      proposedDate: '30/10/2024',
-      proposedBy: 'Ana Paula Rodrigues (Gestora)',
-      scheduledDescription: 'Agendamento para quarta-feira, 30/10, às 8h. A equipe Alpha completa estará disponível (4 profissionais). Previsão de duração: 6 horas.',
-      assignedTeam: 'Equipe Alpha'
-    },
-    {
-      id: 'REQ-2024-142',
-      serviceType: 'Jardinagem',
-      description: 'Poda de árvores e manutenção do jardim frontal',
-      requestedDate: '25/10/2024',
-      proposedDate: '27/10/2024',
-      proposedBy: 'Ana Paula Rodrigues (Gestora)',
-      scheduledDescription: 'Devido à previsão de chuva no dia 25/10, propomos reagendar para domingo 27/10 às 7h, com melhor condição climática. Equipe especializada em jardinagem.',
-      assignedCollaborator: 'Pedro Oliveira'
-    }
-  ];
+  // ... (useEffect para buscar solicitações - sem alteração) ...
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/api/clientes/requests');
+        if (Array.isArray(response.data)) {
+          setAllRequests(response.data);
+          toast.success("Solicitações carregadas do backend.");
+        } else {
+          toast.error("Erro: O backend não retornou uma lista de solicitações.");
+          setAllRequests([]); 
+        }
+      } catch (error) {
+        console.error("Erro ao buscar solicitações:", error);
+        toast.error("Backend não encontrado. Usando lista de fallback vazia.");
+        setAllRequests([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const initialRequests = [
-    {
-      id: 'REQ-2024-045',
-      service: 'Limpeza Geral',
-      date: '25/09/2024',
-      priority: 'rotina',
-      status: 'aprovado',
-      requestedAt: '23/09/2024 14:30',
-      description: 'Limpeza completa do escritório, incluindo todas as salas e áreas comuns.'
-    },
-    {
-      id: 'REQ-2024-044',
-      service: 'Limpeza de Piscina',
-      date: '24/09/2024',
-      priority: 'urgente',
-      status: 'em-analise',
-      requestedAt: '23/09/2024 10:15',
-      description: 'Limpeza urgente da piscina devido ao acúmulo de algas.'
-    },
-    {
-      id: 'REQ-2024-043',
-      service: 'Jardinagem',
-      date: '26/09/2024',
-      priority: 'rotina',
-      status: 'agendado',
-      requestedAt: '22/09/2024 16:20',
-      description: 'Poda das árvores e manutenção dos canteiros do jardim.'
-    }
-  ];
+    fetchRequests();
+    
+    // Por enquanto, as confirmações pendentes são carregadas do mock
+    setPendingConfirmations(MOCK_PENDING_CONFIRMATIONS);
+    
+  }, []);
 
-  const allRequests = [...initialRequests, ...myRequests];
-
+  // ... (Funções getCategoryColor, getCategoryStyle, getStatusBadge, getPriorityBadge - sem alteração) ...
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'Limpeza': return '#35BAE6'; // Azul
@@ -296,31 +321,34 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     );
   };
 
-  const handleSubmitRequest = () => {
-    if (selectedService && selectedLocation && description.trim() && requestedDate && priority) {
-      const newRequestId = `REQ-2024-${String(Date.now()).slice(-3)}`;
-      const serviceName = serviceOptions.find(s => s.id === selectedService)?.name || selectedService;
-      const location = currentClient.locations.find(l => l.id === selectedLocation);
-      
-      const newRequest = {
-        id: newRequestId,
-        service: serviceName,
-        location: location?.name,
-        area: location?.area,
-        description: description.trim(),
-        date: requestedDate.toLocaleDateString('pt-BR'),
-        priority,
-        status: 'em-analise', // Mudança: agora vai direto para em-analise
-        requestedAt: new Date().toLocaleString('pt-BR')
-      };
+  // ... (Função handleSubmitRequest - sem alteração) ...
+  const handleSubmitRequest = async () => {
+    if (!selectedService || !selectedLocation || !description.trim() || !requestedDate || !priority) {
+      toast.error('Preencha todos os campos obrigatórios!');
+      return;
+    }
 
-      setMyRequests(prev => [newRequest, ...prev]);
+    const serviceName = serviceOptions.find(s => s.id === selectedService)?.name || selectedService;
+    const location = currentClient.locations.find(l => l.id === selectedLocation);
 
-      // Toast mais chamativo com cores da marca
+    const payload = {
+      service: serviceName,
+      location: location?.name,
+      area: location?.area,
+      description: description.trim(),
+      date: requestedDate.toLocaleDateString('pt-BR'),
+      priority,
+    };
+
+    try {
+      const response = await api.post('/api/clientes/requests', payload);
+      const newRequestFromBackend = response.data;
+      setAllRequests(prev => [newRequestFromBackend, ...prev]);
+
       toast.success('🎉 Solicitação enviada com sucesso!', {
         description: priority === 'urgente' 
-          ? '⚡ Solicitação marcada como URGENTE - Nossa equipe será notificada imediatamente!' 
-          : '📋 Sua solicitação está em análise. Retornaremos em até 2 horas.',
+          ? '⚡ Solicitação marcada como URGENTE - Nossa equipe será notificada!' 
+          : '📋 Sua solicitação está em análise. Acompanhe na aba "Minhas Solicitações".',
         style: {
           background: '#6400A4',
           color: 'white',
@@ -329,23 +357,27 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
         }
       });
 
-      // Reset do formulário
       setSelectedService('');
       setSelectedLocation('');
       setDescription('');
       setRequestedDate(undefined);
       setPriority('');
       setIsRequestModalOpen(false);
-    } else {
-      toast.error('Preencha todos os campos obrigatórios!');
+      setActiveTab('minhas-solicitacoes'); 
+
+    } catch (error) {
+      console.error("Erro ao enviar solicitação:", error);
+      toast.error("Falha ao enviar solicitação. Verifique o backend.");
     }
   };
 
+  // ... (Função handleServiceSelect - sem alteração) ...
   const handleServiceSelect = (serviceId: string) => {
     setSelectedService(serviceId);
     setIsRequestModalOpen(true);
   };
 
+  // ... (Função handleViewRequests - sem alteração) ...
   const handleViewRequests = (category: string) => {
     let filteredRequests = [];
     
@@ -370,27 +402,46 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     setViewMode('requests');
   };
 
+  // ... (Função handleOpenConfirmation - sem alteração) ...
   const handleOpenConfirmation = (confirmation: PendingConfirmation) => {
     setSelectedConfirmation(confirmation);
     setIsConfirmationDialogOpen(true);
     setRejectionReason('');
   };
 
+  // =============================================================
+  // 2. ALTERAÇÃO: 'handleAcceptDate' agora atualiza o estado
+  // =============================================================
   const handleAcceptDate = () => {
     if (selectedConfirmation) {
       toast.success('Data confirmada com sucesso!', {
         description: `O serviço "${selectedConfirmation.serviceType}" foi confirmado para ${selectedConfirmation.proposedDate}.`
       });
+      
+      // Remove o item da lista de pendências
+      setPendingConfirmations(prevConfirmations =>
+        prevConfirmations.filter(conf => conf.id !== selectedConfirmation.id)
+      );
+      
       setIsConfirmationDialogOpen(false);
       setSelectedConfirmation(null);
     }
   };
 
+  // =============================================================
+  // 3. ALTERAÇÃO: 'handleRejectDate' agora atualiza o estado
+  // =============================================================
   const handleRejectDate = () => {
     if (selectedConfirmation && rejectionReason.trim()) {
       toast.info('Data recusada', {
         description: `Sua recusa foi enviada ao gestor. Em breve você receberá uma nova proposta de data.`
       });
+      
+      // Remove o item da lista de pendências
+      setPendingConfirmations(prevConfirmations =>
+        prevConfirmations.filter(conf => conf.id !== selectedConfirmation.id)
+      );
+      
       setIsConfirmationDialogOpen(false);
       setSelectedConfirmation(null);
       setRejectionReason('');
@@ -399,6 +450,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     }
   };
 
+  // ... (selectedServiceInfo e viewMode 'requests' - sem alteração) ...
   const selectedServiceInfo = serviceOptions.find(s => s.id === selectedService);
 
   if (viewMode === 'requests') {
@@ -429,9 +481,21 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
       />
     );
   }
+  
+  // ... (tela de loading - sem alteração) ...
+  if (loading) {
+    return (
+      <div className="p-6 text-center text-gray-500">
+        <Clock className="h-6 w-6 mx-auto mb-2 animate-spin" />
+        Carregando solicitações do backend...
+      </div>
+    );
+  }
 
+  // RENDERIZAÇÃO PRINCIPAL (todo o JSX abaixo permanece o mesmo)
   return (
     <div className="p-6 space-y-6">
+      {/* ... (Cabeçalho e Modal de Solicitação - sem alteração) ... */}
       <div className="flex justify-between items-start mb-6">
         <div className="flex-1">
           <ScreenHeader 
@@ -632,6 +696,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
         </div>
       </div>
 
+      {/* ... (Tabs - sem alteração) ... */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
           <TabsTrigger value="solicitar" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
@@ -639,7 +704,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
           </TabsTrigger>
           <TabsTrigger value="minhas-solicitacoes" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white relative">
             Minhas Solicitações
-            {pendingConfirmations.length > 0 && (
+            {pendingConfirmations.length > 0 && ( // Agora lê do estado
               <Badge 
                 className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
                 style={{ backgroundColor: '#FFFF20', color: '#6400A4' }}
@@ -651,6 +716,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
         </TabsList>
 
         <TabsContent value="solicitar" className="space-y-6">
+          {/* ... (Aviso, Estatísticas, Catálogo - sem alteração) ... */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-sm text-blue-800">
               💡 <strong>Importante:</strong> Acompanhe o status da sua solicitação aqui no painel, em até 2 horas será atualizado sobre a disponibilidade dos serviços!
@@ -773,7 +839,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
         </TabsContent>
 
         <TabsContent value="minhas-solicitacoes" className="space-y-6">
-          {/* Alertas de Confirmação Pendente */}
+          {/* Alertas de Confirmação Pendente (agora dinâmico) */}
           {pendingConfirmations.length > 0 && (
             <div className="space-y-3">
               <h3 className="font-semibold text-black">Confirmações de Data Pendentes</h3>
@@ -825,7 +891,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
             </div>
           )}
 
-          {/* Lista de Todas as Solicitações */}
+          {/* Lista de Todas as Solicitações (sem alteração) */}
           <Card>
             <CardHeader>
               <CardTitle className="text-black flex items-center justify-between">
@@ -882,7 +948,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
         </TabsContent>
       </Tabs>
 
-      {/* Dialog de Confirmação de Data */}
+      {/* ... (Dialog de Confirmação de Data - sem alteração) ... */}
       <Dialog open={isConfirmationDialogOpen} onOpenChange={setIsConfirmationDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -982,8 +1048,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Toaster position="top-right" />
+      <Toaster position="top-right" /> 
     </div>
   );
 }

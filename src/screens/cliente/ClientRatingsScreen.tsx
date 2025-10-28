@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // 1. IMPORTAR useEffect
 import { Star, Calendar, Search, Bot, MessageSquare, Clock, User, CheckCircle } from 'lucide-react';
 import ScreenHeader from '../../components/ScreenHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -8,11 +8,84 @@ import { Textarea } from '../../components/ui/textarea';
 import { Badge } from '../../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { Label } from '../../components/ui/label';
+import api from '../../lib/api'; // 2. IMPORTAR A API
+import { toast } from 'sonner'; // 3. IMPORTAR O TOAST
 
 interface ClientRatingsScreenProps {
   onBack?: () => void;
 }
 
+// ===================================
+// 4. TIPAGENS (MOVENDO PARA CIMA)
+// ===================================
+interface Service {
+  id: string;
+  name: string;
+  date: string;
+  team: string;
+  description: string;
+  status: 'pending' | 'rated';
+  duration: string;
+  rating?: number;
+  feedback?: string;
+  ratedAt?: string;
+}
+
+// =============================================================
+// 5. DADOS ESTÁTICOS DE FALLBACK
+// =============================================================
+const FALLBACK_PENDING_SERVICES: Service[] = [
+  {
+    id: 'SRV-2024-089',
+    name: 'Limpeza Geral - Escritório Corporate ',
+    date: '23/09/2024',
+    team: 'Equipe Alpha',
+    description: 'Limpeza completa do escritório incluindo salas individuais e áreas comuns',
+    status: 'pending',
+    duration: '4h'
+  },
+  {
+    id: 'SRV-2024-087',
+    name: 'Limpeza de Vidros ',
+    date: '22/09/2024',
+    team: 'Equipe Beta',
+    description: 'Limpeza de todas as superfícies de vidro do edifício',
+    status: 'pending',
+    duration: '3h'
+  },
+];
+
+const FALLBACK_RATED_SERVICES: Service[] = [
+  { 
+    id: 'SRV-2024-078', 
+    name: 'Limpeza Geral ', 
+    date: '20/09/2024', 
+    team: 'Equipe Beta',
+    description: 'Limpeza completa do ambiente',
+    duration: '5h',
+    status: 'rated',
+    rating: 5, 
+    feedback: 'Excelente trabalho! ',
+    ratedAt: '20/09/2024 16:30'
+  },
+  { 
+    id: 'SRV-2024-065', 
+    name: 'Limpeza de Vidros + Fachada ', 
+    date: '15/09/2024', 
+    team: 'Equipe Alpha',
+    description: 'Limpeza de vidros e fachada externa',
+    duration: '6h',
+    status: 'rated',
+    rating: 4, 
+    feedback: 'Bom trabalho, mas houve um pequeno atraso.',
+    ratedAt: '15/09/2024 17:45'
+  },
+];
+
+
+// ===================================
+// COMPONENTE PRINCIPAL
+// ===================================
 export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps) {
   const [selectedRating, setSelectedRating] = useState(0);
   const [feedback, setFeedback] = useState('');
@@ -20,75 +93,69 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Combinando todos os serviços (avaliados e pendentes)
-  const allServices = [
-    {
-      id: 'SRV-2024-089',
-      name: 'Limpeza Geral - Escritório Corporate',
-      date: '23/09/2024',
-      team: 'Equipe Alpha',
-      description: 'Limpeza completa do escritório incluindo salas individuais e áreas comuns',
-      status: 'pending',
-      duration: '4h'
-    },
-    {
-      id: 'SRV-2024-087',
-      name: 'Limpeza de Vidros',
-      date: '22/09/2024',
-      team: 'Equipe Beta',
-      description: 'Limpeza de todas as superfícies de vidro do edifício',
-      status: 'pending',
-      duration: '3h'
-    },
-    { 
-      id: 'SRV-2024-078', 
-      name: 'Limpeza Geral', 
-      date: '20/09/2024', 
-      team: 'Equipe Beta',
-      description: 'Limpeza completa do ambiente',
-      duration: '5h',
-      status: 'rated',
-      rating: 5, 
-      feedback: 'Excelente trabalho! A equipe foi muito profissional e o resultado superou nossas expectativas.',
-      ratedAt: '20/09/2024 16:30'
-    },
-    { 
-      id: 'SRV-2024-065', 
-      name: 'Limpeza de Vidros + Fachada', 
-      date: '15/09/2024', 
-      team: 'Equipe Alpha',
-      description: 'Limpeza de vidros e fachada externa',
-      duration: '6h',
-      status: 'rated',
-      rating: 4, 
-      feedback: 'Bom trabalho, mas houve um pequeno atraso no início. No geral, ficamos satisfeitos.',
-      ratedAt: '15/09/2024 17:45'
-    },
-    { 
-      id: 'SRV-2024-052', 
-      name: 'Limpeza Geral + Enceramento', 
-      date: '10/09/2024', 
-      team: 'Equipe Gamma',
-      description: 'Limpeza completa com enceramento de piso',
-      duration: '7h',
-      status: 'rated',
-      rating: 5, 
-      feedback: 'Perfeito! O enceramento ficou impecável e a equipe foi muito cuidadosa.',
-      ratedAt: '10/09/2024 15:20'
-    },
-    { 
-      id: 'SRV-2024-038', 
-      name: 'Limpeza Pós-Obra', 
-      date: '05/09/2024', 
-      team: 'Equipe Delta',
-      description: 'Limpeza completa após finalização da obra',
-      duration: '8h',
-      status: 'rated',
-      rating: 4, 
-      feedback: 'Serviço bem executado, ambiente ficou totalmente limpo. Recomendamos!',
-      ratedAt: '06/09/2024 09:15'
-    }
-  ];
+  // =============================================================
+  // 6. NOVOS ESTADOS: Para os dados dinâmicos e loading
+  // =============================================================
+  const [pendingServices, setPendingServices] = useState<Service[]>([]);
+  const [ratedServices, setRatedServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+
+
+  // =============================================================
+  // 7. NOVA ALTERAÇÃO: useEffect para buscar dados do backend
+  // =============================================================
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Tenta buscar os dados do backend
+        const ratingsResponse = await api.get('/api/clientes/ratings');
+
+        if (Array.isArray(ratingsResponse.data)) {
+          // O backend (server.js) só nos dá os dados de "ratings"
+          // O formato do server.js é { serviceId, service, date, rating, feedback }
+          // Vamos mapeá-lo para o formato "Service" que a tela espera
+          const backendRatedServices = ratingsResponse.data.map((r: any) => ({
+            id: r.serviceId,
+            name: r.service,
+            date: r.date,
+            team: "Equipe ", // O server.js não fornece 'team'
+            description: "Descrição", // O server.js não fornece 'description'
+            duration: "Xh", // O server.js não fornece 'duration'
+            status: 'rated' as const,
+            rating: r.rating,
+            feedback: r.feedback,
+            ratedAt: r.date // Apenas para simulação
+          }));
+          
+          setRatedServices(backendRatedServices);
+          toast.success("Avaliações carregadas do backend!");
+        } else {
+          setRatedServices(FALLBACK_RATED_SERVICES);
+          toast.info("Usando dados estáticos para Avaliações.");
+        }
+
+        // Como o backend não tem rota de PENDENTES, usamos o fallback
+        setPendingServices(FALLBACK_PENDING_SERVICES);
+
+      } catch (error) {
+        console.error("Erro ao buscar dados do backend:", error);
+        toast.error("Backend não encontrado. Carregando dados de simulação.");
+        setRatedServices(FALLBACK_RATED_SERVICES);
+        setPendingServices(FALLBACK_PENDING_SERVICES);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []); // O [] vazio faz isso rodar só uma vez
+
+  // =============================================================
+  // 8. DADOS DINÂMICOS: Agora tudo vem do estado
+  // =============================================================
+  const allServices = [...pendingServices, ...ratedServices];
 
   const filteredServices = allServices.filter(service => 
     service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -96,13 +163,15 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
     service.team.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const pendingCount = allServices.filter(s => s.status === 'pending').length;
-  const ratedCount = allServices.filter(s => s.status === 'rated').length;
+  const pendingCount = pendingServices.length;
+  const ratedCount = ratedServices.length;
   const averageRating = ratedCount > 0 
-    ? (allServices.filter(s => s.status === 'rated').reduce((sum, s) => sum + (s.rating || 0), 0) / ratedCount).toFixed(1)
+    ? (ratedServices.reduce((sum, s) => sum + (s.rating || 0), 0) / ratedCount).toFixed(1)
     : '0.0';
-  const fiveStarCount = allServices.filter(s => s.rating === 5).length;
+  const fiveStarCount = ratedServices.filter(s => s.rating === 5).length;
 
+
+  // Função renderStars (sem alteração)
   const renderStars = (rating: number, interactive = false, onRate: ((rating: number) => void) | null = null) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
@@ -115,21 +184,65 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
     ));
   };
 
-  const handleSubmitRating = () => {
-    if (selectedRating > 0 && selectedServiceId) {
-      console.log('Avaliação enviada:', { 
-        serviceId: selectedServiceId, 
-        rating: selectedRating, 
-        feedback 
-      });
+
+  // =============================================================
+  // 9. ALTERAÇÃO PRINCIPAL: Conectando o envio ao Backend
+  // =============================================================
+  const handleSubmitRating = async () => {
+    if (selectedRating === 0 || !selectedServiceId) {
+      toast.warning("Por favor, selecione uma avaliação.");
+      return;
+    }
+
+    const serviceToRate = pendingServices.find(s => s.id === selectedServiceId);
+    if (!serviceToRate) {
+      toast.error("Erro: Serviço pendente não encontrado.");
+      return;
+    }
+
+    const newRatingPayload = {
+      serviceId: serviceToRate.id,
+      service: serviceToRate.name, // O backend (server.js) espera 'service'
+      date: serviceToRate.date,     // O backend (server.js) espera 'date'
+      rating: selectedRating,
+      feedback: feedback,
+    };
+
+    try {
+      // 1. Envia o POST para o backend
+      // O server.js retorna { message: "...", data: newRatingPayload }
+      const response = await api.post('/api/clientes/ratings', newRatingPayload);
       
+      // 2. Prepara o novo objeto de "avaliado" para a tela
+      const newRatedService: Service = {
+        ...serviceToRate, // Pega os dados do serviço (id, nome, team, etc.)
+        status: 'rated',
+        rating: response.data.data.rating,
+        feedback: response.data.data.feedback,
+        ratedAt: new Date().toLocaleString() // Simula a data de avaliação
+      };
+
+      // 3. Atualiza o estado local (UI)
+      // Adiciona o novo serviço à lista de avaliados
+      setRatedServices(prev => [newRatedService, ...prev]); 
+      // Remove o serviço da lista de pendentes
+      setPendingServices(prev => prev.filter(s => s.id !== selectedServiceId));
+      
+      toast.success("Avaliação enviada com sucesso!");
+      
+      // 4. Limpa e fecha o modal
       setSelectedRating(0);
       setFeedback('');
       setSelectedServiceId('');
       setIsRatingModalOpen(false);
+
+    } catch (error) {
+      console.error("Erro ao enviar avaliação:", error);
+      toast.error("Falha ao enviar avaliação. Tente novamente.");
     }
   };
 
+  // Funções getRatingColor e getRatingBadge (sem alteração)
   const getRatingColor = (rating: number) => {
     if (rating >= 5) return 'text-green-600';
     if (rating >= 4) return 'text-yellow-600';
@@ -144,9 +257,21 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
     return 'Precisa Melhorar';
   };
 
+  // =============================================================
+  // 10. NOVA ALTERAÇÃO: Adicionar tela de loading
+  // =============================================================
+  if (loading) {
+    return (
+      <div className="p-6 text-center text-gray-500">
+        <Clock className="h-6 w-6 mx-auto mb-2 animate-spin" />
+        Buscando avaliações no backend...
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
-      {/* Cabeçalho */}
+      {/* Cabeçalho (Seu código) */}
       <div className="flex justify-between items-start">
         <div className="flex-1">
           <ScreenHeader 
@@ -164,7 +289,7 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
         </Button>
       </div>
 
-      {/* Cards de Estatísticas */}
+      {/* Cards de Estatísticas (Seu código, agora dinâmicos) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border-2" style={{ borderColor: '#6400A4' }}>
           <div className="flex items-center justify-between">
@@ -209,7 +334,7 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
         </div>
       </div>
 
-      {/* Barra de Pesquisa */}
+      {/* Barra de Pesquisa (Seu código) */}
       <Card>
         <CardContent className="pt-6">
           <div className="relative">
@@ -224,7 +349,7 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
         </CardContent>
       </Card>
 
-      {/* Lista de Serviços */}
+      {/* Lista de Serviços (Seu código, agora dinâmica) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredServices.map((service) => (
           <Card 
@@ -265,7 +390,7 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-700">{service.description}</p>
               
-              {/* Informações do Serviço */}
+              {/* Informações do Serviço (Seu código) */}
               <div className="grid grid-cols-3 gap-3 text-sm">
                 <div className="flex items-center gap-2 text-gray-600">
                   <Calendar className="h-4 w-4" style={{ color: '#8B20EE' }} />
@@ -281,7 +406,7 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
                 </div>
               </div>
 
-              {/* Se o serviço já foi avaliado */}
+              {/* Se o serviço já foi avaliado (Seu código) */}
               {service.status === 'rated' && (
                 <div className="space-y-3 pt-3 border-t border-gray-100">
                   <div className="flex items-center justify-between">
@@ -309,7 +434,7 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
                 </div>
               )}
 
-              {/* Se o serviço está pendente de avaliação */}
+              {/* Se o serviço está pendente de avaliação (Seu código) */}
               {service.status === 'pending' && (
                 <div className="pt-3 border-t border-gray-100">
                   <Button
@@ -330,7 +455,7 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
         ))}
       </div>
 
-      {/* Modal de Avaliação */}
+      {/* Modal de Avaliação (Seu código) */}
       <Dialog open={isRatingModalOpen} onOpenChange={setIsRatingModalOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -341,7 +466,8 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
           </DialogHeader>
           <div className="space-y-4 py-4">
             {selectedServiceId && (() => {
-              const service = allServices.find(s => s.id === selectedServiceId);
+              // Modificado para buscar de 'pendingServices'
+              const service = pendingServices.find(s => s.id === selectedServiceId);
               return service ? (
                 <div className="p-4 bg-gray-50 rounded-lg space-y-2">
                   <h4 className="text-black">{service.name}</h4>

@@ -57,12 +57,12 @@ interface ClientDashboardProps {
 // =============================================================
 const FALLBACK_CURRENT_SERVICE: CurrentService = {
   id: "OS-2024-089",
-  title: "Limpeza Geral - Escritório Corporate (Estático)",
+  title: "Limpeza Geral - Escritório Corporate ",
   status: "em-andamento",
   progress: 70,
   startDate: "23/09/2024",
   expectedEnd: "23/09/2024 - 17:00",
-  team: "Equipe Alpha (Estático)",
+  team: "Equipe Alpha ",
   leader: "Carlos Silva",
   phone: "(11) 99999-8888",
   location: "Av. Paulista, 1000 - 15º andar"
@@ -71,7 +71,7 @@ const FALLBACK_CURRENT_SERVICE: CurrentService = {
 const FALLBACK_SERVICE_HISTORY: ServiceHistoryItem[] = [
   {
     id: "OS-2024-078",
-    service: "Limpeza Geral (Estático)",
+    service: "Limpeza Geral ",
     date: "20/09/2024",
     team: "Equipe Beta",
     status: "completed",
@@ -94,7 +94,7 @@ const FALLBACK_SERVICE_HISTORY: ServiceHistoryItem[] = [
   },
   {
     id: "OS-2024-065",
-    service: "Limpeza de Vidros (Estático)",
+    service: "Limpeza de Vidros)",
     date: "15/09/2024", 
     team: "Equipe Alpha",
     status: "completed",
