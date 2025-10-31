@@ -345,7 +345,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
       const newRequestFromBackend = response.data;
       setAllRequests(prev => [newRequestFromBackend, ...prev]);
 
-      toast.success('🎉 Solicitação enviada com sucesso!', {
+      toast.success(' Solicitação enviada com sucesso!', {
         description: priority === 'urgente' 
           ? '⚡ Solicitação marcada como URGENTE - Nossa equipe será notificada!' 
           : '📋 Sua solicitação está em análise. Acompanhe na aba "Minhas Solicitações".',
