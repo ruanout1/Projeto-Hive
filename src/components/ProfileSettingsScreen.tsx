@@ -12,7 +12,7 @@ import { Separator } from './ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from './ui/input-otp';
 import { Alert, AlertDescription } from './ui/alert';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface ProfileSettingsScreenProps {
   userType: string;

@@ -1,5 +1,5 @@
 import AdminDashboard from './../administrador/AdminDashboard';
-import ManagerDashboard from '../../components/ManagerDashboard'; 
+import ManagerDashboard from '../gestor/ManagerDashboard'; 
 import CollaboratorDashboard from './../colaborador/CollaboratorDashboard';
 import ClientDashboard from './../cliente/ClientDashboard';
 
