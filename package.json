@@ -45,6 +45,7 @@
         "react-resizable-panels": "^2.1.7",
         "recharts": "^2.15.2",
         "sonner": "^2.0.3",
+        "svg-to-pdfkit": "^0.1.8",
         "tailwind-merge": "*",
         "vaul": "^1.1.2"
     },
