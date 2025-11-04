@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileText, Download, Eye, Calendar, DollarSign, TrendingUp, TrendingDown, Filter, Search, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -26,14 +26,15 @@ interface ClientExpensesDashboardScreenProps {
   onBack?: () => void;
 }
 
-export default function ClientExpensesDashboardScreen({ onBack }: ClientExpensesDashboardScreenProps) {
+export default function ClientExpensesDashboardScreen({ onBack }: { onBack?: () => void }) {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [periodFilter, setPeriodFilter] = useState<string>('all');
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
 
-  const invoices: Invoice[] = [
+  const staticInvoices: Invoice[] = [
     {
       id: '1',
       number: 'NF-2024-089',
@@ -149,6 +150,25 @@ export default function ClientExpensesDashboardScreen({ onBack }: ClientExpenses
     
     return matchesStatus && matchesSearch && matchesPeriod;
   });
+  // ✅ Ao carregar, usa dados estáticos, mas tenta buscar do backend
+  useEffect(() => {
+    setInvoices(staticInvoices); // mostra algo imediatamente
+
+    const fetchData = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/clientes/expenses');
+        if (!response.ok) throw new Error('Servidor não respondeu');
+        const data = await response.json();
+        // Se o backend estiver ativo, substitui pelos dados reais
+        if (data && data.length > 0) setInvoices(data);
+      } catch (error) {
+        console.warn('⚠️ Falha ao buscar backend, mantendo dados estáticos.');
+      }
+    };
+
+    fetchData();
+  }, []);
+  
 
   // Cálculos de totais
   const totalPaid = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.amount, 0);
@@ -415,6 +435,10 @@ export default function ClientExpensesDashboardScreen({ onBack }: ClientExpenses
                         <Button
                           size="sm"
                           style={{ backgroundColor: '#FFFF20', color: '#000' }}
+                          onClick={() => {
+                            const url = `http://localhost:5000/api/clientes/invoice/${invoice.id}/pdf`;
+                            window.open(url, "_blank"); // abre o PDF em nova aba ou inicia o download
+                          }}
                         >
                           <Download className="h-3 w-3 mr-1" />
                           PDF

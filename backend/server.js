@@ -1,6 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
+const PDFDocument = require("pdfkit");
+
 
 const app = express();
 app.use(cors());
@@ -135,6 +138,87 @@ const serviceNotesCompleted = [
  timeline.push(...timelineCompleted);
 serviceNotesData.push(...serviceNotesCompleted);
 
+// 🔹 CLIENTE - DASHBOARD DE GASTOS
+// =====================
+const clientInvoices = [
+  {
+    id: '1',
+    number: 'NF-2024-089',
+    serviceType: 'Limpeza Hospitalar',
+    serviceId: 'OS-2024-078',
+    amount: 8500,
+    issueDate: '15/10/2024',
+    dueDate: '30/10/2024',
+    status: 'paid',
+    paymentDate: '28/10/2024'
+  },
+  {
+    id: '2',
+    number: 'NF-2024-076',
+    serviceType: 'Limpeza Geral',
+    serviceId: 'OS-2024-065',
+    amount: 5200,
+    issueDate: '20/09/2024',
+    dueDate: '05/10/2024',
+    status: 'paid',
+    paymentDate: '03/10/2024'
+  },
+  {
+    id: '3',
+    number: 'NF-2024-063',
+    serviceType: 'Limpeza de Vidros',
+    serviceId: 'OS-2024-052',
+    amount: 3800,
+    issueDate: '15/09/2024',
+    dueDate: '30/09/2024',
+    status: 'paid',
+    paymentDate: '29/09/2024'
+  },
+  {
+    id: '4',
+    number: 'NF-2024-091',
+    serviceType: 'Jardinagem',
+    serviceId: 'OS-2024-082',
+    amount: 4500,
+    issueDate: '01/10/2024',
+    dueDate: '16/10/2024',
+    status: 'pending'
+  },
+  {
+    id: '5',
+    number: 'NF-2024-050',
+    serviceType: 'Limpeza Pós-Obra',
+    serviceId: 'OS-2024-038',
+    amount: 12000,
+    issueDate: '05/09/2024',
+    dueDate: '20/09/2024',
+    status: 'paid',
+    paymentDate: '18/09/2024'
+  },
+  {
+    id: '6',
+    number: 'NF-2024-042',
+    serviceType: 'Manutenção Elétrica',
+    serviceId: 'OS-2024-030',
+    amount: 6700,
+    issueDate: '28/08/2024',
+    dueDate: '12/09/2024',
+    status: 'paid',
+    paymentDate: '10/09/2024'
+  },
+  {
+    id: '7',
+    number: 'NF-2024-035',
+    serviceType: 'Limpeza Geral',
+    serviceId: 'OS-2024-022',
+    amount: 5400,
+    issueDate: '15/08/2024',
+    dueDate: '30/08/2024',
+    status: 'paid',
+    paymentDate: '29/08/2024'
+  }
+];
+
 // =====================
 // 🔹 ROTAS GET
 // =====================
@@ -143,6 +227,99 @@ app.get("/api/clientes/history", (req, res) => res.json(serviceHistory));
 app.get("/api/clientes/timeline", (req, res) => res.json(timeline));
 app.get("/api/clientes/service-notes", (req, res) => res.json(serviceNotesData));
 app.get("/api/servicos", (req, res) => res.json(serviceHistory));
+app.get("/api/clientes/expenses", (req, res) => {res.json(clientInvoices);});
+// Rota para gerar PDF de nota fiscal
+app.get("/api/clientes/invoice/:id/pdf", (req, res) => {
+  const invoiceId = req.params.id;
+  const invoice = clientInvoices.find(i => i.id === invoiceId);
+
+  if (!invoice) {
+    return res.status(404).json({ error: "Nota fiscal não encontrada" });
+  }
+
+  const doc = new PDFDocument({ margin: 50 });
+  const filePath = path.join(__dirname, `nota-${invoiceId}.pdf`);
+  const stream = fs.createWriteStream(filePath);
+  doc.pipe(stream);
+  // 🔸 CABEÇALHO COM LOGO
+  doc
+    .fillColor("#6400A4")
+    .fontSize(22)
+    .text("HIVE - Gestão de Equipes Terceirizadas", { align: "center" });
+  doc.moveDown(0.5);
+  doc
+    .fillColor("gray")
+    .fontSize(12)
+    .text("Portal do Cliente • Nota Fiscal de Serviço", { align: "center" });
+  doc.moveDown(1);
+  doc.moveTo(50, doc.y).lineTo(550, doc.y).strokeColor("#6400A4").stroke();
+  doc.moveDown(1.5);
+
+  // DADOS DA NOTA
+  doc.fontSize(14).fillColor("#333").text("Dados da Nota Fiscal", { underline: true });
+  doc.moveDown(0.8);
+
+  const addLine = (label, value) => {
+    doc
+      .font("Helvetica-Bold")
+      .text(`${label}:`, { continued: true })
+      .font("Helvetica")
+      .fillColor("#000")
+      .text(` ${value}`);
+  };
+
+  addLine("Número", invoice.number);
+  addLine("Serviço", invoice.serviceType);
+  addLine("Ordem de Serviço", invoice.serviceId);
+  addLine("Valor", `R$ ${invoice.amount.toLocaleString("pt-BR")}`);
+  addLine("Data de Emissão", invoice.issueDate);
+  addLine("Vencimento", invoice.dueDate);
+  if (invoice.paymentDate) addLine("Data de Pagamento", invoice.paymentDate);
+  addLine("Status", invoice.status === "paid" ? "Pago" : invoice.status === "pending" ? "Pendente" : "Vencido");
+  doc.moveDown(1);
+
+  // CAIXA DE RESUMO VISUAL
+  const summaryTop = doc.y + 10;
+  doc.roundedRect(50, summaryTop, 500, 90, 10)
+    .strokeColor("#E5E5E5")
+    .lineWidth(1)
+    .stroke();
+
+  doc
+    .fontSize(12)
+    .fillColor("#6400A4")
+    .text("Resumo Financeiro", 65, summaryTop + 10);
+
+  doc.fontSize(11).fillColor("#333");
+  doc.text(`Valor Total: R$ ${invoice.amount.toLocaleString("pt-BR")}`, 65, summaryTop + 35);
+  doc.text(`Status: ${invoice.status === "paid" ? "✔ Pago" : "⏳ Pendente"}`, 65, summaryTop + 55);
+  doc.text(`Emitido em: ${invoice.issueDate}`, 65, summaryTop + 75);
+
+  doc.moveDown(8);
+
+  // RODAPÉ
+  doc.moveTo(50, 740).lineTo(550, 740).strokeColor("#6400A4").stroke();
+  doc.moveDown(0.3);
+  doc
+    .fontSize(10)
+    .fillColor("gray")
+    .text(
+      "Documento gerado automaticamente pelo sistema Hive - Gestão de Equipes Terceirizadas.",
+      50,
+      750,
+      { align: "center" }
+    );
+  doc.text("© 2025 Hive Systems. Todos os direitos reservados.", { align: "center" });
+
+  doc.end();
+  // 🔸 ENVIO E LIMPEZA
+  stream.on("finish", () => {
+    res.download(filePath, `nota-${invoiceId}.pdf`, (err) => {
+      if (err) console.error(err);
+      fs.unlinkSync(filePath); // Remove o arquivo após o envio
+    });
+  });
+});
 
 // Rota de avaliações
 let pastRatingsData = [
