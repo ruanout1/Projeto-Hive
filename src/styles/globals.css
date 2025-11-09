@@ -371,3 +371,115 @@ html {
 .fade-in {
   animation: fadeIn 0.2s ease-in;
 }
+
+/* ===== TOASTS PERSONALIZADOS ===== */
+[data-sonner-toaster] {
+  font-family: inherit;
+}
+
+[data-sonner-toast] {
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== LOADING STATES NOS BOTÕES ===== */
+.btn-loading {
+  position: relative;
+  color: transparent !important;
+}
+
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* ===== VALIDAÇÕES DE FORMULÁRIO ===== */
+.border-red-300 {
+  border-color: #fca5a5 !important;
+  transition: all 0.3s ease;
+}
+
+.border-red-300:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
+}
+
+/* Feedback visual para campos válidos */
+.input-valid {
+  border-color: #10b981 !important;
+}
+
+/* Animações para mensagens de erro */
+.text-red-500 {
+  animation: fadeInUp 0.3s ease;
+}
+
+/* ===== ANIMAÇÕES ===== */
+@keyframes spin {
+  0% { 
+    transform: rotate(0deg); 
+  }
+  100% { 
+    transform: rotate(360deg); 
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Transição suave para todos os inputs */
+input, textarea, select {
+  transition: all 0.2s ease;
+}
+
+/* Melhoria visual para os selects */
+[data-radix-select-content] {
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Hover states melhorados */
+.hover-lift:hover {
+  transform: translateY(-2px);
+  transition: transform 0.2s ease;
+}
+
+/* Estilos para os badges de status */
+.badge-active {
+  background-color: #10b981;
+  color: white;
+}
+
+.badge-inactive {
+  background-color: #6b7280;
+  color: white;
+}
+
+/* Loading states para toda a aplicação */
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}

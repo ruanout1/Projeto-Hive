@@ -1,67 +1,139 @@
-import { MapPin, Clock, CheckCircle, AlertCircle, XCircle, Calendar, Bot, FileText } from 'lucide-react';
+import { MapPin, Clock, CheckCircle, AlertCircle, XCircle, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Button } from '../../components/ui/button';
-import { useState } from 'react';
-import AIAssistant from '../../components/AIAssistant';
-import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+// Importa os hooks e o axios
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { toast } from 'sonner'; 
+
+// --- Interfaces para nossos dados da API ---
+interface DashboardStats {
+  pendente: number;
+  agendado: number;
+  'em-andamento': number;
+  concluido: number;
+  cancelado: number;
+}
+
+interface Service {
+  id: string;
+  cliente: string;
+  servico: string;
+  equipe: string;
+  status: string;
+  prazo: string;
+}
+// ----------------------------------------
 
 interface ManagerDashboardProps {
   onSectionChange?: (section: string) => void;
 }
+
 interface StatusStyle {
   color: string;
   label: string;
   style?: React.CSSProperties;
 }
 
+// Define a URL base da nossa API
+const API_URL = 'http://localhost:5000/api/manager';
+
 export default function ManagerDashboard({ onSectionChange }: ManagerDashboardProps) {
-  const [isAIOpen, setIsAIOpen] = useState(false);
+  // --- Estados para guardar os dados da API ---
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  // ------------------------------------------
 
-  const services = [
-    {
-      id: "OS-2024-001",
-      cliente: "Shopping Center Norte",
-      servico: "Limpeza Geral",
-      equipe: "Equipe Alpha",
-      status: "em-andamento",
-      prazo: "24/09/2024"
-    },
-    {
-      id: "OS-2024-002", 
-      cliente: "Prédio Comercial São Paulo",
-      servico: "Manutenção Elétrica",
-      equipe: "Equipe Beta",
-      status: "concluido",
-      prazo: "23/09/2024"
-    },
-    {
-      id: "OS-2024-003",
-      cliente: "Condomínio Residencial",
-      servico: "Jardinagem",
-      equipe: "Equipe Gamma",
-      status: "agendado",
-      prazo: "25/09/2024"
-    },
-    {
-      id: "OS-2024-004",
-      cliente: "Hospital Santa Maria",
-      servico: "Limpeza Hospitalar",
-      equipe: "Equipe Delta",
-      status: "pendente",
-      prazo: "26/09/2024"
-    },
-    {
-      id: "OS-2024-005",
-      cliente: "Escritório Corporate",
-      servico: "Limpeza de Vidros",
-      equipe: "Equipe Alpha",
-      status: "cancelado",
-      prazo: "22/09/2024"
-    }
+  // --- DADOS FALSOS PARA O MAPA (TEMPORÁRIO) ---
+  const teams = [
+    { name: "Equipe Alpha", zone: "Zona Norte", active: true, members: 8, position: { top: '20%', left: '15%' } },
+    { name: "Equipe Beta", zone: "Zona Sul", active: true, members: 6, position: { top: '25%', right: '20%' } },
+    { name: "Equipe Gamma", zone: "Zona Leste", active: false, members: 5, position: { bottom: '30%', left: '25%' } },
+    { name: "Equipe Delta", zone: "Zona Oeste", active: true, members: 7, position: { bottom: '20%', right: '15%' } },
+    { name: "Equipe Epsilon", zone: "Centro", active: true, members: 9, position: { top: '50%', left: '50%' } }
   ];
+  // ------------------------------------------
 
+  // useEffect para buscar os dados quando o componente carregar
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fazemos as chamadas da API em paralelo
+        const [statsRes, servicesRes] = await Promise.all([
+          axios.get(`${API_URL}/dashboard/stats`),
+          axios.get(`${API_URL}/requests/active`)
+        ]);
+
+        // Validação dos dados
+        if (!statsRes.data || typeof statsRes.data !== 'object') {
+          throw new Error('Formato de dados inválido para estatísticas');
+        }
+        
+        if (!Array.isArray(servicesRes.data)) {
+          throw new Error('Formato de dados inválido para serviços');
+        }
+
+        setStats(statsRes.data);
+        setServices(servicesRes.data);
+
+      } catch (err: any) {
+        console.error("Erro ao buscar dados do dashboard:", err);
+        const errorMessage = err.response?.data?.message || 
+                            err.response?.data?.error || 
+                            "Não foi possível carregar os dados. Verifique o backend.";
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Função para recarregar dados
+  const handleRefresh = async () => {
+    if (actionLoading) return;
+    
+    setActionLoading(true);
+    try {
+      const [statsRes, servicesRes] = await Promise.all([
+        axios.get(`${API_URL}/dashboard/stats`),
+        axios.get(`${API_URL}/requests/active`)
+      ]);
+
+      // Validação dos dados
+      if (!statsRes.data || typeof statsRes.data !== 'object') {
+        throw new Error('Formato de dados inválido para estatísticas');
+      }
+      
+      if (!Array.isArray(servicesRes.data)) {
+        throw new Error('Formato de dados inválido para serviços');
+      }
+
+      setStats(statsRes.data);
+      setServices(servicesRes.data);
+      
+      toast.success('Dados atualizados com sucesso!');
+    } catch (err: any) {
+      console.error("Erro ao atualizar dados:", err);
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.error || 
+                          "Não foi possível atualizar os dados.";
+      toast.error("Erro ao atualizar", { description: errorMessage });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Funções de badge e ícone
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, StatusStyle> = {
       "concluido": { color: "bg-green-100 text-green-800", label: "Concluído" },
@@ -70,8 +142,7 @@ export default function ManagerDashboard({ onSectionChange }: ManagerDashboardPr
       "pendente": { color: "bg-orange-100 text-orange-800", label: "Pendente" },
       "cancelado": { color: "bg-red-100 text-red-800", label: "Cancelado" }
     };
-
-    const config = statusConfig[status as keyof typeof statusConfig];
+    const config = statusConfig[status as keyof typeof statusConfig] || { color: "bg-gray-100 text-gray-800", label: "Indefinido" };
     return (
       <Badge className={`${config.color} border-none`} style={config.style}>
         {config.label}
@@ -87,18 +158,71 @@ export default function ManagerDashboard({ onSectionChange }: ManagerDashboardPr
       "pendente": AlertCircle,
       "cancelado": XCircle
     };
-    
     const IconComponent = icons[status as keyof typeof icons];
     return IconComponent ? <IconComponent className="h-4 w-4" /> : null;
   };
 
-  const teams = [
-    { name: "Equipe Alpha", zone: "Zona Norte", active: true, members: 8, position: { top: '20%', left: '15%' } },
-    { name: "Equipe Beta", zone: "Zona Sul", active: true, members: 6, position: { top: '25%', right: '20%' } },
-    { name: "Equipe Gamma", zone: "Zona Leste", active: false, members: 5, position: { bottom: '30%', left: '25%' } },
-    { name: "Equipe Delta", zone: "Zona Oeste", active: true, members: 7, position: { bottom: '20%', right: '15%' } },
-    { name: "Equipe Epsilon", zone: "Centro", active: true, members: 9, position: { top: '50%', left: '50%' } }
-  ];
+  // --- Renderização com Loading Skeleton ---
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        {/* Skeleton para Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-gray-200 rounded-xl p-6 animate-pulse h-24"></div>
+          ))}
+        </div>
+        
+        {/* Skeleton para Mapa */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="bg-gray-200 rounded h-6 w-48 animate-pulse"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="relative rounded-lg h-96 bg-gray-200 animate-pulse"></div>
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="bg-gray-200 rounded-lg p-3 h-16 animate-pulse"></div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Skeleton para Tabela */}
+        <Card>
+          <CardHeader>
+            <div className="bg-gray-200 rounded h-6 w-48 animate-pulse"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="bg-gray-200 rounded h-12 animate-pulse"></div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // --- Renderização com Erro ---
+  if (error) {
+    return (
+      <div className="p-6 flex justify-center items-center h-screen bg-red-50">
+        <div className="text-center">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <p className="text-xl text-red-600 mb-4">{error}</p>
+          <Button 
+            onClick={handleRefresh} 
+            disabled={actionLoading}
+            style={{ backgroundColor: '#6400A4', color: 'white' }}
+          >
+            {actionLoading ? 'Tentando...' : 'Tentar Novamente'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 overflow-hidden">
@@ -110,22 +234,23 @@ export default function ManagerDashboard({ onSectionChange }: ManagerDashboardPr
           </p>
         </div>
         <Button 
+          onClick={handleRefresh}
+          disabled={actionLoading}
+          variant="outline"
           className="flex items-center space-x-2"
-          style={{ backgroundColor: '#6400A4', color: 'white' }}
-          onClick={() => setIsAIOpen(true)}
         >
-          <Bot className="h-4 w-4" />
-          <span>IA</span>
+          <Clock className="h-4 w-4" />
+          <span>{actionLoading ? 'Atualizando...' : 'Atualizar'}</span>
         </Button>
       </div>
 
-      {/* Status Cards - Topo */}
+      {/* Status Cards - Topo (CONECTADOS) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border-2 border-green-500">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Concluídos</p>
-              <p className="text-3xl text-green-600">12</p>
+              <p className="text-3xl text-green-600">{stats?.concluido || 0}</p>
             </div>
             <CheckCircle className="h-10 w-10 text-green-500 opacity-50" />
           </div>
@@ -135,7 +260,7 @@ export default function ManagerDashboard({ onSectionChange }: ManagerDashboardPr
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Em Andamento</p>
-              <p className="text-3xl" style={{ color: '#35BAE6' }}>8</p>
+              <p className="text-3xl" style={{ color: '#35BAE6' }}>{stats?.['em-andamento'] || 0}</p>
             </div>
             <Clock className="h-10 w-10" style={{ color: '#35BAE6', opacity: 0.5 }} />
           </div>
@@ -145,7 +270,7 @@ export default function ManagerDashboard({ onSectionChange }: ManagerDashboardPr
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Agendados</p>
-              <p className="text-3xl text-gray-800">15</p>
+              <p className="text-3xl text-gray-800">{stats?.agendado || 0}</p>
             </div>
             <Calendar className="h-10 w-10 text-gray-600 opacity-50" />
           </div>
@@ -155,14 +280,14 @@ export default function ManagerDashboard({ onSectionChange }: ManagerDashboardPr
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Pendentes</p>
-              <p className="text-3xl text-orange-600">3</p>
+              <p className="text-3xl text-orange-600">{stats?.pendente || 0}</p>
             </div>
             <AlertCircle className="h-10 w-10 text-orange-500 opacity-50" />
           </div>
         </div>
       </div>
 
-      {/* Mapa da Cidade - Centro */}
+      {/* Mapa da Cidade - Centro (DADOS FALSOS) */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-black flex items-center">
@@ -172,17 +297,16 @@ export default function ManagerDashboard({ onSectionChange }: ManagerDashboardPr
         </CardHeader>
         <CardContent>
           <div className="relative rounded-lg h-96 overflow-hidden border-2 border-gray-200">
-            {/* Imagem de fundo do mapa */}
-            <ImageWithFallback
-              src="https://images.unsplash.com/photo-1693107493680-a05d590a8cd8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaXR5JTIwbWFwJTIwYWVyaWFsJTIwdmlld3xlbnwxfHx8fDE3NjEwMTIwMTh8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-              alt="Mapa da cidade"
-              className="absolute inset-0 w-full h-full object-cover opacity-30"
-            />
+            {/* Placeholder do Mapa */}
+            <div className="absolute inset-0 w-full h-full object-cover opacity-30 bg-gray-200" />
+            <div className="absolute inset-0 w-full h-full flex items-center justify-center">
+              <p className="text-gray-500">Placeholder do Mapa</p>
+            </div>
             
             {/* Overlay gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 to-green-50/80"></div>
             
-            {/* Equipes no mapa */}
+            {/* Equipes no mapa (usando 'teams' falso) */}
             {teams.map((team, index) => (
               <div 
                 key={index}
@@ -204,7 +328,7 @@ export default function ManagerDashboard({ onSectionChange }: ManagerDashboardPr
               </div>
             ))}
 
-            {/* Legenda */}
+            {/* Legenda do Mapa */}
             <div className="absolute top-4 right-4 bg-white/95 rounded-lg p-3 shadow-lg z-10">
               <div className="flex items-center space-x-2 mb-2">
                 <div className="w-3 h-3 rounded-full bg-green-500 border-2 border-white shadow"></div>
@@ -217,7 +341,7 @@ export default function ManagerDashboard({ onSectionChange }: ManagerDashboardPr
             </div>
           </div>
           
-          {/* Lista de Equipes */}
+          {/* Lista de Equipes (usando 'teams' falso) */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {teams.map((team, index) => (
               <div 
@@ -240,50 +364,53 @@ export default function ManagerDashboard({ onSectionChange }: ManagerDashboardPr
         </CardContent>
       </Card>
 
-      {/* Tabela de Serviços */}
+      {/* Tabela de Serviços (CONECTADA) */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-black">Serviços em Andamento</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-black">Serviços Ativos</CardTitle>
+          <Badge variant="outline" className="text-sm">
+            Total: {services.length}
+          </Badge>
         </CardHeader>
         <CardContent className="max-h-96 overflow-y-auto scrollbar-hide">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-black">OS</TableHead>
-                <TableHead className="text-black">Cliente</TableHead>
-                <TableHead className="text-black">Serviço</TableHead>
-                <TableHead className="text-black">Equipe</TableHead>
-                <TableHead className="text-black">Status</TableHead>
-                <TableHead className="text-black">Prazo</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {services.map((service) => (
-                <TableRow key={service.id}>
-                  <TableCell className="text-black">{service.id}</TableCell>
-                  <TableCell className="text-black">{service.cliente}</TableCell>
-                  <TableCell className="text-black">{service.servico}</TableCell>
-                  <TableCell className="text-black">{service.equipe}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(service.status)}
-                      {getStatusBadge(service.status)}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-black">{service.prazo}</TableCell>
+          {services.length === 0 ? (
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">Nenhum serviço ativo no momento</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-black">OS</TableHead>
+                  <TableHead className="text-black">Cliente</TableHead>
+                  <TableHead className="text-black">Serviço</TableHead>
+                  <TableHead className="text-black">Equipe</TableHead>
+                  <TableHead className="text-black">Status</TableHead>
+                  <TableHead className="text-black">Prazo</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {services.map((service) => (
+                  <TableRow key={service.id}>
+                    <TableCell className="font-medium text-black">{service.id}</TableCell>
+                    <TableCell className="text-black">{service.cliente}</TableCell>
+                    <TableCell className="text-black">{service.servico}</TableCell>
+                    <TableCell className="text-black">{service.equipe}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(service.status)}
+                        {getStatusBadge(service.status)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-black">{service.prazo}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
-
-      {/* AI Assistant Modal */}
-      <AIAssistant
-        isOpen={isAIOpen}
-        onClose={() => setIsAIOpen(false)}
-        userType="gestor"
-      />
     </div>
   );
 }
