@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
+const PDFDocument = require("pdfkit");
 
 // --- IMPORTAÇÃO DAS ROTAS ---
 const clientRoutes = require('./routes/clientRoutes');
@@ -85,3 +87,7 @@ app.listen(5000, () => {
   console.log(" Servidor backend rodando na porta 5000");
 });
 
+// =====================
+// 🔹 INICIAR SERVIDOR
+// =====================
+app.listen(5000, () => console.log(" Servidor backend rodando na porta 5000"));

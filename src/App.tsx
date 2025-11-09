@@ -6,10 +6,10 @@ import DashboardScreen from './screens/administrador/DashboardScreen';
 import UserProfilesScreen from './components/UserProfilesScreen';
 import PhotoUploadSection from './components/PhotoUploadSection';
 import CommunicationScreen from './screens/chat/CommunicationScreen';
-import ClientsScreen from './screens/cliente/ClientsScreen';
+import ClientsScreen from './screens/gestor/ClientsScreen';
 import ClientRatingsScreen from './screens/cliente/ClientRatingsScreen';
 import ServiceRequestScreen from './screens/cliente/ServiceRequestScreen';
-import RequestsViewScreen from './screens/cliente/RequestsViewScreen';
+import RequestsViewScreen from './screens/gestor/RequestsViewScreen';
 import ProfileSettingsScreen from './components/ProfileSettingsScreen';
 import NotificationsScreen from './components/NotificationsScreen';
 import UserManagementScreen from './components/UserManagementScreen';
@@ -35,7 +35,7 @@ import ClientServicePhotosScreen from './screens/cliente/ClientServicePhotosScre
 import CollaboratorAllocationsScreen from './screens/colaborador/CollaboratorAllocationsScreen';
 import ManagerPhotoReviewScreen from './screens/gestor/ManagerPhotoReviewScreen';
 import AdminPhotoHistoryScreen from './screens/administrador/AdminPhotoHistoryScreen';
-import ServiceOrdersScreen from './screens/cliente/ServiceOrdersScreen';
+import ServiceOrdersScreen from './screens/administrador/ServiceOrdersScreen';
 import AIAssistant from './components/AIAssistant';
 import { Toaster } from './components/ui/sonner';
 
