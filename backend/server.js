@@ -26,6 +26,10 @@ app.use('/api/manager', managerRoutes);
 // 🔹 REGISTRAR ASSOCIAÇÕES (O LUGAR CORRETO)
 // =============================================
 // Importa todos os models
+const sequelize = require('./config/database');
+
+if (sequelize) {
+  console.log('🔗 Registrando associações dos models...');
 const User = require('./models/User');
 const Team = require('./models/Team');
 const TeamMember = require('./models/TeamMember');
@@ -76,6 +80,11 @@ ServiceCatalog.belongsTo(ServiceCategory, {
   foreignKey: 'category_id',
   as: 'category'
 });
+
+console.log('✅ Associações registradas com sucesso.');
+} else {
+  console.log('⚙️ Associações ignoradas (modo mock ativo).');
+}
 // === FIM DA CORREÇÃO ===
 
 // --- FIM DO REGISTRO ---
@@ -87,7 +96,3 @@ app.listen(5000, () => {
   console.log(" Servidor backend rodando na porta 5000");
 });
 
-// =====================
-// 🔹 INICIAR SERVIDOR
-// =====================
-app.listen(5000, () => console.log(" Servidor backend rodando na porta 5000"));
