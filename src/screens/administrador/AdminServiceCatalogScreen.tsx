@@ -15,7 +15,7 @@ import DeleteConfirmationDialog from './catalog/DeleteConfirmationDialog';
 import CategoriesTab from './catalog/CategoriesTab';
 import DeleteCategoryDialog from './catalog/DeleteCategoryDialog';
 
-const API_URL = 'http://localhost:5000/api/manager';
+const API_URL = 'http://localhost:5000/api/admin';
 
 export default function ServiceCatalogScreen({ onBack }: ServiceCatalogScreenProps) {
   // Estados para dados da API
