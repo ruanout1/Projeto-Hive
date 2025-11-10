@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Camera, Upload, X, Check, Calendar, MapPin } from 'lucide-react';
-import ScreenHeader from './ScreenHeader';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Label } from './ui/label';
+import ScreenHeader from '../../components/ScreenHeader';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Label } from '../../components/ui/label';
 import { toast } from 'sonner';
 
 interface AssignedService {

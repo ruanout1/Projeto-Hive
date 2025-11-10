@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import ScreenHeader from './ScreenHeader';
+import ScreenHeader from '../../components/ScreenHeader';
 import { 
   Calendar as CalendarIcon, 
   Clock, 
@@ -10,11 +10,11 @@ import {
   Users,
   Briefcase
 } from 'lucide-react';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Card, CardContent } from './ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Avatar, AvatarFallback } from './ui/avatar';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Card, CardContent } from '../../components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 
 interface ScheduleItem {
   id: string;

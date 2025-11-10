@@ -11,7 +11,7 @@ export const useTeams = () => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('http://localhost:5000/api/manager/teams');
+      const response = await fetch('http://localhost:5000/api/admin/teams');
       
       if (!response.ok) {
         throw new Error(`Erro ${response.status}: ${response.statusText}`);

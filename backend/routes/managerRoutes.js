@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const managerController = require('../controllers/managerController');
-const { Servico } = require('../models/Servico'); // Verifique se este model ainda é usado ou pode ser removido
 
 // =====================
 // ROTAS DO DASHBOARD
@@ -12,75 +11,64 @@ router.get('/dashboard/stats', managerController.getDashboardStats);
 router.get('/requests/active', managerController.getActiveRequests);
 
 // =====================
-// ROTAS DO CATÁLOGO DE SERVIÇOS
+// ROTAS DAS SOLICITAÇÕES DE SERVIÇO
 // =====================
-// GET /api/manager/categories
-router.get('/categories', managerController.getAllCategories);
-// POST /api/manager/categories
-router.post('/categories', managerController.createCategory);
-// GET /api/manager/catalog
-router.get('/catalog', managerController.getAllCatalogServices);
-// POST /api/manager/catalog
-router.post('/catalog', managerController.createCatalogService);
-// PUT /api/manager/catalog/:id
-router.put('/catalog/:id', managerController.updateCatalogService);
-// PUT /api/manager/catalog/:id/status
-router.put('/catalog/:id/status', managerController.updateCatalogServiceStatus);
-// DELETE /api/manager/catalog/:id
-router.delete('/catalog/:id', managerController.deleteCatalogService);
+
+// ESTATÍSTICAS DO GESTOR
+router.get('/service-requests/stats', managerController.getServiceRequestsStats);
+
+// LISTAGEM DE SOLICITAÇÕES
+router.get('/service-requests', managerController.getServiceRequests);
+router.get('/service-requests/:id', managerController.getServiceRequestById);
+
+// AÇÕES DO GESTOR
+router.put('/service-requests/:id/accept', managerController.acceptServiceRequest);
+router.put('/service-requests/:id/refuse', managerController.refuseServiceRequest);
+
+// FILTROS E BUSCA
+router.get('/service-requests/filter/area', managerController.getRequestsByArea);
+router.get('/service-requests/search', managerController.searchServiceRequests);
+
 // =====================
-// ROTAS DO CATÁLOGO DE SERVIÇOS
+// ROTAS DOS CLIENTES
 // =====================
-// GET /api/manager/categories
-router.get('/categories', managerController.getAllCategories);
-// POST /api/manager/categories
-router.post('/categories', managerController.createCategory);
-// PUT /api/manager/categories/:id  ✅ NOVA ROTA
-router.put('/categories/:id', managerController.updateCategory);
-// DELETE /api/manager/categories/:id  ✅ NOVA ROTA
-router.delete('/categories/:id', managerController.deleteCategory);
 
-// GET /api/manager/catalog
-router.get('/catalog', managerController.getAllCatalogServices);
-// POST /api/manager/catalog
-router.post('/catalog', managerController.createCatalogService);
-// PUT /api/manager/catalog/:id
-router.put('/catalog/:id', managerController.updateCatalogService);
-// PUT /api/manager/catalog/:id/status
-router.put('/catalog/:id/status', managerController.updateCatalogServiceStatus);
-// DELETE /api/manager/catalog/:id
-router.delete('/catalog/:id', managerController.deleteCatalogService);
+// ESTATÍSTICAS DE CLIENTES
+router.get('/clients/stats', managerController.getClientsStats);
 
+// LISTAGEM DE CLIENTES
+router.get('/clients', managerController.getClients);
+router.get('/clients/:id', managerController.getClientById);
 
-// ==========================================================
-// NOVAS ROTAS - GERENCIAMENTO DE EQUIPES (TeamManagement)
-// ==========================================================
+// CRUD DE CLIENTES (SEM EXCLUIR)
+router.post('/clients', managerController.createClient);
+router.put('/clients/:id', managerController.updateClient);
+router.put('/clients/:id/status', managerController.toggleClientStatus);
 
-// --- Rotas de Usuários (para preencher os seletores) ---
+// FILTROS E BUSCA DE CLIENTES
+router.get('/clients/filter/area', managerController.getClientsByArea);
+router.get('/clients/search', managerController.searchClients);
 
-// GET /api/manager/users/managers (Lista gestores disponíveis)
-router.get('/users/managers', managerController.getAvailableManagers);
+// GERENCIAMENTO DE UNIDADES/LOCALIZAÇÕES
+router.post('/clients/:id/locations', managerController.addClientLocation);
+router.put('/clients/:id/locations/:locationId', managerController.updateClientLocation);
+router.delete('/clients/:id/locations/:locationId', managerController.removeClientLocation);
 
-// GET /api/manager/users/staff (Lista colaboradores disponíveis)
-router.get('/users/staff', managerController.getAvailableStaff);
+// =====================
+// ROTAS DO CONTROLE DE PONTO (NOVA TELA)
+// =====================
 
-// --- Rotas de Equipes (CRUD Completo) ---
+// ESTATÍSTICAS E LISTAGEM
+router.get('/time-records/stats', managerController.getTimeRecordsStats);
+router.get('/time-records', managerController.getTimeRecords);
+router.get('/time-records/teams', managerController.getManagerTeams);
 
-// GET /api/manager/teams (Lista todas as equipes com seus gestores e membros)
-router.get('/teams', managerController.getAllTeams);
+// DETALHES E AÇÕES
+router.get('/time-records/:id', managerController.getTimeRecordById);
+router.post('/time-records/:id/justify', managerController.justifyTimeRecord);
 
-// POST /api/manager/teams (Cria uma nova equipe e associa membros)
-router.post('/teams', managerController.createTeam);
-
-// PUT /api/manager/teams/:id (Atualiza uma equipe e seus membros)
-router.put('/teams/:id', managerController.updateTeam);
-
-// PUT /api/manager/teams/:id/status (Ativa/Inativa uma equipe)
-router.put('/teams/:id/status', managerController.updateTeamStatus);
-
-// DELETE /api/manager/teams/:id (Exclui uma equipe)
-router.delete('/teams/:id', managerController.deleteTeam);
-// ==========================================================
-
+// RELATÓRIOS E EXPORTAÇÃO
+router.post('/time-records/export', managerController.exportTimeRecords);
+router.post('/time-records/export/preview', managerController.previewTimeRecordsExport);
 
 module.exports = router;

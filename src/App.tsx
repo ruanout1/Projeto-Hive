@@ -1,43 +1,43 @@
 import { useState } from 'react';
 import LoginScreen from './components/LoginScreen';
 import Navigation from './components/Navigation';
-import Sidebar from './screens/gestor/Sidebar';
-import DashboardScreen from './screens/administrador/DashboardScreen';
+import Sidebar from './components/Sidebar';
+import DashboardScreen from './screens/administrador/AdminDashboardarrumar';
 import UserProfilesScreen from './components/UserProfilesScreen';
-import PhotoUploadSection from './components/PhotoUploadSection';
+import PhotoUploadSection from './screens/colaborador/CollaboratorPhotoUploadSection';
 import CommunicationScreen from './screens/chat/CommunicationScreen';
-import ClientsScreen from './screens/gestor/ClientsScreen';
+import ClientsScreen from './screens/gestor/ManagerClientsScreen';
 import ClientRatingsScreen from './screens/cliente/ClientRatingsScreen';
 import ServiceRequestScreen from './screens/cliente/ServiceRequestScreen';
-import RequestsViewScreen from './screens/gestor/RequestsViewScreen';
+import RequestsViewScreen from './components/RequestsViewScreen';
 import ProfileSettingsScreen from './components/ProfileSettingsScreen';
 import NotificationsScreen from './components/NotificationsScreen';
-import UserManagementScreen from './components/UserManagementScreen';
-import TeamManagementScreen from './screens/administrador/TeamManagementScreen';
-import TeamReportsScreen from './screens/gestor/TeamReportsScreen';
-import ServiceCatalogScreen from './screens/administrador/ServiceCatalogScreen';
+import UserManagementScreen from './screens/administrador/AdminUserManagementScreen';
+import TeamManagementScreen from './screens/administrador/AdminTeamManagementScreen';
+import TeamReportsScreen from './components/TeamReportsScreen';
+import ServiceCatalogScreen from './screens/administrador/AdminServiceCatalogScreen';
 import AdminRatingsScreen from './screens/administrador/AdminRatingsScreen';
-import AdminTimeClockScreen from './screens/administrador/AdminTimeClockScreen';
-import ManagerTimeClockScreen from './screens/gestor/ManagerTimeClockScreen';
+import AdminTimeClockScreen from './screens/administrador/AdminEmployeeControlScreen';
+import ManagerEmployeeControlScreen from './screens/gestor/ManagerEmployeeControlScreen';
 import CollaboratorTimeClockScreen from './screens/colaborador/CollaboratorTimeClockScreen';
-import MyScheduleScreen from './components/MyScheduleScreen';
-import ServiceRequestsManagement from './screens/gestor/ServiceRequestsManagement';
+import MyScheduleScreen from './screens/gestor/ManagerPersonalScheduleScreen';
 import ManagerServiceRequests from './screens/gestor/ManagerServiceRequests';
 import ClientDocumentsScreen from './screens/cliente/ClientDocumentsScreen';
-import DocumentsScreen from './components/DocumentsScreen';
-import MyPersonalScheduleScreen from './components/MyPersonalScheduleScreen';
-import ServiceScheduleScreen from './screens/gestor/ServiceScheduleScreen';
+import DocumentsScreen from './screens/administrador/AdminDocumentsScreen';
+import MyPersonalScheduleScreen from './screens/administrador/AdminPersonalScheduleScreen';
+import ServiceScheduleScreen from './screens/gestor/ManagerServiceScheduleScreen';
 import ClientScheduledServicesScreen from './screens/cliente/ClientScheduledServicesScreen';
 import ClientExpensesDashboardScreen from './screens/cliente/ClientExpensesDashboardScreen';
 import ManagerPerformanceReportsScreen from './screens/gestor/ManagerPerformanceReportsScreen';
 import AdminPerformanceReportsScreen from './screens/administrador/AdminPerformanceReportsScreen';
 import ClientServicePhotosScreen from './screens/cliente/ClientServicePhotosScreen';
-import CollaboratorAllocationsScreen from './screens/colaborador/CollaboratorAllocationsScreen';
+import CollaboratorAllocationsScreen from './screens/gestor/ManagerAllocationsScreen';
 import ManagerPhotoReviewScreen from './screens/gestor/ManagerPhotoReviewScreen';
 import AdminPhotoHistoryScreen from './screens/administrador/AdminPhotoHistoryScreen';
-import ServiceOrdersScreen from './screens/administrador/ServiceOrdersScreen';
+import ServiceOrdersScreen from './screens/administrador/AdminServiceOrdersScreen';
 import AIAssistant from './components/AIAssistant';
 import { Toaster } from './components/ui/sonner';
+import AdminServiceRequests from './screens/administrador/AdminServiceRequests';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -153,7 +153,7 @@ export default function App() {
         return <AdminTimeClockScreen onBack={() => setActiveSection('dashboards')} />;
       }
       if (currentUser === 'gestor') {
-        return <ManagerTimeClockScreen onBack={() => setActiveSection('dashboards')} />;
+        return <ManagerEmployeeControlScreen onBack={() => setActiveSection('dashboards')} />;
       }
     }
     if (activeSection === 'meu-ponto') {
@@ -164,7 +164,7 @@ export default function App() {
     }
     if (activeSection === 'gerenciar-solicitacoes') {
       if (currentUser === 'administrador') {
-        return <ServiceRequestsManagement />;
+        return <AdminServiceRequests />;
       }
       if (currentUser === 'gestor') {
         return <ManagerServiceRequests />;

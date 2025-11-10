@@ -10,7 +10,7 @@ export const useTeamMutations = () => {
     setError(null);
     
     try {
-      const response = await fetch('http://localhost:5000/api/manager/teams', {
+      const response = await fetch('http://localhost:5000/api/admin/teams', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(teamData),
@@ -31,7 +31,7 @@ export const useTeamMutations = () => {
     setError(null);
     
     try {
-      const response = await fetch(`http://localhost:5000/api/manager/teams/${teamId}`, {
+      const response = await fetch(`http://localhost:5000/api/admin/teams/${teamId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(teamData),
@@ -53,7 +53,7 @@ export const useTeamMutations = () => {
     setError(null);
     
     try {
-      const response = await fetch(`http://localhost:5000/api/manager/teams/${teamId}/status`, {
+      const response = await fetch(`http://localhost:5000/api/admin/teams/${teamId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
@@ -74,7 +74,7 @@ export const useTeamMutations = () => {
     setError(null);
     
     try {
-      const response = await fetch(`http://localhost:5000/api/manager/teams/${teamId}`, {
+      const response = await fetch(`http://localhost:5000/api/admin/teams/${teamId}`, {
         method: 'DELETE',
       });
       

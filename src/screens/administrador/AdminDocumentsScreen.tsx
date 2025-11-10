@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { FileText, Upload, Download, Eye, Edit, Trash2, Plus, Search, Filter, File, FileCheck, EyeOff, X } from 'lucide-react';
-import ScreenHeader from './ScreenHeader';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
+import ScreenHeader from '../../components/ScreenHeader';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../components/ui/alert-dialog';
 import { toast } from 'sonner';
 
 type DocumentType = 'contrato' | 'nota-fiscal' | 'ordem-servico' | 'outros';
