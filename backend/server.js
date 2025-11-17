@@ -7,6 +7,7 @@ const PDFDocument = require("pdfkit");
 // --- IMPORTAÇÃO DAS ROTAS ---
 const clientRoutes = require('./routes/clientRoutes');
 const managerRoutes = require('./routes/managerRoutes'); 
+const communicationRoutes = require('./routes/communicationRoutes');
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use("/src", express.static(path.join(__dirname, "src")));
 // =====================
 app.use('/api/clientes', clientRoutes); 
 app.use('/api/manager', managerRoutes);
+app.use('/api/communication', communicationRoutes);
 
 // =============================================
 // 🔹 REGISTRAR ASSOCIAÇÕES (O LUGAR CORRETO)

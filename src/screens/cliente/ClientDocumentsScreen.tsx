@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, Eye, Search, File, FileCheck, Calendar, Trash2 } from 'lucide-react';
+import { FileText, Download, Eye, Search, File, FileCheck, Calendar, Trash2, AlertTriangle,  } from 'lucide-react';
 import ScreenHeader from '../../components/ScreenHeader';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
 import { toast } from 'sonner';
 
 type DocumentType = 'contrato' | 'nota-fiscal' | 'ordem-servico' | 'outros';
@@ -36,6 +36,9 @@ export default function ClientDocumentsScreen({ onBack }: { onBack?: () => void 
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [viewingDocument, setViewingDocument] = useState<ClientDocument | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  // 🔹 Novo estado para confirmação de exclusão
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<ClientDocument | null>(null);
 
   // 🔹 useEffect híbrido (mock + backend)
   useEffect(() => {
@@ -81,43 +84,45 @@ export default function ClientDocumentsScreen({ onBack }: { onBack?: () => void 
     return configs[type];
   };
 
-  // 🔹 Ações
+  // 🔹 Ações visualizar
   const handleViewDocument = (doc: ClientDocument) => {
     setViewingDocument(doc);
     setIsViewDialogOpen(true);
   };
 
-  const handleDownloadDocument = (doc: ClientDocument) => {
-    toast.success(`⬇ Download iniciado: ${doc.name}`);
-    const link = document.createElement('a');
-    link.href = '#';
-    link.download = doc.name;
+   // 🔹 Download (real para notas fiscais)
+   const handleDownloadDocument = (doc: ClientDocument) => {
+    if (doc.type === 'nota-fiscal') {
+      const idNum = doc.id.replace('DOC-', '').replace('NF-', '');
+      window.open(`http://localhost:5000/api/clientes/invoice/${idNum}/pdf`, '_blank');
+    } else {
+      toast.info(`⬇ Download simulado: ${doc.name}`);
+    }
+  };
+  // 🔹 Abrir modal de confirmação
+  const confirmDelete = (doc: ClientDocument) => {
+    setDocumentToDelete(doc);
+    setIsDeleteConfirmOpen(true);
   };
 
-  const handleDeleteDocument = async (doc: ClientDocument) => {
+  // 🔹 Excluir (confirmado)
+  const handleDeleteDocument = async () => {
+    if (!documentToDelete) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/clientes/documentos/${doc.id}`, {
+      const res = await fetch(`http://localhost:5000/api/clientes/documentos/${documentToDelete.id}`, {
         method: 'DELETE',
       });
   
       if (!res.ok) throw new Error('Erro ao excluir documento');
   
-      // Atualiza a lista local imediatamente
-      setDocuments(prev => prev.filter(d => d.id !== doc.id));
+      setDocuments(prev => prev.filter(d => d.id !== documentToDelete.id));
       toast.success('🗑️ Documento excluído com sucesso!');
-  
-      // 🔹 Em seguida, sincroniza com o backend (caso haja atualizações)
-      const refresh = await fetch('http://localhost:5000/api/clientes/documentos');
-      if (refresh.ok) {
-        const updatedDocs = await refresh.json();
-        setDocuments(updatedDocs);
-      }
+      setIsDeleteConfirmOpen(false);
     } catch {
       toast.error('Erro ao remover documento do backend.');
     }
   };
 
-  // ====================================
   // 🔹 Renderização principal
   // ====================================
   return (
@@ -180,7 +185,7 @@ export default function ClientDocumentsScreen({ onBack }: { onBack?: () => void 
                   <Button style={{ backgroundColor: '#10B981', color: 'white' }} onClick={() => handleDownloadDocument(doc)}>
                     <Download className="h-3 w-3 mr-1" /> Download
                   </Button>
-                  <Button variant="outline" style={{ borderColor: '#FF4B4B', color: '#FF4B4B' }} onClick={() => handleDeleteDocument(doc)}>
+                  <Button variant="outline" style={{ borderColor: '#FF4B4B', color: '#FF4B4B' }} onClick={() => confirmDelete(doc)}>
                     <Trash2 className="h-3 w-3 mr-1" /> Excluir
                   </Button>
                 </div>
@@ -204,6 +209,29 @@ export default function ClientDocumentsScreen({ onBack }: { onBack?: () => void 
               <p><strong>Tamanho:</strong> {viewingDocument.fileSize}</p>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 🔸 Modal de confirmação de exclusão */}
+      <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" /> Confirmar exclusão
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-gray-700 mb-4">
+            Tem certeza que deseja excluir o documento <strong>{documentToDelete?.name}</strong>?<br />
+            Essa ação não poderá ser desfeita.
+          </p>
+          <DialogFooter className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>
+              Cancelar
+            </Button>
+            <Button style={{ backgroundColor: '#FF4B4B', color: 'white' }} onClick={handleDeleteDocument}>
+              Excluir
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
