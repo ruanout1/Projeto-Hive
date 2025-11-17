@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { ArrowLeft, Mail, Send, CheckCircle } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import HiveLogo from './Logo/HiveLogo';
+// Usando caminhos absolutos baseados na sua configuração
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import HiveLogo from '../../components/Logo/HiveLogo';
+import { toast } from 'sonner'; // Adicionado para feedback
 
 interface ForgotPasswordScreenProps {
   onBackToLogin: () => void;
@@ -21,28 +23,48 @@ export default function ForgotPasswordScreen({ onBackToLogin }: ForgotPasswordSc
     return emailRegex.test(email);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // --- LÓGICA DE SUBMISSÃO ATUALIZADA ---
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!email) {
-      setError('Por favor, informe seu e-mail');
-      return;
-    }
-
-    if (!validateEmail(email)) {
+    if (!email || !validateEmail(email)) {
       setError('Por favor, informe um e-mail válido');
       return;
     }
 
     setIsLoading(true);
 
-    // Simular envio do e-mail (em produção, fazer chamada à API)
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // 1. Chamar a API de "esqueci a senha"
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Mesmo que o backend sempre retorne 200,
+        // tratamos um 500 (erro de servidor) aqui.
+        throw new Error(data.message || 'Erro ao enviar e-mail');
+      }
+      
+      // 2. SUCESSO! A API aceitou a requisição.
+      // O backend simulou o envio, agora o frontend
+      // pode mostrar a tela de sucesso.
       setIsSubmitted(true);
-    }, 1500);
+
+    } catch (err) {
+      toast.error('Erro no Servidor', { description: (err as Error).message });
+    } finally {
+      setIsLoading(false);
+    }
   };
+  // --- FIM DA LÓGICA ATUALIZADA ---
 
   if (isSubmitted) {
     return (
@@ -57,9 +79,9 @@ export default function ForgotPasswordScreen({ onBackToLogin }: ForgotPasswordSc
                 <CheckCircle className="h-8 w-8" style={{ color: '#6400A4' }} />
               </div>
             </div>
-            <CardTitle style={{ color: '#6400A4' }}>E-mail Enviado!</CardTitle>
+            <CardTitle style={{ color: '#6400A4' }}>Verifique seu E-mail!</CardTitle>
             <CardDescription className="text-center mt-2">
-              Enviamos um link de redefinição de senha para:
+              Se uma conta existir, enviaremos um link de redefinição para:
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -68,37 +90,17 @@ export default function ForgotPasswordScreen({ onBackToLogin }: ForgotPasswordSc
             </div>
 
             <div className="space-y-2 text-sm text-gray-600">
-              <p>Por favor, verifique sua caixa de entrada e siga as instruções para redefinir sua senha.</p>
-              <p>O link é válido por 24 horas.</p>
+              <p>Por favor, verifique sua caixa de entrada e siga as instruções.</p>
             </div>
 
-            <div className="bg-yellow-50 border-l-4 p-3 rounded" style={{ borderColor: '#FFFF20' }}>
-              <p className="text-xs text-gray-700">
-                <strong>Não recebeu o e-mail?</strong> Verifique sua caixa de spam ou tente novamente em alguns minutos.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Button
-                className="w-full"
-                onClick={() => {
-                  setIsSubmitted(false);
-                  setEmail('');
-                }}
-                style={{ backgroundColor: '#6400A4', color: 'white' }}
-              >
-                Reenviar E-mail
-              </Button>
-              
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={onBackToLogin}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar ao Login
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={onBackToLogin}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar ao Login
+            </Button>
           </CardContent>
         </Card>
       </div>

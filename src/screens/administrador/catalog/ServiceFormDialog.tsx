@@ -5,7 +5,7 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
-import { Service, ServiceFormData, Category, emptyFormData } from './types';
+import { Service, ServiceFormData, Category } from './types';
 
 interface ServiceFormDialogProps {
   open: boolean;
@@ -30,11 +30,26 @@ export default function ServiceFormDialog({
   loading,
   hasChanges
 }: ServiceFormDialogProps) {
+  // handleInputChange aceita strings vindos dos inputs e converte para number quando necessário
   const handleInputChange = (field: keyof ServiceFormData, value: string) => {
-    onFormDataChange({ ...formData, [field]: value });
+    if (field === 'price' || field === 'duration_value') {
+      // converter para number; se string vazia -> 0
+      const parsed = value === '' ? 0 : Number(value);
+      onFormDataChange({ ...formData, [field]: parsed } as ServiceFormData);
+    } else {
+      onFormDataChange({ ...formData, [field]: value } as ServiceFormData);
+    }
   };
 
-  const isFormValid = formData.name && formData.category_id && formData.price && formData.duration_value;
+  const isFormValid =
+    !!formData.name &&
+    !!formData.category_id &&
+    typeof formData.price === 'number' &&
+    !isNaN(formData.price) &&
+    formData.price >= 0 &&
+    typeof formData.duration_value === 'number' &&
+    !isNaN(formData.duration_value) &&
+    formData.duration_value > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -57,7 +72,7 @@ export default function ServiceFormDialog({
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
               placeholder="Ex: Limpeza Completa Residencial"
-              className={`mt-1 ${!formData.name && 'border-red-300 focus-visible:ring-red-300'}`}
+              className={`mt-1 ${!formData.name ? 'border-red-300 focus-visible:ring-red-300' : ''}`}
               disabled={loading}
             />
             {!formData.name && (
@@ -86,12 +101,12 @@ export default function ServiceFormDialog({
             {/* Campo Categoria */}
             <div>
               <Label htmlFor="serviceCategory" style={{ color: '#8B20EE' }}>Categoria *</Label>
-              <Select 
-                value={formData.category_id} 
+              <Select
+                value={formData.category_id}
                 onValueChange={(value: string) => handleInputChange('category_id', value)}
                 disabled={loading}
               >
-                <SelectTrigger className={`mt-1 ${!formData.category_id && 'border-red-300 focus-visible:ring-red-300'}`}>
+                <SelectTrigger className={`mt-1 ${!formData.category_id ? 'border-red-300 focus-visible:ring-red-300' : ''}`}>
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
@@ -119,10 +134,10 @@ export default function ServiceFormDialog({
                 value={formData.price}
                 onChange={(e) => handleInputChange('price', e.target.value)}
                 placeholder="0,00"
-                className={`mt-1 ${!formData.price && 'border-red-300 focus-visible:ring-red-300'}`}
+                className={`mt-1 ${formData.price === 0 ? 'border-red-300 focus-visible:ring-red-300' : ''}`}
                 disabled={loading}
               />
-              {!formData.price && (
+              {(!formData.price && formData.price !== 0) && (
                 <p className="text-red-500 text-xs mt-1 flex items-center">
                   <span className="w-1 h-1 bg-red-500 rounded-full mr-1"></span>
                   Preço é obrigatório
@@ -135,9 +150,9 @@ export default function ServiceFormDialog({
             {/* Campo Tipo de Duração */}
             <div>
               <Label htmlFor="serviceDurationType" style={{ color: '#8B20EE' }}>Tipo de Duração *</Label>
-              <Select 
-                value={formData.duration_type} 
-                onValueChange={(value: 'diaria' | 'semanal' | 'quinzenal' | 'mensal' | 'anual' | 'horas') => 
+              <Select
+                value={formData.duration_type}
+                onValueChange={(value: 'diaria' | 'semanal' | 'quinzenal' | 'mensal' | 'anual' | 'horas') =>
                   handleInputChange('duration_type', value)
                 }
                 disabled={loading}
@@ -169,10 +184,10 @@ export default function ServiceFormDialog({
                 value={formData.duration_value}
                 onChange={(e) => handleInputChange('duration_value', e.target.value)}
                 placeholder={formData.duration_type === 'horas' ? 'Ex: 4' : 'Ex: 1'}
-                className={`mt-1 ${!formData.duration_value && 'border-red-300 focus-visible:ring-red-300'}`}
+                className={`mt-1 ${formData.duration_value === 0 ? 'border-red-300 focus-visible:ring-red-300' : ''}`}
                 disabled={loading}
               />
-              {!formData.duration_value && (
+              {(formData.duration_value === 0) && (
                 <p className="text-red-500 text-xs mt-1 flex items-center">
                   <span className="w-1 h-1 bg-red-500 rounded-full mr-1"></span>
                   {formData.duration_type === 'horas' ? 'Quantidade de horas é obrigatória' : 'Quantidade é obrigatória'}
@@ -182,7 +197,7 @@ export default function ServiceFormDialog({
           </div>
 
           {/* Mensagem de campos obrigatórios */}
-          {(!formData.name || !formData.category_id || !formData.price || !formData.duration_value) && (
+          {(!formData.name || !formData.category_id || formData.price === 0 || formData.duration_value === 0) && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <p className="text-yellow-800 text-sm flex items-center">
                 <span className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
@@ -193,9 +208,9 @@ export default function ServiceFormDialog({
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => onOpenChange(false)} 
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
             disabled={loading}
             className="sm:order-1"
           >

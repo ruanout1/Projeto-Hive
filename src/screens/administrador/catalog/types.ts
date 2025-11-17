@@ -21,8 +21,8 @@ export interface ServiceFormData {
   name: string;
   description: string;
   category_id: string;
-  price: string;
-  duration_value: string;
+  price: number;            // agora number (conforme model Sequelize)
+  duration_value: number;   // agora number
   duration_type: 'diaria' | 'semanal' | 'quinzenal' | 'mensal' | 'anual' | 'horas';
 }
 
@@ -41,8 +41,8 @@ export const emptyFormData: ServiceFormData = {
   name: '',
   description: '',
   category_id: '',
-  price: '',
-  duration_value: '',
+  price: 0,
+  duration_value: 0,
   duration_type: 'horas'
 };
 

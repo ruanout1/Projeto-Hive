@@ -1,7 +1,7 @@
 import { Edit, Power, Trash2, ClipboardList } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
-import { Service, Category } from './types';
+import { Service } from './types';
 import { formatPrice, formatDuration, HighlightText } from './utils';
 
 interface ServiceListProps {
@@ -37,7 +37,7 @@ export default function ServiceList({
       {viewMode === 'grid' ? (
         <GridView
           services={services}
-          viewMode={viewMode} // ← ADICIONAR ESTA LINHA
+          viewMode={viewMode}
           searchTerm={searchTerm}
           onEditService={onEditService}
           onToggleStatus={onToggleStatus}
@@ -47,7 +47,7 @@ export default function ServiceList({
       ) : (
         <ListView
           services={services}
-          viewMode={viewMode} // ← ADICIONAR ESTA LINHA
+          viewMode={viewMode}
           searchTerm={searchTerm}
           onEditService={onEditService}
           onToggleStatus={onToggleStatus}
@@ -60,14 +60,14 @@ export default function ServiceList({
 }
 
 // Componente para visualização em grid
-function GridView({ 
-  services, 
-  viewMode, // ← ADICIONAR viewMode AQUI
-  searchTerm, 
-  onEditService, 
-  onToggleStatus, 
-  onDeleteService, 
-  loading 
+function GridView({
+  services,
+  viewMode,
+  searchTerm,
+  onEditService,
+  onToggleStatus,
+  onDeleteService,
+  loading
 }: ServiceListProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -87,14 +87,14 @@ function GridView({
 }
 
 // Componente para visualização em lista
-function ListView({ 
-  services, 
-  viewMode, // ← ADICIONAR viewMode AQUI
-  searchTerm, 
-  onEditService, 
-  onToggleStatus, 
-  onDeleteService, 
-  loading 
+function ListView({
+  services,
+  viewMode,
+  searchTerm,
+  onEditService,
+  onToggleStatus,
+  onDeleteService,
+  loading
 }: ServiceListProps) {
   return (
     <div className="space-y-3">
@@ -114,16 +114,21 @@ function ListView({
 }
 
 // Card individual do serviço (Grid)
-function ServiceCard({ 
-  service, 
-  searchTerm, 
-  onEditService, 
-  onToggleStatus, 
-  onDeleteService, 
-  loading 
-}: { 
+function ServiceCard({
+  service,
+  searchTerm,
+  onEditService,
+  onToggleStatus,
+  onDeleteService,
+  loading
+}: {
   service: Service;
-} & Omit<ServiceListProps, 'services' | 'viewMode'>) {
+  searchTerm: string;
+  onEditService: (service: Service) => void;
+  onToggleStatus: (service: Service) => void;
+  onDeleteService: (service: Service) => void;
+  loading: boolean;
+}) {
   const category = service.category;
 
   return (
@@ -148,11 +153,11 @@ function ServiceCard({
           {service.status === 'active' ? 'Ativo' : 'Inativo'}
         </Badge>
       </div>
-      
+
       <p className="text-sm text-gray-600 mb-4 line-clamp-2">
         {service.description}
       </p>
-      
+
       <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100">
         <div>
           <p className="text-xs text-gray-500">Preço</p>
@@ -163,7 +168,7 @@ function ServiceCard({
           <p className="text-sm">{formatDuration(service.duration_value, service.duration_type)}</p>
         </div>
       </div>
-      
+
       <div className="flex space-x-2">
         <Button
           variant="outline"
@@ -206,16 +211,21 @@ function ServiceCard({
 }
 
 // Item individual do serviço (Lista)
-function ServiceListItem({ 
-  service, 
-  searchTerm, 
-  onEditService, 
-  onToggleStatus, 
-  onDeleteService, 
-  loading 
-}: { 
+function ServiceListItem({
+  service,
+  searchTerm,
+  onEditService,
+  onToggleStatus,
+  onDeleteService,
+  loading
+}: {
   service: Service;
-} & Omit<ServiceListProps, 'services' | 'viewMode'>) {
+  searchTerm: string;
+  onEditService: (service: Service) => void;
+  onToggleStatus: (service: Service) => void;
+  onDeleteService: (service: Service) => void;
+  loading: boolean;
+}) {
   const category = service.category;
 
   return (
@@ -249,6 +259,7 @@ function ServiceListItem({
             <span className="text-xs text-gray-400">Criado em {new Date(service.created_at).toLocaleDateString('pt-BR')}</span>
           </div>
         </div>
+
         <div className="flex space-x-2 ml-4">
           <Button
             variant="outline"

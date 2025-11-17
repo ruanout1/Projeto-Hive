@@ -1,78 +1,65 @@
 const express = require('express');
 const router = express.Router();
+const clientController = require('../controllers/clientController'); 
+const { protect } = require('../middleware/authMiddleware');
+const { checkRole } = require('../middleware/authorizationMiddleware');
 
-// Importa os dados do nosso "banco de dados" mock
-// Assumindo que mockData.js está em database/mockData.js
-const {
-  currentService,
-  serviceHistory,
-  timeline,
-  serviceNotesData,
-  pastRatingsData,
-  serviceRequestsData
-} = require('../database/mockData');
+// 2. APLIQUE OS MIDDLEWARES AQUI
+// Isso garante que *todas* as rotas abaixo:
+// 1. Exigem que o usuário esteja logado (protect)
+// 2. Exigem que o usuário seja 'admin' OU 'manager' (checkRole)
+router.use(protect, checkRole(['admin', 'manager']));
 
 // =====================
-// ROTAS GET (Clientes)
-// =====================
-// As rotas aqui são relativas a /api/clientes
-
-// GET /api/clientes/current-service
-router.get("/current-service", (req, res) => res.json(currentService));
-
-// GET /api/clientes/history
-router.get("/history", (req, res) => res.json(serviceHistory));
-
-// GET /api/clientes/timeline
-router.get("/timeline", (req, res) => res.json(timeline));
-
-// GET /api/clientes/service-notes
-router.get("/service-notes", (req, res) => res.json(serviceNotesData));
-
-// GET /api/clientes/servicos (antiga /api/servicos)
-router.get("/servicos", (req, res) => res.json(serviceHistory));
-
-// GET /api/clientes/ratings
-router.get("/ratings", (req, res) => res.json(pastRatingsData));
-
-// GET /api/clientes/requests
-router.get("/requests", (req, res) => {
-  console.log("Enviando lista de solicitações para o frontend");
-  res.json(serviceRequestsData);
-});
-
-// =====================
-// ROTAS POST (Clientes)
+// ROTAS DOS CLIENTES
 // =====================
 
-// POST /api/clientes/ratings
-router.post("/ratings", (req, res) => {
-  const newRating = req.body;
-  pastRatingsData.unshift(newRating);
-  console.log(" Nova avaliação recebida do frontend:", newRating);
-  res.status(201).json({ message: "Avaliação recebida com sucesso!", data: newRating });
-});
+// 3. Limpe os prefixos das rotas (agora o prefixo /clients vai ficar no app.js)
+// (GET /api/clients/stats)
+router.get('/stats', clientController.getClientsStats);
 
-// POST /api/clientes/history
-router.post("/history", (req, res) => {
-  const newService = req.body;
-  newService.id = `OS-2025-${Math.floor(Math.random() * 900) + 100}`; 
-  newService.service = `${newService.service} (Criado via POST)`; 
-  console.log(" Novo serviço recebido do frontend:", newService);
-  serviceHistory.unshift(newService); 
-  res.status(201).json(newService);
-});
+// (GET /api/clients)
+router.get('/', clientController.getClients);
 
-// POST /api/clientes/requests
-router.post("/requests", (req, res) => {
-  const newRequest = req.body;
-  newRequest.id = `REQ-2025-${Math.floor(Math.random() * 900) + 100}`;
-  newRequest.status = 'em-analise'; // O backend define o status inicial
-  newRequest.requestedAt = new Date().toLocaleString('pt-BR');
-  console.log(" Nova solicitação recebida do frontend:", newRequest);
-  serviceRequestsData.unshift(newRequest); // Adiciona no início da lista
-  res.status(201).json(newRequest);
-});
+// (GET /api/clients/:id)
+router.get('/:id', clientController.getClientById);
 
-// Exporta o router para o server.js usar
+// (POST /api/clients)
+router.post('/', clientController.createClient);
+
+// (PUT /api/clients/:id)
+router.put('/:id', clientController.updateClient);
+
+// (PUT /api/clients/:id/status)
+router.put('/:id/status', clientController.toggleClientStatus);
+
+// (GET /api/clients/filter/area) - Esta rota pode ser removida ou simplificada, já que getClients fará o filtro
+// router.get('/filter/area', clientController.getClientsByArea);
+
+// (GET /api/clients/search) - Também pode ser removida se a rota principal (/) aceitar query params
+// router.get('/search', clientController.searchClients);
+
+// (POST /api/clients/:id/locations)
+router.post('/:id/locations', clientController.addClientLocation);
+
+// (PUT /api/clients/:id/locations/:locationId)
+router.put('/:id/locations/:locationId', clientController.updateClientLocation);
+
+// (DELETE /api/clients/:id/locations/:locationId)
+router.delete('/:id/locations/:locationId', clientController.removeClientLocation);
+
+// =====================
+// ROTA AUXILIAR PARA FORMULÁRIOS
+// =====================
+// (GET /api/clients/list/my-area)
+router.get(
+  '/list/my-area', 
+  protect, 
+  checkRole(['manager']), // Apenas gestores usam esta
+  clientController.getManagerClientsList
+);
+
+
 module.exports = router;
+
+

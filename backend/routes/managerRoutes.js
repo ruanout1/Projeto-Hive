@@ -2,6 +2,40 @@ const express = require('express');
 const router = express.Router();
 const managerController = require('../controllers/managerController');
 
+
+// DEBUG: Verificar se os métodos existem
+console.log('=== DEBUG MANAGER CONTROLLER ===');
+console.log('getScheduleStats:', typeof managerController.getScheduleStats);
+console.log('getSchedule:', typeof managerController.getSchedule);
+console.log('getScheduleItemById:', typeof managerController.getScheduleItemById);
+console.log('getScheduleByDate:', typeof managerController.getScheduleByDate);
+console.log('=== FIM DEBUG ===');
+
+// =====================
+// ROTAS DA AGENDA PESSOAL DO GESTOR
+// =====================
+
+// ESTATÍSTICAS DA AGENDA
+router.get('/schedule/stats', managerController.getScheduleStats);
+
+// LISTAGEM DE AGENDAMENTOS
+router.get('/schedule', managerController.getSchedule);
+router.get('/schedule/:id', managerController.getScheduleItemById);
+
+// FILTROS E BUSCA
+router.get('/schedule/filter/date', managerController.getScheduleByDate);
+router.get('/schedule/filter/type', managerController.getScheduleByType);
+router.get('/schedule/filter/status', managerController.getScheduleByStatus);
+
+// AÇÕES NA AGENDA
+router.post('/schedule', managerController.createScheduleItem);
+router.put('/schedule/:id', managerController.updateScheduleItem);
+router.put('/schedule/:id/status', managerController.updateScheduleItemStatus);
+router.delete('/schedule/:id', managerController.deleteScheduleItem);
+
+// CONFLITOS DE AGENDA
+router.get('/schedule/:id/conflicts', managerController.checkScheduleConflicts);
+
 // =====================
 // ROTAS DO DASHBOARD
 // =====================
@@ -34,7 +68,7 @@ router.get('/service-requests/search', managerController.searchServiceRequests);
 // =====================
 
 // ESTATÍSTICAS DE CLIENTES
-router.get('/clients/stats', managerController.getClientsStats);
+/*router.get('/clients/stats', managerController.getClientsStats);
 
 // LISTAGEM DE CLIENTES
 router.get('/clients', managerController.getClients);
@@ -52,7 +86,7 @@ router.get('/clients/search', managerController.searchClients);
 // GERENCIAMENTO DE UNIDADES/LOCALIZAÇÕES
 router.post('/clients/:id/locations', managerController.addClientLocation);
 router.put('/clients/:id/locations/:locationId', managerController.updateClientLocation);
-router.delete('/clients/:id/locations/:locationId', managerController.removeClientLocation);
+router.delete('/clients/:id/locations/:locationId', managerController.removeClientLocation);*/
 
 // =====================
 // ROTAS DO CONTROLE DE PONTO (NOVA TELA)

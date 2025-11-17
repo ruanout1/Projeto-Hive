@@ -10,12 +10,21 @@ const Team = sequelize.define('Team', {
   name: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true
+    unique: true
   },
   manager_user_id: {
     type: DataTypes.BIGINT.UNSIGNED,
     allowNull: true 
   },
+  // 'area_id' da sua tabela SQL
+  area_id: {
+    type: DataTypes.BIGINT.UNSIGNED,
+    allowNull: true
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
@@ -26,8 +35,6 @@ const Team = sequelize.define('Team', {
   createdAt: 'created_at',
   updatedAt: 'updated_at'
 });
-
-// A função setupAssociations() foi removida daqui
 
 module.exports = Team;
 

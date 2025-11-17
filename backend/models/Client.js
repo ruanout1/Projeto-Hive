@@ -1,41 +1,56 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
-// const User = require('./User'); // Removido para evitar loop
 
 const Client = sequelize.define('Client', {
-  client_id: {
-    type: DataTypes.BIGINT.UNSIGNED,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  user_id: {
-    type: DataTypes.BIGINT.UNSIGNED,
-    allowNull: false,
+  client_id: {
+    type: DataTypes.BIGINT.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  user_id: {
+    type: DataTypes.BIGINT.UNSIGNED,
+    allowNull: false,
+    unique: true
+  },
+  main_company_name: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  main_cnpj: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
     unique: true
-    // FK será definida na associação no server.js
-  },
-  main_company_name: {
-    type: DataTypes.STRING,
+  },
+  payment_day: {
+    type: DataTypes.TINYINT,
     allowNull: true
   },
-  main_cnpj: {
-    type: DataTypes.STRING(20),
-    allowNull: true,
-    unique: true
+  contract_start_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
   },
-  is_active: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true
-  }
-  // ... (outros campos: payment_day, contract_start_date, etc.)
+  contract_end_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
+  contract_value: {
+    type: DataTypes.DECIMAL(14, 2),
+    allowNull: true
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  is_active: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  }
 }, {
-  tableName: 'clients',
-  timestamps: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  tableName: 'clients',
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
 });
-
-// A função setupAssociations() foi removida daqui
 
 module.exports = Client;
 

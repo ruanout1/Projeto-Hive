@@ -2,15 +2,15 @@ import { Service } from './types';
 
 // Formatação de preço
 export const formatPrice = (price: number): string => {
-  return new Intl.NumberFormat('pt-BR', { 
-    style: 'currency', 
-    currency: 'BRL' 
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
   }).format(price);
 };
 
 // Formatação de duração
 export const formatDuration = (
-  duration: number, 
+  duration: number,
   durationType: 'diaria' | 'semanal' | 'quinzenal' | 'mensal' | 'anual' | 'horas'
 ): string => {
   let durationValue = duration;
@@ -21,7 +21,7 @@ export const formatDuration = (
   } else {
     durationValue = Math.round(durationValue);
   }
-  
+
   const typeLabels: Record<string, string[]> = {
     'diaria': ['diária', 'diárias'],
     'semanal': ['semana', 'semanas'],
@@ -30,10 +30,10 @@ export const formatDuration = (
     'anual': ['ano', 'anos'],
     'horas': ['hora', 'horas']
   };
-  
+
   const labels = typeLabels[durationType] || typeLabels['horas'];
   const label = (Number(durationValue) === 1) ? labels[0] : labels[1];
-  
+
   const formattedDuration = Number(durationValue).toLocaleString('pt-BR', {
     maximumFractionDigits: maximumFractionDigits,
     minimumFractionDigits: 0
@@ -43,17 +43,17 @@ export const formatDuration = (
 };
 
 // Componente HighlightText (agora em arquivo .tsx)
-export const HighlightText = ({ 
-  text, 
-  searchTerm 
-}: { 
-  text: string; 
-  searchTerm: string; 
+export const HighlightText = ({
+  text,
+  searchTerm
+}: {
+  text: string;
+  searchTerm: string;
 }) => {
   if (!searchTerm || !text) return <>{text}</>;
-  
+
   const parts = text.split(new RegExp(`(${searchTerm})`, 'gi'));
-  
+
   return (
     <>
       {parts.map((part, index) =>
@@ -71,19 +71,21 @@ export const HighlightText = ({
 
 // Filtro de serviços
 export const filterServices = (
-  services: Service[], 
-  searchTerm: string, 
-  filterStatus: string, 
+  services: Service[],
+  searchTerm: string,
+  filterStatus: string,
   filterCategory: string
 ): Service[] => {
+  const term = (searchTerm || '').toLowerCase();
+
   return services.filter(service => {
-    const matchesSearch = 
-      (service.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (service.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const matchesSearch =
+      (service.name || '').toLowerCase().includes(term) ||
+      (service.description || '').toLowerCase().includes(term);
+
     const matchesStatus = filterStatus === 'todos' || service.status === filterStatus;
     const matchesCategory = filterCategory === 'todas' || service.category?.id === filterCategory;
-    
+
     return matchesSearch && matchesStatus && matchesCategory;
   });
 };

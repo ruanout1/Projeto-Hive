@@ -1,113 +1,90 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { TeamMember } from '../types';
+import api from '../../../../lib/api'; // <-- 1. Caminho relativo corrigido
 
 export const useTeamMembers = (teamId?: string) => {
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchTeamMembers = async (id?: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const url = id ? `/api/teams/${id}/members` : '/api/team-members';
-      const response = await fetch(url);
-      
-      if (!response.ok) throw new Error('Erro ao carregar membros');
-      
-      const data = await response.json();
-      setMembers(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro desconhecido');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchTeamMembers = useCallback(async (id?: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // 2. Usa api.get
+      const url = id ? `/teams/${id}/members` : '/team-members';
+      const response = await api.get(url);
+      setMembers(response.data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Erro desconhecido');
+    } finally {
+      setLoading(false);
+    }
+  }, []); // useCallback
 
-  const addMember = async (userId: string, role: TeamMember['role'] = 'member'): Promise<boolean> => {
-    if (!teamId) return false;
+  const addMember = async (userId: string, role: TeamMember['role'] = 'member'): Promise<boolean> => {
+    if (!teamId) return false;
+    try {
+      // 3. Usa api.post
+      await api.post(`/teams/${teamId}/members`, { userId, role });
+      await fetchTeamMembers(teamId); // Recarrega
+      return true;
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Erro ao adicionar membro');
+      return false;
+    }
+  };
 
-    try {
-      const response = await fetch(`/api/teams/${teamId}/members`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, role }),
-      });
+  const removeMember = async (memberId: string): Promise<boolean> => {
+    try {
+      // 4. Usa api.delete
+      await api.delete(`/team-members/${memberId}`);
+      setMembers(prev => prev.filter(member => member.id !== memberId));
+      return true;
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Erro ao remover membro');
+      return false;
+    }
+  };
 
-      if (!response.ok) throw new Error('Erro ao adicionar membro');
+  const updateMemberRole = async (memberId: string, role: TeamMember['role']): Promise<boolean> => {
+    try {
+      // 5. Usa api.put
+      await api.put(`/team-members/${memberId}/role`, { role });
+      setMembers(prev =>
+        prev.map(member =>
+          member.id === memberId ? { ...member, role } : member
+        )
+      );
+      return true;
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Erro ao atualizar função');
+      return false;
+    }
+  };
 
-      await fetchTeamMembers(teamId);
-      return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao adicionar membro');
-      return false;
-    }
-  };
+  // ... (funções getMembersByTeam, getMemberCount permanecem iguais)
+  const getMembersByTeam = (teamId: string): TeamMember[] => {
+    return members.filter(member => member.teamId === teamId && member.isActive);
+  };
+  const getMemberCount = (teamId: string): number => {
+    return members.filter(member => member.teamId === teamId && member.isActive).length;
+  };
 
-  const removeMember = async (memberId: string): Promise<boolean> => {
-    try {
-      const response = await fetch(`/api/team-members/${memberId}`, {
-        method: 'DELETE',
-      });
+  useEffect(() => {
+    fetchTeamMembers(teamId);
+  }, [teamId, fetchTeamMembers]);
 
-      if (!response.ok) throw new Error('Erro ao remover membro');
-
-      setMembers(prev => prev.filter(member => member.id !== memberId));
-      return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao remover membro');
-      return false;
-    }
-  };
-
-  const updateMemberRole = async (memberId: string, role: TeamMember['role']): Promise<boolean> => {
-    try {
-      const response = await fetch(`/api/team-members/${memberId}/role`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }),
-      });
-
-      if (!response.ok) throw new Error('Erro ao atualizar função');
-
-      setMembers(prev =>
-        prev.map(member =>
-          member.id === memberId ? { ...member, role } : member
-        )
-      );
-      return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao atualizar função');
-      return false;
-    }
-  };
-
-  const getMembersByTeam = (teamId: string): TeamMember[] => {
-    return members.filter(member => member.teamId === teamId && member.isActive);
-  };
-
-  const getMemberCount = (teamId: string): number => {
-    return members.filter(member => member.teamId === teamId && member.isActive).length;
-  };
-
-  useEffect(() => {
-    if (teamId) {
-      fetchTeamMembers(teamId);
-    } else {
-      fetchTeamMembers();
-    }
-  }, [teamId]);
-
-  return {
-    members,
-    loading,
-    error,
-    addMember,
-    removeMember,
-    updateMemberRole,
-    getMembersByTeam,
-    getMemberCount,
-    refetch: () => fetchTeamMembers(teamId),
-  };
+  return {
+    members,
+    loading,
+    error,
+    addMember,
+    removeMember,
+    updateMemberRole,
+    getMembersByTeam,
+    getMemberCount,
+    refetch: () => fetchTeamMembers(teamId),
+  };
 };

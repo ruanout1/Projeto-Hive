@@ -40,33 +40,33 @@ router.delete('/teams/:id', administratorController.deleteTeam);
 // =====================
 
 // ESTATÍSTICAS GERAIS
-router.get('/service-requests/stats', administratorController.getServiceRequestsStats);
+//router.get('/service-requests/stats', administratorController.getServiceRequestsStats);
 
 // LISTAGEM COMPLETA
-router.get('/service-requests', administratorController.getAllServiceRequests);
-router.get('/service-requests/:id', administratorController.getServiceRequestDetails);
+//router.get('/service-requests', administratorController.getAllServiceRequests);
+//router.get('/service-requests/:id', administratorController.getServiceRequestDetails);
 
 // AÇÕES DE DELEGAÇÃO
-router.put('/service-requests/:id/delegate', administratorController.delegateToManager);
-router.put('/service-requests/:id/mark-urgent', administratorController.markAsUrgent);
+//router.put('/service-requests/:id/delegate', administratorController.delegateToManager);
+//router.put('/service-requests/:id/mark-urgent', administratorController.markAsUrgent);
 
 // GERENCIAMENTO DE NOTAS FISCAIS
-router.post('/service-requests/:id/invoice', administratorController.addInvoice);
-router.put('/service-requests/:id/invoice', administratorController.updateInvoice);
-router.delete('/service-requests/:id/invoice', administratorController.deleteInvoice);
-router.put('/service-requests/:id/invoice/visibility', administratorController.toggleInvoiceVisibility);
+//router.post('/service-requests/:id/invoice', administratorController.addInvoice);
+//router.put('/service-requests/:id/invoice', administratorController.updateInvoice);
+//router.delete('/service-requests/:id/invoice', administratorController.deleteInvoice);
+//router.put('/service-requests/:id/invoice/visibility', administratorController.toggleInvoiceVisibility);
 
 // DATAS DISPONÍVEIS
-router.post('/service-requests/:id/available-dates', administratorController.addAvailableDate);
-router.delete('/service-requests/:id/available-dates', administratorController.removeAvailableDate);
+//router.post('/service-requests/:id/available-dates', administratorController.addAvailableDate);
+//router.delete('/service-requests/:id/available-dates', administratorController.removeAvailableDate);
 
 // STATUS E AÇÕES GERAIS
-router.put('/service-requests/:id/status', administratorController.updateRequestStatus);
-router.put('/service-requests/:id/reassign', administratorController.reassignRequest);
+//router.put('/service-requests/:id/status', administratorController.updateRequestStatus);
+//router.put('/service-requests/:id/reassign', administratorController.reassignRequest);
 
 // FILTROS E RELATÓRIOS
-router.get('/service-requests/filter/status', administratorController.getRequestsByStatus);
-router.get('/service-requests/filter/area', administratorController.getRequestsByManagerArea);
-router.get('/service-requests/search/advanced', administratorController.advancedSearch);
+//router.get('/service-requests/filter/status', administratorController.getRequestsByStatus);
+//router.get('/service-requests/filter/area', administratorController.getRequestsByManagerArea);
+//router.get('/service-requests/search/advanced', administratorController.advancedSearch);
 
 module.exports = router;

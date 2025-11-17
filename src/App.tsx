@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import LoginScreen from './components/LoginScreen';
+import LoginScreen from './screens/public/LoginScreen';
 import Navigation from './components/Navigation';
 import Sidebar from './components/Sidebar';
 import DashboardScreen from './screens/administrador/AdminDashboardarrumar';
@@ -20,7 +20,8 @@ import AdminRatingsScreen from './screens/administrador/AdminRatingsScreen';
 import AdminTimeClockScreen from './screens/administrador/AdminEmployeeControlScreen';
 import ManagerEmployeeControlScreen from './screens/gestor/ManagerEmployeeControlScreen';
 import CollaboratorTimeClockScreen from './screens/colaborador/CollaboratorTimeClockScreen';
-import MyScheduleScreen from './screens/gestor/ManagerPersonalScheduleScreen';
+import ManagerPersonalScheduleScreen from './screens/gestor/ManagerPersonalScheduleScreen';
+console.log('📍 ManagerPersonalScheduleScreen importado:', ManagerPersonalScheduleScreen);
 import ManagerServiceRequests from './screens/gestor/ManagerServiceRequests';
 import ClientDocumentsScreen from './screens/cliente/ClientDocumentsScreen';
 import DocumentsScreen from './screens/administrador/AdminDocumentsScreen';
@@ -160,8 +161,8 @@ export default function App() {
       return <CollaboratorTimeClockScreen onBack={() => setActiveSection('dashboards')} />;
     }
     if (activeSection === 'minha-agenda') {
-      return <MyScheduleScreen onBack={() => setActiveSection('dashboards')} />;
-    }
+      return <ManagerPersonalScheduleScreen onBack={() => setActiveSection('dashboards')} />;
+}
     if (activeSection === 'gerenciar-solicitacoes') {
       if (currentUser === 'administrador') {
         return <AdminServiceRequests />;
