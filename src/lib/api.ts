@@ -57,4 +57,43 @@ api.interceptors.response.use(
   }
 );
 
+// =========================================
+// 4. FUNÇÕES DA API DE PONTO
+// =========================================
+
+export const clockIn = async (location: { latitude: number; longitude: number; address: string }) => {
+  const response = await api.post('/collaborator-time-clock/clock-in', location);
+  return response.data;
+};
+
+export const clockOut = async (location: { latitude: number; longitude: number; address: string }) => {
+  const response = await api.post('/collaborator-time-clock/clock-out', location);
+  return response.data;
+};
+
+export const startBreak = async () => {
+  const response = await api.post('/collaborator-time-clock/start-break');
+  return response.data;
+};
+
+export const endBreak = async () => {
+  const response = await api.post('/collaborator-time-clock/end-break');
+  return response.data;
+};
+
+export const getTimeClockHistory = async () => {
+  const response = await api.get('/collaborator-time-clock/history');
+  return response.data;
+};
+
+// =========================================
+// 5. FUNÇÕES DA API DE AGENDA DO COLABORADOR
+// =========================================
+
+export const getMySchedule = async () => {
+  const response = await api.get('/collaborator-schedule/my-schedule');
+  return response.data;
+};
+
+
 export default api;

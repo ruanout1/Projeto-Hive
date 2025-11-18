@@ -1,13 +1,8 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
-// const Client = require('./Client'); // Removido para evitar loop
-// const Team = require('./Team'); // Removido para evitar loop
 
-if (!sequelize) {
-  console.log('⚙️ [User Model] Modo mock ativo - sem banco de dados.');
-  module.exports = {};
-  return;
-}
+// Este arquivo define APENAS o modelo ServiceRequest.
+// Nenhuma outra dependência de modelo é importada aqui.
 
 const ServiceRequest = sequelize.define('ServiceRequest', {
   service_request_id: {
@@ -22,13 +17,11 @@ const ServiceRequest = sequelize.define('ServiceRequest', {
   },
   client_id: {
     type: DataTypes.BIGINT.UNSIGNED,
-    allowNull: true // Pode ser nulo se o 'requester_type' for 'manager'
-    // FK definida no server.js
+    allowNull: true
   },
   requester_user_id: {
     type: DataTypes.BIGINT.UNSIGNED,
     allowNull: false
-    // FK no server.js (se houver, para User)
   },
   requester_type: {
     type: DataTypes.ENUM('client', 'manager'),
@@ -37,12 +30,10 @@ const ServiceRequest = sequelize.define('ServiceRequest', {
   address_id: {
     type: DataTypes.BIGINT.UNSIGNED,
     allowNull: false
-    // FK no server.js (para client_addresses)
   },
   service_catalog_id: {
     type: DataTypes.BIGINT.UNSIGNED,
     allowNull: true
-    // FK no server.js (para service_catalog)
   },
   title: {
     type: DataTypes.STRING,
@@ -63,9 +54,7 @@ const ServiceRequest = sequelize.define('ServiceRequest', {
   assigned_team_id: {
     type: DataTypes.BIGINT.UNSIGNED,
     allowNull: true
-    // FK no server.js
   }
-  // ... (outros campos do seu BD, como 'priority', 'desired_time', etc.)
 }, {
   tableName: 'service_requests',
   timestamps: true,
@@ -73,8 +62,7 @@ const ServiceRequest = sequelize.define('ServiceRequest', {
   updatedAt: 'updated_at'
 });
 
-// A função setupAssociations() foi removida daqui
+// Todas as associações (belongsTo, hasMany, etc.) para este modelo
+// são definidas centralmente em /database/associations.js.
 
 module.exports = ServiceRequest;
-
-

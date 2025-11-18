@@ -12,17 +12,20 @@ const PDFDocument = require("pdfkit");
 const sequelize = require('./database/connection');
 
 // --- IMPORTAÇÃO DAS ROTAS ---
-const clientRoutes = require('./routes/clientRoutes');
-const scheduleRoutes = require('./routes/scheduleRoutes');
-const timeClockRoutes = require('./routes/timeClockRoutes');
-const serviceRequestRoutes = require('./routes/serviceRequestRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
-const teamRoutes = require('./routes/teamRoutes');
-const userRoutes = require('./routes/userRoutes');
-const serviceCatalogRoutes = require('./routes/serviceCatalogRoutes');
-const collaboratorAllocationRoutes = require('./routes/collaboratorAllocationRoutes');
 const authRoutes = require('./routes/authRoutes');
-const managerRoutes = require('./routes/managerRoutes'); // <-- ADICIONADO
+const clientRoutes = require('./routes/clientRoutes');
+const collaboratorAllocationRoutes = require('./routes/collaboratorAllocationRoutes');
+const collaboratorScheduleRoutes = require('./routes/collaboratorScheduleRoutes'); // <-- ADICIONADO
+const collaboratorTimeClockRoutes = require('./routes/collaboratorTimeClockRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const managerRoutes = require('./routes/managerRoutes');
+const scheduleRoutes = require('./routes/scheduleRoutes');
+const serviceCatalogRoutes = require('./routes/serviceCatalogRoutes');
+const serviceRequestRoutes = require('./routes/serviceRequestRoutes');
+const teamRoutes = require('./routes/teamRoutes');
+const timeClockRoutes = require('./routes/timeClockRoutes');
+const userRoutes = require('./routes/userRoutes');
+
 
 const app = express();
 
@@ -55,17 +58,19 @@ if (sequelize) {
   // =====================
   // REGISTRO DAS ROTAS 
   // =====================
-  app.use('/api/clients', clientRoutes);
-  app.use('/api/schedule', scheduleRoutes);
-  app.use('/api/time-clock', timeClockRoutes);
-  app.use('/api/service-requests', serviceRequestRoutes);
-  app.use('/api/dashboard', dashboardRoutes);
-  app.use('/api/teams', teamRoutes);
-  app.use('/api/users', userRoutes);
-  app.use('/api/service-catalog', serviceCatalogRoutes);
-  app.use('/api/allocations', collaboratorAllocationRoutes);
   app.use('/api/auth', authRoutes);
-  app.use('/api/manager', managerRoutes); // <-- ADICIONADO
+  app.use('/api/clients', clientRoutes);
+  app.use('/api/allocations', collaboratorAllocationRoutes);
+  app.use('/api/collaborator-schedule', collaboratorScheduleRoutes); // <-- ADICIONADO
+  app.use('/api/collaborator-time-clock', collaboratorTimeClockRoutes);
+  app.use('/api/dashboard', dashboardRoutes);
+  app.use('/api/manager', managerRoutes);
+  app.use('/api/schedule', scheduleRoutes);
+  app.use('/api/service-catalog', serviceCatalogRoutes);
+  app.use('/api/service-requests', serviceRequestRoutes);
+  app.use('/api/teams', teamRoutes);
+  app.use('/api/time-clock', timeClockRoutes);
+  app.use('/api/users', userRoutes);
 }
 
 // =====================
