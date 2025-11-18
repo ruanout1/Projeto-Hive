@@ -3,6 +3,12 @@ const sequelize = require('../database/connection');
 // const Client = require('./Client'); // Removido para evitar loop
 // const Team = require('./Team'); // Removido para evitar loop
 
+if (!sequelize) {
+  console.log('⚙️ [User Model] Modo mock ativo - sem banco de dados.');
+  module.exports = {};
+  return;
+}
+
 const ServiceRequest = sequelize.define('ServiceRequest', {
   service_request_id: {
     type: DataTypes.BIGINT.UNSIGNED,

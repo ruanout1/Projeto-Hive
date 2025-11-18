@@ -9,6 +9,12 @@ if (!sequelize) {
 
 // const ServiceCategory = require('./ServiceCategory'); // Removido para evitar loop
 
+if (!sequelize) {
+  console.log('⚙️ [User Model] Modo mock ativo - sem banco de dados.');
+  module.exports = {};
+  return;
+}
+
 const ServiceCatalog = sequelize.define('ServiceCatalog', {
   service_catalog_id: {
     type: DataTypes.BIGINT.UNSIGNED,

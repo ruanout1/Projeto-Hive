@@ -75,6 +75,7 @@ export default function CommunicationScreen({ userType, onBack }: CommunicationS
   const [showServiceSelection, setShowServiceSelection] = useState(userType === 'cliente' || userType === 'colaborador');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedReason, setSelectedReason] = useState('');
+  const [showNewConversationModal, setShowNewConversationModal] = useState(false);
 
   // Mock de serviços do cliente
   const clientServices: Service[] = [
@@ -238,45 +239,60 @@ export default function CommunicationScreen({ userType, onBack }: CommunicationS
       </Badge>
     );
   };
+   // Buscar conversas do usuário assim que abrir o chat
+  useEffect(() => {
+  const userId = 1; // pode ajustar para o id real do usuário logado
 
-  const handleSendMessage = () => {
-    if (!messageInput.trim() || !selectedContactId) return;
+  fetch(`http://localhost:5000/api/communication/conversations/${userId}`)
+    .then(res => res.json())
+    .then(data => {
+      const mapped = data.reduce((acc: any, conv: any) => {
+        acc[conv.id] = [];
+        return acc;
+      }, {});
+      setConversations(mapped);
+    })
+    .catch(err => console.error("Erro ao buscar conversas:", err));
+}, []);
 
-    const newMessage: Message = {
-      id: Date.now(),
-      senderId: 0,
-      senderName: 'Você',
-      content: messageInput.trim(),
-      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      isOwn: true
-    };
+const handleSendMessage = async () => {
+  if (!messageInput.trim() || !selectedContactId) return;
 
-    setConversations(prev => ({
-      ...prev,
-      [selectedContactId]: [...(prev[selectedContactId] || []), newMessage]
-    }));
-
-    setMessageInput('');
-
-    // Simular resposta automática
-    setIsTyping(true);
-    setTimeout(() => {
-      setIsTyping(false);
-      const autoReply: Message = {
-        id: Date.now() + 1,
-        senderId: selectedContactId,
-        senderName: selectedContact?.name || 'Contato',
-        content: 'Recebi sua mensagem! Vou responder em breve.',
-        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        isOwn: false
-      };
-      setConversations(prev => ({
-        ...prev,
-        [selectedContactId]: [...(prev[selectedContactId] || []), autoReply]
-      }));
-    }, 2000);
+  const newMessage = {
+    conversationId: selectedContactId,
+    senderId: 1,
+    receiverId: selectedContactId,
+    content: messageInput.trim()
   };
 
+  try {
+    const res = await fetch("http://localhost:5000/api/communication/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newMessage)
+    });
+
+    const data = await res.json();
+
+    // Atualiza o frontend com a nova mensagem
+    setConversations(prev => ({
+      ...prev,
+      [selectedContactId]: [...(prev[selectedContactId] || []), {
+        id: data.data?.id || Date.now(),
+        senderId: data.data?.senderId || 1,
+        senderName: "Você",
+        content: data.data?.content || messageInput,
+        timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+        isOwn: true
+      }]
+    }));
+
+    setMessageInput("");
+
+  } catch (err) {
+    console.error("❌ Erro ao enviar mensagem:", err);
+  }
+};
   const handleAttachFile = () => {
     fileInputRef.current?.click();
   };
@@ -779,13 +795,13 @@ export default function CommunicationScreen({ userType, onBack }: CommunicationS
             </div>
             {userType === 'cliente' && (
               <Button
-                onClick={() => setShowServiceSelection(true)}
-                style={{ backgroundColor: '#6400A4', color: 'white' }}
-                className="hover:opacity-90"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Conversa
-              </Button>
+              onClick={() => setShowNewConversationModal(true)}
+              style={{ backgroundColor: '#6400A4', color: 'white' }}
+              className="hover:opacity-90"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Conversa
+            </Button>
             )}
           </div>
         </div>
@@ -1373,6 +1389,93 @@ export default function CommunicationScreen({ userType, onBack }: CommunicationS
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Modal - Nova Conversa */}
+      <Dialog open={showNewConversationModal} onOpenChange={setShowNewConversationModal}>
+  <DialogContent className="max-w-md">
+    <DialogHeader>
+      <DialogTitle style={{ color: '#6400A4' }}>Iniciar Nova Conversa</DialogTitle>
+      <DialogDescription>
+        Escolha um gestor disponível para iniciar o atendimento.
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="space-y-3 mt-3">
+      {contacts
+        .filter((c) => c.category === 'gestores')
+        .map((contact) => (
+          <Card
+            key={contact.id}
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => {
+              const existingConversation = conversations[contact.id];
+              if (existingConversation) {
+                // ✅ Já existe conversa: abrir
+                setSelectedContactId(contact.id);
+                toast.info('Conversa existente aberta', {
+                  description: `Você já tem uma conversa com ${contact.name}.`
+                });
+              } else {
+                // 🆕 Criar nova conversa
+                const welcomeMessage: Message = {
+                  id: Date.now(),
+                  senderId: 0,
+                  senderName: 'Você',
+                  content: `Olá, ${contact.name}! Gostaria de iniciar um atendimento.`,
+                  timestamp: new Date().toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }),
+                  isOwn: true
+                };
+
+                setConversations((prev) => ({
+                  ...prev,
+                  [contact.id]: [welcomeMessage]
+                }));
+
+                setSelectedContactId(contact.id);
+                toast.success('Nova conversa iniciada', {
+                  description: `Você está falando com ${contact.name}.`
+                });
+              }
+
+              // Fecha o modal
+              setShowNewConversationModal(false);
+            }}
+          >
+            <CardContent className="p-3 flex items-center space-x-3">
+              <Avatar className="h-10 w-10" style={{ backgroundColor: '#6400A4' }}>
+                <AvatarFallback style={{ backgroundColor: '#6400A4', color: 'white' }}>
+                  {getInitials(contact.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="font-medium" style={{ color: '#6400A4' }}>{contact.name}</p>
+                <p className="text-sm text-gray-600">{contact.role}</p>
+              </div>
+              <Badge
+                variant="outline"
+                style={{
+                  borderColor: contact.status === 'online' ? '#10B981' : '#9CA3AF',
+                  color: contact.status === 'online' ? '#10B981' : '#9CA3AF'
+                }}
+              >
+                {getStatusText(contact.status)}
+              </Badge>
+            </CardContent>
+          </Card>
+        ))}
+    </div>
+
+    <DialogFooter className="mt-4">
+      <Button variant="outline" onClick={() => setShowNewConversationModal(false)}>
+        Cancelar
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
+       
     </div>
   );
 }

@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
 
 if (!sequelize) {
-  console.log('⚙️ [ServiceCategory Model] Modo mock ativo - sem banco de dados.');
+  console.log('⚙️ [User Model] Modo mock ativo - sem banco de dados.');
   module.exports = {};
   return;
 }

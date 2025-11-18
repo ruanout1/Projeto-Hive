@@ -3,6 +3,12 @@ const sequelize = require('../database/connection');
 // const User = require('./User'); // Removido para evitar loop
 // const Team = require('./Team'); // Removido para evitar loop
 
+if (!sequelize) {
+    console.log('⚙️ [User Model] Modo mock ativo - sem banco de dados.');
+    module.exports = {};
+    return;
+  }
+
 const TeamMember = sequelize.define('TeamMember', {
   team_member_id: {
     type: DataTypes.BIGINT.UNSIGNED,
