@@ -1,113 +1,109 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { Allocation, Client, Collaborator, AllocationStats } from '../types';
+import { Allocation, Collaborator, Client } from '../types';
 
-// ===================================
-// API Helper (Função auxiliar)
-// ===================================
-// Criamos um 'wrapper' para o fetch que já inclui o token
-const getAuthHeaders = () => {
-  // *** AJUSTE AQUI se o seu token estiver em outro lugar ***
-  const token = localStorage.getItem('authToken'); 
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  };
-};
-
-const api = {
-  get: async (url: string) => {
-    const res = await fetch(url, { headers: getAuthHeaders() });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || 'Falha ao buscar dados');
+const initialAllocations: Allocation[] = [
+    {
+      id: 1,
+      collaboratorId: 1,
+      collaboratorName: 'Carlos Mendes',
+      collaboratorPosition: 'Faxineiro(a)',
+      clientId: 1,
+      clientName: 'Empresa ABC Ltda',
+      clientArea: 'Norte',
+      startDate: '2025-10-01',
+      endDate: '2025-12-31',
+      workDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+      startTime: '08:00',
+      endTime: '17:00',
+      status: 'active',
+      createdAt: '2025-09-25'
+    },
+    {
+      id: 2,
+      collaboratorId: 2,
+      collaboratorName: 'Marina Oliveira',
+      collaboratorPosition: 'Serviços Gerais',
+      clientId: 2,
+      clientName: 'Condomínio Residencial Sol',
+      clientArea: 'Sul',
+      startDate: '2025-10-15',
+      endDate: '2026-01-15',
+      workDays: ['monday', 'wednesday', 'friday'],
+      startTime: '09:00',
+      endTime: '15:00',
+      status: 'active',
+      createdAt: '2025-10-01'
+    },
+    {
+      id: 3,
+      collaboratorId: 3,
+      collaboratorName: 'Roberto Silva',
+      collaboratorPosition: 'Porteiro',
+      clientId: 3,
+      clientName: 'Shopping Center Plaza',
+      clientArea: 'Leste',
+      startDate: '2025-11-01',
+      endDate: '2026-04-30',
+      workDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
+      startTime: '14:00',
+      endTime: '22:00',
+      status: 'upcoming',
+      createdAt: '2025-10-18'
     }
-    return res.json();
-  },
-  post: async (url: string, data: any) => {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || 'Falha ao criar');
-    }
-    return res.json();
-  },
-  put: async (url: string, data: any) => {
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || 'Falha ao atualizar');
-    }
-    return res.json();
-  },
-};
+];
 
+const collaborators: Collaborator[] = [
+    { id: 1, name: 'Carlos Mendes', position: 'Faxineiro(a)', team: 'Equipe Alpha', available: true },
+    { id: 2, name: 'Marina Oliveira', position: 'Serviços Gerais', team: 'Equipe Alpha', available: true },
+    { id: 3, name: 'Roberto Silva', position: 'Porteiro', team: 'Equipe Beta', available: true },
+    { id: 4, name: 'Juliana Costa', position: 'Copeira', team: 'Equipe Alpha', available: true },
+    { id: 5, name: 'Paulo Ferreira', position: 'Zelador', team: 'Equipe Beta', available: false },
+];
 
-// ===================================
-// Hook principal
-// ===================================
+const clients: Client[] = [
+    { id: 1, name: 'Empresa ABC Ltda', area: 'Norte', active: true },
+    { id: 2, name: 'Condomínio Residencial Sol', area: 'Sul', active: true },
+    { id: 3, name: 'Shopping Center Plaza', area: 'Leste', active: true },
+    { id: 4, name: 'Hotel Premium', area: 'Oeste', active: true },
+    { id: 5, name: 'Escritório Central', area: 'Norte', active: true },
+];
+
 export const useAllocations = () => {
-  // Estados de dados
-  const [allocations, setAllocations] = useState<Allocation[]>([]);
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [stats, setStats] = useState<AllocationStats>({ total: 0, active: 0, upcoming: 0, completed: 0 });
-
-  // Estados de UI
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [allocations, setAllocations] = useState<Allocation[]>(initialAllocations);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAllocation, setEditingAllocation] = useState<Allocation | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
 
-  // Função para carregar todos os dados da tela
-  const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      // Carrega todos os dados em paralelo
-      const [allocData, statsData, collData, clientData] = await Promise.all([
-        api.get(`/api/allocations?status=${filterStatus}`),
-        api.get('/api/allocations/stats'),
-        api.get('/api/users/list/my-staff'),
-        api.get('/api/clients/list/my-area')
-      ]);
+  // Form states
+  const [selectedCollaborator, setSelectedCollaborator] = useState('');
+  const [selectedClient, setSelectedClient] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedWorkDays, setSelectedWorkDays] = useState<string[]>([]);
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
 
-      setAllocations(allocData);
-      setStats(statsData);
-      setCollaborators(collData);
-      setClients(clientData);
-
-    } catch (err) {
-      toast.error('Erro ao carregar dados', { description: (err as Error).message });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [filterStatus]); // Recarrega se o filtro mudar
-
-  // Carrega os dados na primeira vez
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]); // Dependência do 'fetchData' (que depende do 'filterStatus')
-
-  // Filtra as alocações (isto permanece igual, é lógica de UI)
-  const filteredAllocations = useMemo(() => {
-    // A API já filtra, mas podemos re-filtrar no cliente se quisermos
-    // ou simplesmente confiar nos dados da 'allocations'
-    return allocations; 
-  }, [allocations]);
-
-
-  // Funções de manipulação do Dialog
   const handleOpenDialog = (allocation?: Allocation) => {
-    setEditingAllocation(allocation || null);
+    if (allocation) {
+      setEditingAllocation(allocation);
+      setSelectedCollaborator(allocation.collaboratorId.toString());
+      setSelectedClient(allocation.clientId.toString());
+      setStartDate(allocation.startDate);
+      setEndDate(allocation.endDate);
+      setSelectedWorkDays(allocation.workDays);
+      setStartTime(allocation.startTime);
+      setEndTime(allocation.endTime);
+    } else {
+      setEditingAllocation(null);
+      setSelectedCollaborator('');
+      setSelectedClient('');
+      setStartDate('');
+      setEndDate('');
+      setSelectedWorkDays([]);
+      setStartTime('');
+      setEndTime('');
+    }
     setDialogOpen(true);
   };
 
@@ -116,67 +112,107 @@ export const useAllocations = () => {
     setEditingAllocation(null);
   };
 
-  // Salva (Cria ou Edita) uma alocação
-  const handleSaveAllocation = useCallback(async (formData: Omit<Allocation, 'id' | 'createdAt' | 'status' | 'collaboratorName' | 'collaboratorPosition' | 'clientName' | 'clientArea'>) => {
-    setIsSaving(true);
-    try {
-      let url = '/api/allocations';
-      let promise;
-
-      if (editingAllocation) {
-        url = `/api/allocations/${editingAllocation.id}`;
-        promise = api.put(url, formData);
-      } else {
-        promise = api.post(url, formData);
-      }
-      
-      await promise;
-      
-      toast.success(editingAllocation ? 'Alocação atualizada' : 'Alocação criada');
-      handleCloseDialog();
-      await fetchData(); // Recarrega os dados!
-
-    } catch (err) {
-      toast.error('Erro ao salvar', { description: (err as Error).message });
-    } finally {
-      setIsSaving(false);
+  const handleSaveAllocation = () => {
+    if (!selectedCollaborator || !selectedClient || !startDate || !endDate || selectedWorkDays.length === 0 || !startTime || !endTime) {
+      toast.error('Campos obrigatórios', { description: 'Por favor, preencha todos os campos obrigatórios.' });
+      return;
     }
-  }, [editingAllocation, fetchData]); // Depende de editingAllocation e fetchData
+    if (new Date(endDate) <= new Date(startDate)) {
+      toast.error('Datas inválidas', { description: 'A data de término deve ser posterior à data de início.' });
+      return;
+    }
 
-  // Cancela (exclusão lógica) uma alocação
-  const handleDeleteAllocation = useCallback(async (id: number) => {
+    const collaborator = collaborators.find(c => c.id === parseInt(selectedCollaborator));
+    const client = clients.find(c => c.id === parseInt(selectedClient));
+    if (!collaborator || !client) return;
+
+    const today = new Date();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    let status: 'active' | 'upcoming' | 'completed' = 'upcoming';
+    if (today >= start && today <= end) status = 'active';
+    else if (today > end) status = 'completed';
+
+    if (editingAllocation) {
+      setAllocations(allocations.map(a =>
+        a.id === editingAllocation.id
+          ? { ...a, collaboratorId: parseInt(selectedCollaborator), collaboratorName: collaborator.name, collaboratorPosition: collaborator.position, clientId: parseInt(selectedClient), clientName: client.name, clientArea: client.area, startDate, endDate, workDays: selectedWorkDays, startTime, endTime, status }
+          : a
+      ));
+      toast.success('Alocação atualizada', { description: 'A alocação foi atualizada com sucesso.' });
+    } else {
+      const newAllocation: Allocation = {
+        id: Math.max(...allocations.map(a => a.id), 0) + 1,
+        collaboratorId: parseInt(selectedCollaborator),
+        collaboratorName: collaborator.name,
+        collaboratorPosition: collaborator.position,
+        clientId: parseInt(selectedClient),
+        clientName: client.name,
+        clientArea: client.area,
+        startDate,
+        endDate,
+        workDays: selectedWorkDays,
+        startTime,
+        endTime,
+        status,
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+      setAllocations([...allocations, newAllocation]);
+      toast.success('Alocação criada', { description: `${collaborator.name} foi alocado(a) para ${client.name}.` });
+    }
+    handleCloseDialog();
+  };
+
+  const handleDeleteAllocation = (id: number) => {
     const allocation = allocations.find(a => a.id === id);
     if (!allocation) return;
 
-    // TODO: Substituir window.confirm por um Dialog de confirmação
-    if (window.confirm(`Deseja realmente cancelar a alocação de ${allocation.collaboratorName}?`)) {
-      try {
-        await api.put(`/api/allocations/${id}/cancel`, {}); // PUT para /cancel
-        toast.success('Alocação cancelada');
-        await fetchData(); // Recarrega os dados!
-      } catch (err) {
-        toast.error('Erro ao cancelar', { description: (err as Error).message });
-      }
+    if (window.confirm(`Deseja realmente cancelar a alocação de ${allocation.collaboratorName} para ${allocation.clientName}?`)) {
+      setAllocations(allocations.map(a =>
+        a.id === id ? { ...a, status: 'cancelled' as const } : a
+      ));
+      toast.success('Alocação cancelada', { description: 'A alocação foi cancelada com sucesso.' });
     }
-  }, [allocations, fetchData]);
+  };
+
+  const handleToggleWorkDay = (dayId: string) => {
+    setSelectedWorkDays(prev =>
+      prev.includes(dayId) ? prev.filter(d => d !== dayId) : [...prev, dayId]
+    );
+  };
+
+  const filteredAllocations = allocations.filter(allocation => {
+    if (filterStatus === 'all') return true;
+    return allocation.status === filterStatus;
+  });
+
+  const stats = {
+    total: allocations.length,
+    active: allocations.filter(a => a.status === 'active').length,
+    upcoming: allocations.filter(a => a.status === 'upcoming').length,
+    completed: allocations.filter(a => a.status === 'completed').length
+  };
 
   return {
-    // Estado
-    filteredAllocations, // O componente de lista usa isso
-    collaborators,
-    clients,
-    filterStatus,
+    allocations: filteredAllocations,
     stats,
     dialogOpen,
     editingAllocation,
-    isLoading, // Informe o componente de tela que está carregando
-    isSaving, // Informe o dialog que está salvando
-
-    // Funções
+    filterStatus,
     setFilterStatus,
     handleOpenDialog,
     handleCloseDialog,
     handleSaveAllocation,
-    handleDeleteAllocation
+    handleDeleteAllocation,
+    formState: {
+      selectedCollaborator, setSelectedCollaborator,
+      selectedClient, setSelectedClient,
+      startDate, setStartDate,
+      endDate, setEndDate,
+      selectedWorkDays, handleToggleWorkDay,
+      startTime, setStartTime,
+      endTime, setEndTime
+    },
+    mockData: { collaborators, clients }
   };
 };

@@ -1,11 +1,13 @@
-const { Op, Sequelize } = require('sequelize');
-const ServiceRequest = require('../models/ServiceRequest');
+const { Op, fn, col, literal } = require('sequelize');
 const Client = require('../models/Client');
-const Team = require('../models/Team');
 const User = require('../models/User');
-const { handleDatabaseError } = require('../utils/errorHandling');
+const Team = require('../models/Team');
+const ServiceRequest = require('../models/ServiceRequest');
+const ServiceCatalog = require('../models/ServiceCatalog');
+const ClientAddress = require('../models/ClientAddress');
+const Area = require('../models/Area');
 
-// Mapeamento de status (necessário para getActiveRequests)
+// Mapeamento de status para o frontend
 const statusMap = {
   pending: 'pendente',
   scheduled: 'agendado',
@@ -18,114 +20,111 @@ const statusMap = {
   urgent: 'urgente'
 };
 
-// =====================================
-// FUNÇÕES DE DASHBOARD (ADMIN E GESTOR)
-// =====================================
 
-// Retorna estatísticas de solicitações
+// FUNÇÃO DE ESTATÍSTICAS (VERSÃO ANTERIOR - COM BUG)
 exports.getDashboardStats = async (req, res) => {
   try {
     const loggedInUser = req.user;
     const whereCondition = {};
-    const includeClient = {
-      model: Client,
-      as: 'client',
-      attributes: [], // Não precisamos dos atributos, só para o 'where'
-      required: true // Garante que só traga requests com clientes
-    };
 
-    // Se for gestor, filtra por clientes da sua área.
-    // Se for admin, o 'where' fica vazio (vê tudo).
+    // Filtro por gestor
     if (loggedInUser.user_type === 'manager') {
-      // TODO: Verifique se 'req.user.area' está vindo do middleware 'protect'
-      whereCondition['$client.area$'] = loggedInUser.area;
+      const managerWithArea = await User.findByPk(loggedInUser.id, {
+        include: [{ model: Area, as: 'managerAreas' }]
+      });
+
+      if (!managerWithArea || !managerWithArea.managerAreas || managerWithArea.managerAreas.length === 0) {
+        return res.status(403).json({ message: "Gestor não está associado a nenhuma área." });
+      }
+      const areaIds = managerWithArea.managerAreas.map(ma => ma.area_id);
+
+      whereCondition['$address.area.id$'] = { [Op.in]: areaIds };
     }
 
     const counts = await ServiceRequest.findAll({
       attributes: [
         'status',
-        [Sequelize.fn('COUNT', Sequelize.col('status')), 'count'],
+        [fn('COUNT', col('id')), 'count']
+      ],
+      include: [
+        {
+          model: ClientAddress,
+          as: 'address',
+          attributes: [],
+          include: [{
+            model: Area,
+            as: 'area',
+            attributes: []
+          }]
+        }
       ],
       where: whereCondition,
-      include: [includeClient],
       group: ['status'],
+      raw: true
     });
 
     const stats = counts.reduce((acc, item) => {
-      // Usando o 'get' para acessar o dado 'count' da agregação
-      const count = Number(item.get('count'));
       const frontendStatus = statusMap[item.status] || item.status;
-      acc[frontendStatus] = (acc[frontendStatus] || 0) + count;
+      acc[frontendStatus] = parseInt(item.count, 10);
       return acc;
     }, {});
 
-    // Garante que todos os status principais existam
-    const allStatuses = {
-      pendente: 0,
-      agendado: 0,
-      'em-andamento': 0,
-      concluido: 0,
-      cancelado: 0,
-      ...stats,
-    };
+    const allStatuses = { pendente: 0, agendado: 0, 'em-andamento': 0, concluido: 0, cancelado: 0, ...stats };
 
     res.status(200).json(allStatuses);
   } catch (error) {
-    handleDatabaseError(res, error, 'buscar estatísticas do dashboard');
+    console.error('ERRO AO BUSCAR ESTATÍSTICAS (REVERTIDO):', error);
+    res.status(500).json({ message: 'Erro interno ao processar estatísticas do dashboard.', error: error.message });
   }
 };
 
-// Retorna solicitações ativas (tabela da dashboard)
+
+// FUNÇÃO DE SOLICITAÇÕES ATIVAS (VERSÃO ANTERIOR - COM BUG)
 exports.getActiveRequests = async (req, res) => {
   try {
     const loggedInUser = req.user;
-    
-    // Condição base: status
     const whereCondition = {
-      status: {
-        [Op.notIn]: ['completed', 'cancelled'],
-      },
+      status: { [Op.notIn]: ['completed', 'cancelled'] },
     };
 
-    // Condição de inclusão
-    const include = [
-      {
-        model: Client,
-        as: 'client',
-        attributes: ['user_id', 'area'], // Inclua 'area' para o filtro
-        required: true,
-        include: [{ model: User, as: 'user', attributes: ['full_name'] }],
-      },
-      {
-        model: Team,
-        as: 'assignedTeam',
-        attributes: ['name'],
-      },
-    ];
-    
-    // Se for gestor, filtra por clientes da sua área. Admin vê tudo.
+    // Filtro por gestor
     if (loggedInUser.user_type === 'manager') {
-      whereCondition['$client.area$'] = loggedInUser.area;
+      const managerWithArea = await User.findByPk(loggedInUser.id, {
+        include: [{ model: Area, as: 'managerAreas' }]
+      });
+      if (managerWithArea && managerWithArea.managerAreas && managerWithArea.managerAreas.length > 0) {
+        const areaIds = managerWithArea.managerAreas.map(ma => ma.area_id);
+        whereCondition['$address.area.id$'] = { [Op.in]: areaIds };
+      } else {
+        return res.status(200).json([]); // Retorna vazio se o gestor não tem área
+      }
     }
 
     const activeRequests = await ServiceRequest.findAll({
       where: whereCondition,
-      include: include,
-      order: [['desired_date', 'ASC']],
-      limit: 10,
+      include: [
+        { model: Client, as: 'client', include: [{ model: User, as: 'user', attributes: ['name'] }] },
+        { model: ServiceCatalog, as: 'service', attributes: ['name'] },
+        { model: Team, as: 'assignedTeam', attributes: ['name'] },
+        { model: ClientAddress, as: 'address', include: [{ model: Area, as: 'area' }] }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: 10
     });
 
-    const formatted = activeRequests.map((req) => ({
-      id: req.request_number,
-      cliente: req.client?.user?.full_name || 'Cliente não encontrado',
-      servico: req.title,
-      equipe: req.assignedTeam?.name || 'Não assignada',
+    const formatted = activeRequests.map(req => ({
+      id: req.id, // Ou qualquer outro ID que você use
+      cliente: req.client?.user?.name || 'N/A',
+      servico: req.service?.name || 'N/A',
+      equipe: req.assignedTeam?.name || 'Não atribuída',
       status: statusMap[req.status] || req.status,
-      prazo: new Date(req.desired_date).toLocaleDateString('pt-BR'),
+      prazo: req.createdAt ? new Date(req.createdAt).toLocaleDateString('pt-BR') : 'N/A'
     }));
 
     res.status(200).json(formatted);
+
   } catch (error) {
-    handleDatabaseError(res, error, 'buscar solicitações ativas');
+    console.error('ERRO AO BUSCAR SOLICITAÇÕES ATIVAS (REVERTIDO):', error);
+    res.status(500).json({ message: 'Erro interno ao processar solicitações ativas.', error: error.message });
   }
 };

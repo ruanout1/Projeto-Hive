@@ -16,7 +16,6 @@ router.use(protect, checkRole(['admin', 'manager']));
 router.get('/stats', dashboardController.getDashboardStats);
 
 // (GET /api/dashboard/active-requests)
-// (Rota antiga era: /api/manager/requests/active)
 router.get('/active-requests', dashboardController.getActiveRequests);
 
 module.exports = router;

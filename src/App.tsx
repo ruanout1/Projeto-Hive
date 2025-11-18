@@ -20,8 +20,7 @@ import AdminRatingsScreen from './screens/administrador/AdminRatingsScreen';
 import AdminTimeClockScreen from './screens/administrador/AdminEmployeeControlScreen';
 import ManagerEmployeeControlScreen from './screens/gestor/ManagerEmployeeControlScreen';
 import CollaboratorTimeClockScreen from './screens/colaborador/CollaboratorTimeClockScreen';
-import ManagerPersonalScheduleScreen from './screens/gestor/ManagerPersonalScheduleScreen';
-console.log('📍 ManagerPersonalScheduleScreen importado:', ManagerPersonalScheduleScreen);
+import ManagerPersonalScheduleScreen from './screens/gestor/MinhaAgenda/ManagerPersonalScheduleScreen';
 import ManagerServiceRequests from './screens/gestor/ManagerServiceRequests';
 import ClientDocumentsScreen from './screens/cliente/ClientDocumentsScreen';
 import DocumentsScreen from './screens/administrador/AdminDocumentsScreen';
@@ -32,7 +31,7 @@ import ClientExpensesDashboardScreen from './screens/cliente/ClientExpensesDashb
 import ManagerPerformanceReportsScreen from './screens/gestor/ManagerPerformanceReportsScreen';
 import AdminPerformanceReportsScreen from './screens/administrador/AdminPerformanceReportsScreen';
 import ClientServicePhotosScreen from './screens/cliente/ClientServicePhotosScreen';
-import CollaboratorAllocationsScreen from './screens/gestor/ManagerAllocationsScreen';
+import CollaboratorAllocationsScreen from './screens/gestor/Alocacoes/ManagerAllocationsScreen';
 import ManagerPhotoReviewScreen from './screens/gestor/ManagerPhotoReviewScreen';
 import AdminPhotoHistoryScreen from './screens/administrador/AdminPhotoHistoryScreen';
 import ServiceOrdersScreen from './screens/administrador/AdminServiceOrdersScreen';
@@ -103,15 +102,8 @@ export default function App() {
       return <CommunicationScreen userType={currentUser} onBack={() => handleSectionChange('dashboards')} />;
     }
     if (activeSection === 'clientes') {
-      // Mock das permissões - em produção viriam do backend/contexto global
-      const mockManagerPermissions = {
-        canEditClients: true,
-        canToggleClientStatus: true
-      };
       return <ClientsScreen 
         onBack={() => handleSectionChange('dashboards')} 
-        userType={currentUser === 'administrador' ? 'Administrador' : 'Gestor'}
-        managerPermissions={mockManagerPermissions}
       />;
     }
     if (activeSection === 'avaliacoes') {
@@ -158,7 +150,7 @@ export default function App() {
       }
     }
     if (activeSection === 'meu-ponto') {
-      return <CollaboratorTimeClockScreen onBack={() => setActiveSection('dashboards')} />;
+      return <CollaboratorTimeClockScreen onBack={() => handleSectionChange('dashboards')} />;
     }
     if (activeSection === 'minha-agenda') {
       return <ManagerPersonalScheduleScreen onBack={() => setActiveSection('dashboards')} />;
@@ -172,10 +164,10 @@ export default function App() {
       }
     }
     if (activeSection === 'documentos-cliente') {
-      return <ClientDocumentsScreen onBack={() => setActiveSection('dashboards')} />;
+      return <ClientDocumentsScreen onBack={() => handleSectionChange('dashboards')} />;
     }
     if (activeSection === 'documentos') {
-      return <DocumentsScreen onBack={() => setActiveSection('dashboards')} />;
+      return <DocumentsScreen onBack={() => handleSectionChange('dashboards')} />;
     }
     // Nova: Minha Agenda Pessoal (Admin e Gestor)
     if (activeSection === 'agenda-pessoal') {

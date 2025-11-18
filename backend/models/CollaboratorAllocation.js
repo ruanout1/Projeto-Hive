@@ -1,6 +1,12 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
 
+if (!sequelize) {
+  console.log('⚙️ [CollaboratorAllocation Model] Modo mock ativo - sem banco de dados.');
+  module.exports = {};
+  return;
+}
+
 const CollaboratorAllocation = sequelize.define('CollaboratorAllocation', {
   allocation_id: {
     type: DataTypes.BIGINT.UNSIGNED,

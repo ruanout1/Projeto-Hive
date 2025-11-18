@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import ScreenHeader from '../../components/ScreenHeader';
-import { Card, CardContent } from '../../components/ui/card';
-import { ScheduleItem, MyScheduleScreenProps, UseScheduleApiReturn } from './MinhaAgenda/types';
-import ScheduleStats from './MinhaAgenda/ScheduleStats';
-import ScheduleCalendar from './MinhaAgenda/ScheduleCalendar';
-import ScheduleDetailModal from './MinhaAgenda/ScheduleDetailModal';
-import { useManagerScheduleApi } from './MinhaAgenda/hooks/useManagerScheduleApi';
+import ScreenHeader from '../../../components/ScreenHeader'; // Corrigido
+import { Card, CardContent } from '../../../components/ui/card'; // Corrigido
+import { ScheduleItem, MyScheduleScreenProps, UseScheduleApiReturn } from './types';
+import ScheduleStats from './ScheduleStats';
+import ScheduleCalendar from './ScheduleCalendar';
+import ScheduleDetailModal from './ScheduleDetailModal';
+import { useManagerScheduleApi } from './hooks/useManagerScheduleApi';
 
 export default function ManagerPersonalScheduleScreen({ onBack }: MyScheduleScreenProps) {
   const {

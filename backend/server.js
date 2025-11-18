@@ -9,6 +9,8 @@ const path = require("path");
 const fs = require("fs");
 const PDFDocument = require("pdfkit");
 
+const sequelize = require('./database/connection');
+
 // --- IMPORTAÇÃO DAS ROTAS ---
 const clientRoutes = require('./routes/clientRoutes');
 const scheduleRoutes = require('./routes/scheduleRoutes');
@@ -20,12 +22,7 @@ const userRoutes = require('./routes/userRoutes');
 const serviceCatalogRoutes = require('./routes/serviceCatalogRoutes');
 const collaboratorAllocationRoutes = require('./routes/collaboratorAllocationRoutes');
 const authRoutes = require('./routes/authRoutes');
-
-// =============================================
-// 🔹 REGISTRAR ASSOCIAÇÕES (NOVO MÉTODO!)
-// =============================================
-const { setupAssociations } = require('./database/associations');
-setupAssociations();
+const managerRoutes = require('./routes/managerRoutes'); // <-- ADICIONADO
 
 const app = express();
 
@@ -48,19 +45,28 @@ app.use(express.json());
 app.use(express.static(__dirname));
 app.use("/src", express.static(path.join(__dirname, "src")));
 
-// =====================
-// REGISTRO DAS ROTAS 
-// =====================
-app.use('/api/clients', clientRoutes);
-app.use('/api/schedule', scheduleRoutes);
-app.use('/api/time-clock', timeClockRoutes);
-app.use('/api/service-requests', serviceRequestRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/teams', teamRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/service-catalog', serviceCatalogRoutes);
-app.use('/api/allocations', collaboratorAllocationRoutes);
-app.use('/api/auth', authRoutes);
+if (sequelize) {
+  // =============================================
+  // 🔹 REGISTRAR ASSOCIAÇÕES (NOVO MÉTODO!)
+  // =============================================
+  const { setupAssociations } = require('./database/associations');
+  setupAssociations();
+
+  // =====================
+  // REGISTRO DAS ROTAS 
+  // =====================
+  app.use('/api/clients', clientRoutes);
+  app.use('/api/schedule', scheduleRoutes);
+  app.use('/api/time-clock', timeClockRoutes);
+  app.use('/api/service-requests', serviceRequestRoutes);
+  app.use('/api/dashboard', dashboardRoutes);
+  app.use('/api/teams', teamRoutes);
+  app.use('/api/users', userRoutes);
+  app.use('/api/service-catalog', serviceCatalogRoutes);
+  app.use('/api/allocations', collaboratorAllocationRoutes);
+  app.use('/api/auth', authRoutes);
+  app.use('/api/manager', managerRoutes); // <-- ADICIONADO
+}
 
 // =====================
 // ROTA DE HEALTH CHECK
@@ -80,7 +86,9 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log("====================================");
   console.log(`🚀 Servidor backend rodando na porta ${PORT}`);
-  console.log("✅ Arquitetura de rotas por Recurso está ATIVA.");
+  if (sequelize) {
+    console.log("✅ Arquitetura de rotas por Recurso está ATIVA.");
+  }
   console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
   console.log("====================================");
 });

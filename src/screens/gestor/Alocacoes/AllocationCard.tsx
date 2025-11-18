@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Edit, Trash2, ChevronDown, ChevronRight, Building2, Clock } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '../../../components/ui/card';
+import { Avatar, AvatarFallback } from '../../../components/ui/avatar';
 import { Button } from '../../../components/ui/button';
 import { Separator } from '../../../components/ui/separator';
-import { Avatar, AvatarFallback } from '../../../components/ui/avatar';
 import { Allocation } from './types';
 import { getStatusBadge, getInitials, formatDateRange, formatWorkDays } from './utils';
 
@@ -13,13 +13,12 @@ interface AllocationCardProps {
   onDelete: (id: number) => void;
 }
 
-export function AllocationCard({ allocation, onEdit, onDelete }: AllocationCardProps) {
+export default function AllocationCard({ allocation, onEdit, onDelete }: AllocationCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <Card key={allocation.id} className="overflow-hidden">
       <CardContent className="p-0">
-        {/* Header da Alocação */}
         <div
           className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
           onClick={() => setIsExpanded(!isExpanded)}
@@ -85,7 +84,6 @@ export function AllocationCard({ allocation, onEdit, onDelete }: AllocationCardP
           </div>
         </div>
 
-        {/* Detalhes Expandidos */}
         {isExpanded && (
           <>
             <Separator />

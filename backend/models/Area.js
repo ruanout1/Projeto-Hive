@@ -1,6 +1,12 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
 
+if (!sequelize) {
+  console.log('⚙️ [Area Model] Modo mock ativo - sem banco de dados.');
+  module.exports = {}; 
+  return;
+}
+
 const Area = sequelize.define('Area', {
   area_id: {
     type: DataTypes.BIGINT.UNSIGNED,

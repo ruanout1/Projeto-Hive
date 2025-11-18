@@ -1,6 +1,12 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
 
+if (!sequelize) {
+  console.log('⚙️ [ClientAddress Model] Modo mock ativo - sem banco de dados.');
+  module.exports = {};
+  return;
+}
+
 const ClientAddress = sequelize.define('ClientAddress', {
   address_id: {
     type: DataTypes.BIGINT.UNSIGNED,

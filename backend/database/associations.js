@@ -11,10 +11,15 @@ const CollaboratorAllocation = require('../models/CollaboratorAllocation');
 const ServiceCatalog = require('../models/ServiceCatalog');
 const ServiceCategory = require('../models/ServiceCategory');
 const ServiceRequest = require('../models/ServiceRequest');
-// Adicione outros models aqui...
 
 function setupAssociations() {
   console.log('Configurando associações do Sequelize...');
+
+  // Se não houver conexão com o banco, não faz nada
+  if (!User.sequelize) {
+    console.log('Associações não configuradas (modo mock).');
+    return;
+  }
 
   // User <-> Client (1:1)
   User.hasOne(Client, { foreignKey: 'user_id', as: 'clientDetails' });
@@ -31,7 +36,7 @@ function setupAssociations() {
   // User <-> Team (Membros M:M via TeamMember)
   User.belongsToMany(Team, {
     through: TeamMember,
-    foreignKey: 'collaborator_user_id', // Chave em TeamMember
+    foreignKey: 'collaborator_user_id', 
     otherKey: 'team_id',
     as: 'teams'
   });
@@ -41,13 +46,10 @@ function setupAssociations() {
     otherKey: 'collaborator_user_id',
     as: 'members'
   });
-  // Relacionamento direto Team <-> TeamMember (para includes)
   Team.hasMany(TeamMember, { foreignKey: 'team_id', as: 'teamMemberships' });
   TeamMember.belongsTo(Team, { foreignKey: 'team_id', as: 'team' });
-  // Relacionamento direto User <-> TeamMember (para includes)
   User.hasMany(TeamMember, { foreignKey: 'collaborator_user_id', as: 'teamMemberships' });
   TeamMember.belongsTo(User, { foreignKey: 'collaborator_user_id', as: 'user' });
-
 
   // User <-> ManagerArea (Gestor 1:M)
   User.hasMany(ManagerArea, { foreignKey: 'manager_user_id', as: 'managerAreas' });

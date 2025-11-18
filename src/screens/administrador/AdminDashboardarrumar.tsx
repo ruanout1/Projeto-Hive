@@ -1,5 +1,5 @@
 import AdminDashboard from './AdminDashboardScreen';
-import ManagerDashboard from '../gestor/ManagerDashboard'; 
+import ManagerDashboard from '../gestor/dashboard/ManagerDashboard'; 
 import CollaboratorDashboard from '../colaborador/CollaboratorDashboard';
 import ClientDashboard from '../cliente/ClientDashboard';
 

@@ -1,6 +1,12 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
 
+if (!sequelize) {
+  console.log('⚙️ [User Model] Modo mock ativo - sem banco de dados.');
+  module.exports = {};
+  return;
+}
+
 const User = sequelize.define('User', {
   user_id: {
     type: DataTypes.BIGINT.UNSIGNED,
@@ -38,4 +44,3 @@ const User = sequelize.define('User', {
 // A função setupAssociations() foi removida daqui
 
 module.exports = User;
-

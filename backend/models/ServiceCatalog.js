@@ -1,5 +1,12 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
+
+if (!sequelize) {
+  console.log('⚙️ [ServiceCatalog Model] Modo mock ativo - sem banco de dados.');
+  module.exports = {};
+  return;
+}
+
 // const ServiceCategory = require('./ServiceCategory'); // Removido para evitar loop
 
 const ServiceCatalog = sequelize.define('ServiceCatalog', {
@@ -54,6 +61,3 @@ const ServiceCatalog = sequelize.define('ServiceCatalog', {
 // A função setupAssociations() foi removida daqui
 
 module.exports = ServiceCatalog;
-
-
-
