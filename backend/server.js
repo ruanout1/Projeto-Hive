@@ -6,10 +6,12 @@ require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const fs = require("fs");
-const PDFDocument = require("pdfkit");
 
-// --- IMPORTAÇÃO DAS ROTAS ---
+// =============================================
+// 2. IMPORTAÇÃO DAS ROTAS
+// =============================================
+
+// --- ROTAS ADMINISTRATIVAS (Versão da colega) ---
 const clientRoutes = require('./routes/clientRoutes');
 const scheduleRoutes = require('./routes/scheduleRoutes');
 const timeClockRoutes = require('./routes/timeClockRoutes');
@@ -20,17 +22,26 @@ const userRoutes = require('./routes/userRoutes');
 const serviceCatalogRoutes = require('./routes/serviceCatalogRoutes');
 const collaboratorAllocationRoutes = require('./routes/collaboratorAllocationRoutes');
 const authRoutes = require('./routes/authRoutes');
+const clientScheduledRoutes = require('./routes/clientScheduledRoutes');
+
+// --- ROTAS EXTRAS (Suas rotas) ---
+const clientPortalRoutes = require('./routes/clientPortalRoutes');
+const managerRoutes = require('./routes/managerRoutes');
+const communicationRoutes = require('./routes/communicationRoutes');
 
 // =============================================
-// 🔹 REGISTRAR ASSOCIAÇÕES (NOVO MÉTODO!)
+// 3. REGISTRAR ASSOCIAÇÕES DO BANCO DE DADOS
 // =============================================
 const { setupAssociations } = require('./database/associations');
 setupAssociations();
 
+// =============================================
+// 4. CONFIGURAR APLICAÇÃO EXPRESS
+// =============================================
 const app = express();
 
 // =============================================
-// 🔥 CORS CONFIGURADO CORRETAMENTE
+// 5. CONFIGURAR CORS
 // =============================================
 const corsOptions = {
   origin: [
@@ -38,49 +49,112 @@ const corsOptions = {
     "http://localhost:5173"
   ],
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-  credentials: true, // PERMITE envio de cookies / headers
+  credentials: true, // Permite envio de cookies/headers
 };
 
 app.use(cors(corsOptions));
 
-// ==================================================
+// =============================================
+// 6. MIDDLEWARES GLOBAIS
+// =============================================
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 app.use("/src", express.static(path.join(__dirname, "src")));
 
-// =====================
-// REGISTRO DAS ROTAS 
-// =====================
-app.use('/api/clients', clientRoutes);
-app.use('/api/schedule', scheduleRoutes);
-app.use('/api/time-clock', timeClockRoutes);
-app.use('/api/service-requests', serviceRequestRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/teams', teamRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/service-catalog', serviceCatalogRoutes);
-app.use('/api/allocations', collaboratorAllocationRoutes);
+// =============================================
+// 7. REGISTRO DAS ROTAS DA API
+// =============================================
+
+// --- AUTENTICAÇÃO ---
 app.use('/api/auth', authRoutes);
 
-// =====================
-// ROTA DE HEALTH CHECK
-// =====================
+// --- GESTÃO ADMINISTRATIVA (Admin/Manager) ---
+app.use('/api/clients', clientRoutes);                           // CRUD de clientes
+app.use('/api/schedule', scheduleRoutes);                        // Agendamentos
+app.use('/api/time-clock', timeClockRoutes);                     // Ponto eletrônico
+app.use('/api/service-requests', serviceRequestRoutes);          // Solicitações de serviço
+app.use('/api/dashboard', dashboardRoutes);                      // Dashboard admin
+app.use('/api/teams', teamRoutes);                               // Equipes
+app.use('/api/users', userRoutes);                               // Usuários
+app.use('/api/service-catalog', serviceCatalogRoutes);           // Catálogo de serviços
+app.use('/api/allocations', collaboratorAllocationRoutes);       // Alocação de colaboradores
+app.use('/api/client-portal', clientScheduledRoutes);            // Serviços agendados 
+
+// --- PORTAL DO CLIENTE (Cliente visualiza seus dados) ---
+app.use('/api/client-portal', clientPortalRoutes);               // Portal do cliente
+
+// --- ROTAS DE GESTORES E COMUNICAÇÃO ---
+app.use('/api/manager', managerRoutes);                          // Funcionalidades de gestores
+app.use('/api/communication', communicationRoutes);              // Sistema de comunicação
+
+// =============================================
+// 8. ROTA DE HEALTH CHECK
+// =============================================
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
-    message: 'Backend funcionando',
-    timestamp: new Date().toISOString()
+    message: 'Backend Hive funcionando corretamente',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    routes: {
+      auth: '/api/auth',
+      clients: '/api/clients (Admin/Manager)',
+      clientPortal: '/api/client-portal (Client)',
+      teams: '/api/teams',
+      users: '/api/users',
+      manager: '/api/manager',
+      communication: '/api/communication'
+    }
   });
 });
 
-// =====================
-// INICIAR SERVIDOR
-// =====================
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log("====================================");
-  console.log(`🚀 Servidor backend rodando na porta ${PORT}`);
-  console.log("✅ Arquitetura de rotas por Recurso está ATIVA.");
-  console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
-  console.log("====================================");
+// =============================================
+// 9. TRATAMENTO DE ROTAS NÃO ENCONTRADAS
+// =============================================
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Rota não encontrada',
+    path: req.path,
+    method: req.method,
+    message: 'Verifique a documentação da API'
+  });
 });
+
+// =============================================
+// 10. TRATAMENTO DE ERROS GLOBAL
+// =============================================
+app.use((err, req, res, next) => {
+  console.error('❌ Erro no servidor:', err);
+  
+  res.status(err.status || 500).json({
+    error: 'Erro interno do servidor',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Algo deu errado',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
+
+// =============================================
+// 11. INICIAR SERVIDOR
+// =============================================
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log("\n====================================");
+  console.log(`🚀 Servidor Hive rodando na porta ${PORT}`);
+  console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+  console.log("====================================");
+  console.log("\n📍 Rotas disponíveis:");
+  console.log(`   • Health Check:     http://localhost:${PORT}/api/health`);
+  console.log(`   • Autenticação:     http://localhost:${PORT}/api/auth`);
+  console.log(`   • Admin/Manager:    http://localhost:${PORT}/api/clients`);
+  console.log(`   • Portal Cliente:   http://localhost:${PORT}/api/client-portal`);
+  console.log(`   • Equipes:          http://localhost:${PORT}/api/teams`);
+  console.log(`   • Usuários:         http://localhost:${PORT}/api/users`);
+  console.log(`   • Gestores:         http://localhost:${PORT}/api/manager`);
+  console.log(`   • Comunicação:      http://localhost:${PORT}/api/communication`);
+  console.log("\n✅ Arquitetura de rotas por Recurso está ATIVA");
+  console.log("====================================\n");
+});
+
+module.exports = app;

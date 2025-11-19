@@ -2,6 +2,7 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto'); // Para o token de "esqueci a senha"
+const Client = require('../models/Client');
 
 // Função auxiliar para gerar o token (o "crachá")
 const generateToken = (id, user_type) => {

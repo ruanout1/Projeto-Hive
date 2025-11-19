@@ -1,6 +1,6 @@
 import { 
   CheckCircle, Clock, User, MapPin, Star, Calendar, Bot, DollarSign, StickyNote, FileText, 
-  TrendingUp, ArrowRight, Camera, Eye, ChevronLeft, ChevronRight 
+  TrendingUp, ArrowRight, Camera, Eye, ChevronLeft, ChevronRight, AlertCircle 
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -11,10 +11,10 @@ import AIAssistant from '../../components/AIAssistant';
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { toast } from 'sonner';
-import api from '../../lib/api'; // 1. IMPORTAR A API (para o backend)
+import api from '../../lib/api';
 
 // =============================
-// Tipagens (Do seu código)
+// Tipagens
 // =============================
 interface CurrentService {
   id: string;
@@ -52,17 +52,16 @@ interface ClientDashboardProps {
 }
 
 // =============================================================
-// 2. DADOS ESTÁTICOS DE FALLBACK
-// Estes são os seus dados originais, usados se o backend falhar.
+// DADOS ESTÁTICOS DE FALLBACK (caso backend não responda)
 // =============================================================
 const FALLBACK_CURRENT_SERVICE: CurrentService = {
   id: "OS-2024-089",
-  title: "Limpeza Geral - Escritório Corporate ",
+  title: "Limpeza Geral - Escritório Corporate",
   status: "em-andamento",
   progress: 70,
   startDate: "23/09/2024",
   expectedEnd: "23/09/2024 - 17:00",
-  team: "Equipe Alpha ",
+  team: "Equipe Alpha",
   leader: "Carlos Silva",
   phone: "(11) 99999-8888",
   location: "Av. Paulista, 1000 - 15º andar"
@@ -71,7 +70,7 @@ const FALLBACK_CURRENT_SERVICE: CurrentService = {
 const FALLBACK_SERVICE_HISTORY: ServiceHistoryItem[] = [
   {
     id: "OS-2024-078",
-    service: "Limpeza Geral ",
+    service: "Limpeza Geral",
     date: "20/09/2024",
     team: "Equipe Beta",
     status: "completed",
@@ -94,8 +93,8 @@ const FALLBACK_SERVICE_HISTORY: ServiceHistoryItem[] = [
   },
   {
     id: "OS-2024-065",
-    service: "Limpeza de Vidros)",
-    date: "15/09/2024", 
+    service: "Limpeza de Vidros",
+    date: "15/09/2024",
     team: "Equipe Alpha",
     status: "completed",
     rating: 4,
@@ -112,10 +111,8 @@ const FALLBACK_SERVICE_HISTORY: ServiceHistoryItem[] = [
       uploadDate: "15/09/2024 16:45",
       uploadedBy: "Marina Costa"
     }
-  },
-  // ... (o resto do seu histórico estático)
+  }
 ];
-
 
 // =============================
 // Componente Principal
@@ -125,56 +122,65 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
   const [expandedPhoto, setExpandedPhoto] = useState<{ photos: string[], currentIndex: number, type: 'before' | 'after' } | null>(null);
   const [photoCarousels, setPhotoCarousels] = useState<{ [key: string]: { currentIndex: number, currentType: 'before' | 'after' } }>({});
   const [openPhotoViewer, setOpenPhotoViewer] = useState<string | null>(null);
-  // REMOVIDO: const [detailsModalService, setDetailsModalService] = useState<ServiceHistoryItem | null>(null);
 
-  // =============================================================
-  // 3. NOVOS ESTADOS: Para os dados dinâmicos e loading
-  // =============================================================
+  // Estados para dados dinâmicos
   const [currentService, setCurrentService] = useState<CurrentService | null>(null);
   const [serviceHistory, setServiceHistory] = useState<ServiceHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-
   // =============================================================
-  // 4. NOVA ALTERAÇÃO: useEffect para buscar dados do backend
+  // ✅ CORREÇÃO: URLs CORRETAS PARA O PORTAL DO CLIENTE
   // =============================================================
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
-        // Tenta buscar os dados do backend
-        const fetchCurrent = api.get('/api/clientes/current-service');
-        const fetchHistory = api.get('/api/clientes/history');
+        // ✅ CORRETO: Usando /client-portal em vez de /clients
+        // A baseURL já tem /api, então não precisa repetir
+        const fetchCurrent = api.get('/client-portal/current-service');
+        const fetchHistory = api.get('/client-portal/history');
 
         const [currentResponse, historyResponse] = await Promise.all([
           fetchCurrent,
           fetchHistory
         ]);
 
-        // Se o backend responder, usa os dados dele
+        // Backend respondeu com dados
         if (currentResponse.data) {
           setCurrentService(currentResponse.data);
-          toast.success("Serviço Atual carregado do backend!");
+          console.log('✅ Serviço atual carregado do backend');
         } else {
-          // Senão, usa o fallback
           setCurrentService(FALLBACK_CURRENT_SERVICE);
-          toast.info("Usando dados estáticos para Serviço Atual.");
+          console.log('ℹ️ Usando dados estáticos para Serviço Atual');
         }
 
         if (Array.isArray(historyResponse.data) && historyResponse.data.length > 0) {
           setServiceHistory(historyResponse.data);
-          toast.success("Histórico carregado do backend!");
+          console.log('✅ Histórico carregado do backend');
         } else {
-          // Senão, usa o fallback
           setServiceHistory(FALLBACK_SERVICE_HISTORY);
-          toast.info("Usando dados estáticos para Histórico.");
+          console.log('ℹ️ Usando dados estáticos para Histórico');
         }
 
-      } catch (error) {
-        // Se o backend der ERRO (ex: não estiver rodando), usa o fallback
-        console.error("Erro ao buscar dados do backend:", error);
-        toast.error("Backend não encontrado. Carregando dados de simulação.");
+      } catch (error: any) {
+        console.error("❌ Erro ao buscar dados do backend:", error);
+        
+        // Verifica se é erro de rede (backend offline)
+        if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
+          toast.info('Backend offline - usando dados de exemplo', {
+            description: 'Os dados mostrados são apenas para demonstração'
+          });
+        } else if (error.response?.status === 401) {
+          // 401 será tratado pelo interceptor do axios
+          console.log('Token inválido ou expirado');
+        } else {
+          toast.error('Erro ao carregar dados', {
+            description: 'Usando dados de exemplo'
+          });
+        }
+        
+        // Usa fallback em caso de erro
         setCurrentService(FALLBACK_CURRENT_SERVICE);
         setServiceHistory(FALLBACK_SERVICE_HISTORY);
       } finally {
@@ -183,133 +189,121 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
     };
 
     fetchData();
-  }, []); // O [] vazio faz isso rodar só uma vez
-
+  }, []);
 
   // =============================================================
-  // (Todas as suas funções auxiliares: getStatusBadge, 
-  // renderStars, handleNextPhoto, etc. permanecem aqui, sem mudança)
+  // Funções Auxiliares
   // =============================================================
   
-   const getStatusBadge = (status: string) => {
-     // ... (seu código)
-    switch (status) {
-      case 'em-andamento':
-        return <Badge className="border-none" style={{ backgroundColor: 'rgba(53, 186, 230, 0.1)', color: '#35BAE6' }}>Em Andamento</Badge>;
-      case 'completed':
-        return <Badge className="bg-green-100 text-green-800 border-none">Concluído</Badge>; 
-      default:
-        return <Badge className="bg-gray-100 text-gray-800 border-none">Agendado</Badge>;
-    }
-  };
- 
-  // ... (getTimelineIcon, getTimelineColor)
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'em-andamento':
+        return <Badge className="border-none" style={{ backgroundColor: 'rgba(53, 186, 230, 0.1)', color: '#35BAE6' }}>Em Andamento</Badge>;
+      case 'completed':
+        return <Badge className="bg-green-100 text-green-800 border-none">Concluído</Badge>;
+      default:
+        return <Badge className="bg-gray-100 text-gray-800 border-none">Agendado</Badge>;
+    }
+  };
 
-  const renderStars = (rating: number) => {
-    // ... (seu código)
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        className={`h-4 w-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
-      />
-    ));
-  };
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star
+        key={i}
+        className={`h-4 w-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+      />
+    ));
+  };
 
-  const initializeCarousel = (serviceId: string) => {
-    // ... (seu código)
-    if (!photoCarousels[serviceId]) {
-      setPhotoCarousels(prev => ({
-        ...prev,
-        [serviceId]: { currentIndex: 0, currentType: 'before' }
-      }));
-    }
-  };
+  const initializeCarousel = (serviceId: string) => {
+    if (!photoCarousels[serviceId]) {
+      setPhotoCarousels(prev => ({
+        ...prev,
+        [serviceId]: { currentIndex: 0, currentType: 'before' }
+      }));
+    }
+  };
 
-  const handleTypeChange = (serviceId: string, type: 'before' | 'after') => {
-    // ... (seu código)
-    setPhotoCarousels(prev => ({
-      ...prev,
-      [serviceId]: { currentIndex: 0, currentType: type }
-    }));
-  };
+  const handleTypeChange = (serviceId: string, type: 'before' | 'after') => {
+    setPhotoCarousels(prev => ({
+      ...prev,
+      [serviceId]: { currentIndex: 0, currentType: type }
+    }));
+  };
 
-  const handlePrevPhoto = (serviceId: string, photosLength: number) => {
-    // ... (seu código)
-    setPhotoCarousels(prev => ({
-      ...prev,
-      [serviceId]: {
-        ...prev[serviceId],
-        currentIndex: prev[serviceId].currentIndex === 0 ? photosLength - 1 : prev[serviceId].currentIndex - 1
-      }
-    }));
-  };
+  const handlePrevPhoto = (serviceId: string, photosLength: number) => {
+    setPhotoCarousels(prev => ({
+      ...prev,
+      [serviceId]: {
+        ...prev[serviceId],
+        currentIndex: prev[serviceId].currentIndex === 0 ? photosLength - 1 : prev[serviceId].currentIndex - 1
+      }
+    }));
+  };
 
-  const handleNextPhoto = (serviceId: string, photosLength: number) => {
-    // ... (seu código)
-    setPhotoCarousels(prev => ({
-      ...prev,
-      [serviceId]: {
-        ...prev[serviceId],
-        currentIndex: prev[serviceId].currentIndex === photosLength - 1 ? 0 : prev[serviceId].currentIndex + 1
-      }
-    }));
-  };
+  const handleNextPhoto = (serviceId: string, photosLength: number) => {
+    setPhotoCarousels(prev => ({
+      ...prev,
+      [serviceId]: {
+        ...prev[serviceId],
+        currentIndex: prev[serviceId].currentIndex === photosLength - 1 ? 0 : prev[serviceId].currentIndex + 1
+      }
+    }));
+  };
 
-  const handleViewPhotos = (photoDoc: any, type: 'before' | 'after', index: number) => {
-    // ... (seu código)
-    const photos = type === 'before' ? photoDoc.beforePhotos : photoDoc.afterPhotos;
-    setExpandedPhoto({ photos, currentIndex: index, type });
-  };
+  const handleViewPhotos = (photoDoc: any, type: 'before' | 'after', index: number) => {
+    const photos = type === 'before' ? photoDoc.beforePhotos : photoDoc.afterPhotos;
+    setExpandedPhoto({ photos, currentIndex: index, type });
+  };
 
-  const handleExpandedPrevPhoto = () => {
-    // ... (seu código)
-    if (expandedPhoto) {
-      setExpandedPhoto({
-        ...expandedPhoto,
-        currentIndex: expandedPhoto.currentIndex === 0 
-          ? expandedPhoto.photos.length - 1 
-          : expandedPhoto.currentIndex - 1
-      });
-    }
-  };
+  const handleExpandedPrevPhoto = () => {
+    if (expandedPhoto) {
+      setExpandedPhoto({
+        ...expandedPhoto,
+        currentIndex: expandedPhoto.currentIndex === 0 
+          ? expandedPhoto.photos.length - 1 
+          : expandedPhoto.currentIndex - 1
+      });
+    }
+  };
 
-  const handleExpandedNextPhoto = () => {
-    // ... (seu código)
-    if (expandedPhoto) {
-      setExpandedPhoto({
-        ...expandedPhoto,
-        currentIndex: expandedPhoto.currentIndex === expandedPhoto.photos.length - 1 
-          ? 0 
-          : expandedPhoto.currentIndex + 1
-      });
-    }
-  };
+  const handleExpandedNextPhoto = () => {
+    if (expandedPhoto) {
+      setExpandedPhoto({
+        ...expandedPhoto,
+        currentIndex: expandedPhoto.currentIndex === expandedPhoto.photos.length - 1 
+          ? 0 
+          : expandedPhoto.currentIndex + 1
+      });
+    }
+  };
 
   // =============================================================
   // RENDERIZAÇÃO
   // =============================================================
 
-  // =============================================================
-  // 5. NOVA ALTERAÇÃO: Adicionar tela de loading
-  // =============================================================
   if (loading) {
     return (
       <div className="p-6 text-center text-gray-500">
-        <Clock className="h-6 w-6 mx-auto mb-2 animate-spin" />
-        Tentando conectar ao backend...
+        <Clock className="h-8 w-8 mx-auto mb-2 animate-spin" style={{ color: '#6400A4' }} />
+        <p>Conectando ao servidor...</p>
+        <p className="text-sm mt-2">http://localhost:5000/api/client-portal</p>
       </div>
     );
   }
   
-  // Se o serviço atual não carregar (mesmo após o loading)
   if (!currentService) {
-     return <div className="p-6 text-center text-red-500">Erro fatal ao carregar dados.</div>;
+    return (
+      <div className="p-6 text-center text-red-500">
+        <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+        <p>Erro ao carregar dados</p>
+      </div>
+    );
   }
-
 
   return (
     <div className="p-6 overflow-hidden">
-      {/* Cabeçalho (Seu código) */}
+      {/* Cabeçalho */}
       <div className="flex justify-between items-start mb-6">
         <div>
           <h1 className="hive-screen-title">Dashboard de Serviços</h1>
@@ -327,7 +321,7 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
         </Button>
       </div>
 
-      {/* Serviço Atual (Seu código) */}
+      {/* Serviço Atual */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-black flex items-center justify-between">
@@ -340,7 +334,7 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Informações Principais (Seu código) */}
+            {/* Informações Principais */}
             <div className="lg:col-span-2 space-y-4">
               <div>
                 <h3 className="text-black mb-3">{currentService.title}</h3>
@@ -383,7 +377,7 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
               </div>
             </div>
 
-            {/* Progresso (Seu código) */}
+            {/* Progresso */}
             <div className="space-y-4">
               <div>
                 <h4 className="text-black mb-3">Progresso do Serviço</h4>
@@ -429,7 +423,7 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
         </CardContent>
       </Card>
 
-      {/* Cards de Acesso Rápido (Seu código) */}
+      {/* Cards de Acesso Rápido */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <Card 
           className="cursor-pointer hover:shadow-lg transition-shadow"
@@ -479,12 +473,10 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
             <CheckCircle className="h-5 w-5 mr-2" style={{ color: '#6400A4' }} />
             Histórico de Serviços
           </CardTitle>
-          {/* Botão de Criar Novo Serviço IGNORADO, como pedido */}
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {serviceHistory.map((service, index) => (
-              // REMOVIDO: cursor-pointer e onClick que abria o modal de detalhes
               <div 
                 key={index} 
                 className="border rounded-lg p-4 hover:shadow-md transition-all duration-200 bg-white" 
@@ -537,7 +529,7 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
                     style={{ 
                       backgroundColor: '#6400A4'
                     }}
-                    onClick={() => { // REMOVIDO: e.stopPropagation()
+                    onClick={() => {
                       initializeCarousel(service.id);
                       setOpenPhotoViewer(service.id);
                     }}
@@ -552,20 +544,17 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
         </CardContent>
       </Card>
 
-      {/* AI Assistant Modal (Seu código) */}
+      {/* AI Assistant Modal */}
       <AIAssistant
         isOpen={isAIOpen}
         onClose={() => setIsAIOpen(false)}
         userType="cliente"
       />
 
-      {/* Modal de Visualizador de Fotos (Seu código) */}
+      {/* Modal de Visualizador de Fotos */}
       {openPhotoViewer && (() => {
         const service = serviceHistory.find(s => s.id === openPhotoViewer);
-        if (!service) return null;
-        
-        // Assegura que service.photoDocumentation não é nulo antes de acessar
-        if (!service.photoDocumentation) return null; 
+        if (!service || !service.photoDocumentation) return null;
 
         const carousel = photoCarousels[openPhotoViewer] || { currentIndex: 0, currentType: 'before' as const };
         const currentType = carousel.currentType;
@@ -664,7 +653,7 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
         );
       })()}
 
-      {/* Modal de Foto Expandida (Seu código) */}
+      {/* Modal de Foto Expandida */}
       <Dialog open={!!expandedPhoto} onOpenChange={() => setExpandedPhoto(null)}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
@@ -713,14 +702,6 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
           )}
         </DialogContent>
       </Dialog>
-      
-      {/* REMOVIDO: Modal de Detalhes do Serviço
-      <Dialog open={!!detailsModalService} onOpenChange={() => setDetailsModalService(null)}>
-        ...
-      </Dialog> 
-      */}
-
     </div>
   );
 }
-

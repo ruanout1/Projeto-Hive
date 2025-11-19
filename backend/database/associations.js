@@ -64,6 +64,7 @@ function setupAssociations() {
   // Client <-> ClientAddress (1:M)
   Client.hasMany(ClientAddress, { foreignKey: 'client_id', as: 'addresses' });
   ClientAddress.belongsTo(Client, { foreignKey: 'client_id', as: 'client' });
+  Client.hasMany(ServiceRequest, { foreignKey: 'client_id', as: 'serviceRequests' });
 
   // Area <-> ClientAddress (1:M)
   Area.hasMany(ClientAddress, { foreignKey: 'area_id', as: 'clientAddresses' });
@@ -91,6 +92,60 @@ function setupAssociations() {
   ServiceRequest.belongsTo(User, { foreignKey: 'assigned_collaborator_user_id', as: 'assignedCollaborator' });
   ServiceRequest.belongsTo(ClientAddress, { foreignKey: 'address_id', as: 'address' });
   ServiceRequest.belongsTo(ServiceCatalog, { foreignKey: 'service_catalog_id', as: 'service' });
+
+ 
+  // ScheduledService Associations
+const ScheduledService = require('../models/ScheduledService');
+
+// ScheduledService → Client (N:1)
+ScheduledService.belongsTo(Client, {
+  foreignKey: 'client_id',
+  as: 'client'
+});
+Client.hasMany(ScheduledService, {
+  foreignKey: 'client_id',
+  as: 'scheduledServices'
+});
+
+// ScheduledService → ServiceCatalog (N:1)
+ScheduledService.belongsTo(ServiceCatalog, {
+  foreignKey: 'service_catalog_id',
+  as: 'service'
+});
+ServiceCatalog.hasMany(ScheduledService, {
+  foreignKey: 'service_catalog_id',
+  as: 'scheduledServices'
+});
+
+// ScheduledService → User (colaborador responsável) (N:1)
+ScheduledService.belongsTo(User, {
+  foreignKey: 'collaborator_user_id',
+  as: 'collaborator'
+});
+User.hasMany(ScheduledService, {
+  foreignKey: 'collaborator_user_id',
+  as: 'collaboratorScheduledServices'
+});
+
+// ScheduledService → Team (N:1)
+ScheduledService.belongsTo(Team, {
+  foreignKey: 'team_id',
+  as: 'team'
+});
+Team.hasMany(ScheduledService, {
+  foreignKey: 'team_id',
+  as: 'teamScheduledServices'
+});
+
+// ScheduledService → Area (client area) (N:1)
+ScheduledService.belongsTo(Area, {
+  foreignKey: 'client_area_id',
+  as: 'clientArea'
+});
+Area.hasMany(ScheduledService, {
+  foreignKey: 'client_area_id',
+  as: 'scheduledServicesInArea'
+});
 
   console.log('Associações configuradas com sucesso.');
 }

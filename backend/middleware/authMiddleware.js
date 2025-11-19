@@ -47,9 +47,9 @@ const protect = async (req, res, next) => {
       // Se 'area' vem de outra tabela, você precisa buscá-la.
       // Por enquanto, vamos mockar se não vier.
       req.user = user.toJSON();
-      if (req.user.user_type === 'manager' && !req.user.area) {
-        req.user.area = 'area_gestor_mock'; // Substitua isso pela busca real
-      }
+      // if (req.user.user_type === 'manager' && !req.user.area) {
+      //   req.user.area = 'area_gestor_mock'; // Substitua isso pela busca real
+      // }
       
       next();
 
@@ -60,7 +60,7 @@ const protect = async (req, res, next) => {
   }
 
   if (!token) {
-    res.status(401).json({ message: 'Não autorizado, sem token.' });
+    return res.status(401).json({ message: 'Não autorizado, sem token.' });
   }
 };
 

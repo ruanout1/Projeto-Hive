@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'; // 1. IMPORTAR useEffect
+import { useState, useEffect } from 'react';
 import { Star, Calendar, Search, Bot, MessageSquare, Clock, User, CheckCircle } from 'lucide-react';
 import ScreenHeader from '../../components/ScreenHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -8,16 +8,13 @@ import { Textarea } from '../../components/ui/textarea';
 import { Badge } from '../../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { Label } from '../../components/ui/label';
-import api from '../../lib/api'; // 2. IMPORTAR A API
-import { toast } from 'sonner'; // 3. IMPORTAR O TOAST
+import api from '../../lib/api';
+import { toast } from 'sonner';
 
 interface ClientRatingsScreenProps {
   onBack?: () => void;
 }
 
-// ===================================
-// 4. TIPAGENS (MOVENDO PARA CIMA)
-// ===================================
 interface Service {
   id: string;
   name: string;
@@ -31,13 +28,11 @@ interface Service {
   ratedAt?: string;
 }
 
-// =============================================================
-// 5. DADOS ESTÁTICOS DE FALLBACK
-// =============================================================
+// DADOS ESTÁTICOS DE FALLBACK
 const FALLBACK_PENDING_SERVICES: Service[] = [
   {
     id: 'SRV-2024-089',
-    name: 'Limpeza Geral - Escritório Corporate ',
+    name: 'Limpeza Geral - Escritório Corporate',
     date: '23/09/2024',
     team: 'Equipe Alpha',
     description: 'Limpeza completa do escritório incluindo salas individuais e áreas comuns',
@@ -46,7 +41,7 @@ const FALLBACK_PENDING_SERVICES: Service[] = [
   },
   {
     id: 'SRV-2024-087',
-    name: 'Limpeza de Vidros ',
+    name: 'Limpeza de Vidros',
     date: '22/09/2024',
     team: 'Equipe Beta',
     description: 'Limpeza de todas as superfícies de vidro do edifício',
@@ -58,19 +53,19 @@ const FALLBACK_PENDING_SERVICES: Service[] = [
 const FALLBACK_RATED_SERVICES: Service[] = [
   { 
     id: 'SRV-2024-078', 
-    name: 'Limpeza Geral ', 
+    name: 'Limpeza Geral', 
     date: '20/09/2024', 
     team: 'Equipe Beta',
     description: 'Limpeza completa do ambiente',
     duration: '5h',
     status: 'rated',
     rating: 5, 
-    feedback: 'Excelente trabalho! ',
+    feedback: 'Excelente trabalho!',
     ratedAt: '20/09/2024 16:30'
   },
   { 
     id: 'SRV-2024-065', 
-    name: 'Limpeza de Vidros + Fachada ', 
+    name: 'Limpeza de Vidros + Fachada', 
     date: '15/09/2024', 
     team: 'Equipe Alpha',
     description: 'Limpeza de vidros e fachada externa',
@@ -82,66 +77,57 @@ const FALLBACK_RATED_SERVICES: Service[] = [
   },
 ];
 
-
-// ===================================
-// COMPONENTE PRINCIPAL
-// ===================================
 export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps) {
   const [selectedRating, setSelectedRating] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [selectedServiceId, setSelectedServiceId] = useState('');
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-
-  // =============================================================
-  // 6. NOVOS ESTADOS: Para os dados dinâmicos e loading
-  // =============================================================
   const [pendingServices, setPendingServices] = useState<Service[]>([]);
   const [ratedServices, setRatedServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
-
-  // =============================================================
-  // 7. NOVA ALTERAÇÃO: useEffect para buscar dados do backend
-  // =============================================================
+  // ✅ CORRIGIDO: useEffect com URL correta
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
-        // Tenta buscar os dados do backend
-        const ratingsResponse = await api.get('/api/clientes/ratings');
+        // ✅ CORRETO: Sem /api/ duplicado
+        const ratingsResponse = await api.get('/client-portal/ratings');
 
         if (Array.isArray(ratingsResponse.data)) {
-          // O backend (server.js) só nos dá os dados de "ratings"
-          // O formato do server.js é { serviceId, service, date, rating, feedback }
-          // Vamos mapeá-lo para o formato "Service" que a tela espera
           const backendRatedServices = ratingsResponse.data.map((r: any) => ({
             id: r.serviceId,
             name: r.service,
             date: r.date,
-            team: "Equipe ", // O server.js não fornece 'team'
-            description: "Descrição", // O server.js não fornece 'description'
-            duration: "Xh", // O server.js não fornece 'duration'
+            team: r.team || "Equipe",
+            description: r.description || "Descrição do serviço",
+            duration: r.duration || "Xh",
             status: 'rated' as const,
             rating: r.rating,
             feedback: r.feedback,
-            ratedAt: r.date // Apenas para simulação
+            ratedAt: r.ratedAt || r.date
           }));
           
           setRatedServices(backendRatedServices);
-          toast.success("Avaliações carregadas do backend!");
+          console.log('✅ Avaliações carregadas do backend');
         } else {
           setRatedServices(FALLBACK_RATED_SERVICES);
-          toast.info("Usando dados estáticos para Avaliações.");
         }
 
-        // Como o backend não tem rota de PENDENTES, usamos o fallback
+        // Backend não tem rota de pendentes, usa fallback
         setPendingServices(FALLBACK_PENDING_SERVICES);
 
-      } catch (error) {
-        console.error("Erro ao buscar dados do backend:", error);
-        toast.error("Backend não encontrado. Carregando dados de simulação.");
+      } catch (error: any) {
+        console.error("Erro ao buscar avaliações:", error);
+        
+        if (error.code === 'ERR_NETWORK') {
+          toast.info("Backend offline - usando dados de exemplo");
+        } else {
+          toast.error("Erro ao carregar avaliações");
+        }
+        
         setRatedServices(FALLBACK_RATED_SERVICES);
         setPendingServices(FALLBACK_PENDING_SERVICES);
       } finally {
@@ -150,11 +136,8 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
     };
 
     fetchData();
-  }, []); // O [] vazio faz isso rodar só uma vez
+  }, []);
 
-  // =============================================================
-  // 8. DADOS DINÂMICOS: Agora tudo vem do estado
-  // =============================================================
   const allServices = [...pendingServices, ...ratedServices];
 
   const filteredServices = allServices.filter(service => 
@@ -170,8 +153,6 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
     : '0.0';
   const fiveStarCount = ratedServices.filter(s => s.rating === 5).length;
 
-
-  // Função renderStars (sem alteração)
   const renderStars = (rating: number, interactive = false, onRate: ((rating: number) => void) | null = null) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
@@ -184,10 +165,7 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
     ));
   };
 
-
-  // =============================================================
-  // 9. ALTERAÇÃO PRINCIPAL: Conectando o envio ao Backend
-  // =============================================================
+  // ✅ CORRIGIDO: handleSubmitRating com URL correta
   const handleSubmitRating = async () => {
     if (selectedRating === 0 || !selectedServiceId) {
       toast.warning("Por favor, selecione uma avaliação.");
@@ -202,35 +180,32 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
 
     const newRatingPayload = {
       serviceId: serviceToRate.id,
-      service: serviceToRate.name, // O backend (server.js) espera 'service'
-      date: serviceToRate.date,     // O backend (server.js) espera 'date'
+      service: serviceToRate.name,
+      date: serviceToRate.date,
+      team: serviceToRate.team,
+      description: serviceToRate.description,
+      duration: serviceToRate.duration,
       rating: selectedRating,
       feedback: feedback,
     };
 
     try {
-      // 1. Envia o POST para o backend
-      // O server.js retorna { message: "...", data: newRatingPayload }
-      const response = await api.post('/api/clientes/ratings', newRatingPayload);
+      // ✅ CORRETO: Sem /api/ duplicado
+      const response = await api.post('/client-portal/ratings', newRatingPayload);
       
-      // 2. Prepara o novo objeto de "avaliado" para a tela
       const newRatedService: Service = {
-        ...serviceToRate, // Pega os dados do serviço (id, nome, team, etc.)
+        ...serviceToRate,
         status: 'rated',
-        rating: response.data.data.rating,
-        feedback: response.data.data.feedback,
-        ratedAt: new Date().toLocaleString() // Simula a data de avaliação
+        rating: selectedRating,
+        feedback: feedback,
+        ratedAt: new Date().toLocaleString()
       };
 
-      // 3. Atualiza o estado local (UI)
-      // Adiciona o novo serviço à lista de avaliados
       setRatedServices(prev => [newRatedService, ...prev]); 
-      // Remove o serviço da lista de pendentes
       setPendingServices(prev => prev.filter(s => s.id !== selectedServiceId));
       
-      toast.success("Avaliação enviada com sucesso!");
+      toast.success("✅ Avaliação enviada com sucesso!");
       
-      // 4. Limpa e fecha o modal
       setSelectedRating(0);
       setFeedback('');
       setSelectedServiceId('');
@@ -242,7 +217,6 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
     }
   };
 
-  // Funções getRatingColor e getRatingBadge (sem alteração)
   const getRatingColor = (rating: number) => {
     if (rating >= 5) return 'text-green-600';
     if (rating >= 4) return 'text-yellow-600';
@@ -257,9 +231,6 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
     return 'Precisa Melhorar';
   };
 
-  // =============================================================
-  // 10. NOVA ALTERAÇÃO: Adicionar tela de loading
-  // =============================================================
   if (loading) {
     return (
       <div className="p-6 text-center text-gray-500">
@@ -271,7 +242,6 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
 
   return (
     <div className="p-6 space-y-6">
-      {/* Cabeçalho (Seu código) */}
       <div className="flex justify-between items-start">
         <div className="flex-1">
           <ScreenHeader 
@@ -289,7 +259,7 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
         </Button>
       </div>
 
-      {/* Cards de Estatísticas (Seu código, agora dinâmicos) */}
+      {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border-2" style={{ borderColor: '#6400A4' }}>
           <div className="flex items-center justify-between">
@@ -334,7 +304,7 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
         </div>
       </div>
 
-      {/* Barra de Pesquisa (Seu código) */}
+      {/* Barra de Pesquisa */}
       <Card>
         <CardContent className="pt-6">
           <div className="relative">
@@ -349,113 +319,117 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
         </CardContent>
       </Card>
 
-      {/* Lista de Serviços (Seu código, agora dinâmica) */}
+      {/* Lista de Serviços */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredServices.map((service) => (
-          <Card 
-            key={service.id} 
-            className="hover:shadow-lg transition-all duration-200"
-            style={{ borderColor: service.status === 'pending' ? 'rgba(255, 255, 32, 0.3)' : 'rgba(100, 0, 164, 0.2)' }}
-          >
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-black text-lg mb-1">{service.name}</CardTitle>
-                  <p className="text-sm text-gray-600">OS: {service.id}</p>
-                </div>
-                {service.status === 'rated' ? (
-                  <Badge 
-                    className="border-none"
-                    style={{ 
-                      backgroundColor: 'rgba(53, 186, 230, 0.1)', 
-                      color: '#35BAE6' 
-                    }}
-                  >
-                    Avaliado
-                  </Badge>
-                ) : (
-                  <Badge 
-                    className="border-none"
-                    style={{ 
-                      backgroundColor: 'rgba(255, 255, 32, 0.2)', 
-                      color: '#8B7000' 
-                    }}
-                  >
-                    Pendente
-                  </Badge>
-                )}
-              </div>
-            </CardHeader>
-            
-            <CardContent className="space-y-4">
-              <p className="text-sm text-gray-700">{service.description}</p>
-              
-              {/* Informações do Serviço (Seu código) */}
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Calendar className="h-4 w-4" style={{ color: '#8B20EE' }} />
-                  <span>{service.date}</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <User className="h-4 w-4" style={{ color: '#8B20EE' }} />
-                  <span>{service.team}</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Clock className="h-4 w-4" style={{ color: '#8B20EE' }} />
-                  <span>{service.duration}</span>
-                </div>
-              </div>
-
-              {/* Se o serviço já foi avaliado (Seu código) */}
-              {service.status === 'rated' && (
-                <div className="space-y-3 pt-3 border-t border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1">
-                      {renderStars(service.rating || 0)}
-                    </div>
-                    <Badge 
-                      className={`border-none text-xs ${getRatingColor(service.rating || 0).replace('text-', 'bg-').replace('-600', '-100')} ${getRatingColor(service.rating || 0).replace('-600', '-800')}`}
-                    >
-                      {getRatingBadge(service.rating || 0)}
-                    </Badge>
+        {filteredServices.length > 0 ? (
+          filteredServices.map((service) => (
+            <Card 
+              key={service.id} 
+              className="hover:shadow-lg transition-all duration-200"
+              style={{ borderColor: service.status === 'pending' ? 'rgba(255, 255, 32, 0.3)' : 'rgba(100, 0, 164, 0.2)' }}
+            >
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-black text-lg mb-1">{service.name}</CardTitle>
+                    <p className="text-sm text-gray-600">OS: {service.id}</p>
                   </div>
-                  
-                  {service.feedback && (
-                    <div className="p-3 bg-blue-50 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <MessageSquare className="h-4 w-4" style={{ color: '#6400A4' }} />
-                        <span className="text-sm" style={{ color: '#6400A4' }}>Seu comentário:</span>
-                      </div>
-                      <p className="text-sm text-black italic">"{service.feedback}"</p>
-                    </div>
+                  {service.status === 'rated' ? (
+                    <Badge 
+                      className="border-none"
+                      style={{ 
+                        backgroundColor: 'rgba(53, 186, 230, 0.1)', 
+                        color: '#35BAE6' 
+                      }}
+                    >
+                      Avaliado
+                    </Badge>
+                  ) : (
+                    <Badge 
+                      className="border-none"
+                      style={{ 
+                        backgroundColor: 'rgba(255, 255, 32, 0.2)', 
+                        color: '#8B7000' 
+                      }}
+                    >
+                      Pendente
+                    </Badge>
                   )}
-                  
-                  <p className="text-xs text-gray-500">Avaliado em: {service.ratedAt}</p>
                 </div>
-              )}
+              </CardHeader>
+              
+              <CardContent className="space-y-4">
+                <p className="text-sm text-gray-700">{service.description}</p>
+                
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Calendar className="h-4 w-4" style={{ color: '#8B20EE' }} />
+                    <span>{service.date}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <User className="h-4 w-4" style={{ color: '#8B20EE' }} />
+                    <span>{service.team}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Clock className="h-4 w-4" style={{ color: '#8B20EE' }} />
+                    <span>{service.duration}</span>
+                  </div>
+                </div>
 
-              {/* Se o serviço está pendente de avaliação (Seu código) */}
-              {service.status === 'pending' && (
-                <div className="pt-3 border-t border-gray-100">
-                  <Button
-                    className="w-full"
-                    style={{ backgroundColor: '#6400A4', color: 'white' }}
-                    onClick={() => {
-                      setSelectedServiceId(service.id);
-                      setIsRatingModalOpen(true);
-                    }}
-                  >
-                    <Star className="h-4 w-4 mr-2" />
-                    Avaliar Serviço
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                {service.status === 'rated' && (
+                  <div className="space-y-3 pt-3 border-t border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-1">
+                        {renderStars(service.rating || 0)}
+                      </div>
+                      <Badge 
+                        className={`border-none text-xs ${getRatingColor(service.rating || 0).replace('text-', 'bg-').replace('-600', '-100')} ${getRatingColor(service.rating || 0).replace('-600', '-800')}`}
+                      >
+                        {getRatingBadge(service.rating || 0)}
+                      </Badge>
+                    </div>
+                    
+                    {service.feedback && (
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <MessageSquare className="h-4 w-4" style={{ color: '#6400A4' }} />
+                          <span className="text-sm" style={{ color: '#6400A4' }}>Seu comentário:</span>
+                        </div>
+                        <p className="text-sm text-black italic">"{service.feedback}"</p>
+                      </div>
+                    )}
+                    
+                    <p className="text-xs text-gray-500">Avaliado em: {service.ratedAt}</p>
+                  </div>
+                )}
+
+                {service.status === 'pending' && (
+                  <div className="pt-3 border-t border-gray-100">
+                    <Button
+                      className="w-full"
+                      style={{ backgroundColor: '#6400A4', color: 'white' }}
+                      onClick={() => {
+                        setSelectedServiceId(service.id);
+                        setIsRatingModalOpen(true);
+                      }}
+                    >
+                      <Star className="h-4 w-4 mr-2" />
+                      Avaliar Serviço
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <div className="col-span-2 text-center py-12">
+            <Star className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+            <p className="text-gray-600">Nenhum serviço encontrado</p>
+          </div>
+        )}
       </div>
 
-      {/* Modal de Avaliação (Seu código) */}
+      {/* Modal de Avaliação */}
       <Dialog open={isRatingModalOpen} onOpenChange={setIsRatingModalOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -466,7 +440,6 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
           </DialogHeader>
           <div className="space-y-4 py-4">
             {selectedServiceId && (() => {
-              // Modificado para buscar de 'pendingServices'
               const service = pendingServices.find(s => s.id === selectedServiceId);
               return service ? (
                 <div className="p-4 bg-gray-50 rounded-lg space-y-2">
