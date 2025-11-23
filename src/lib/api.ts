@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 // 1. BASE URL DO BACKEND
 // =========================================
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "http://localhost:3000/api",
   withCredentials: true
 });
 

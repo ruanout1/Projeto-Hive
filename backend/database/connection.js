@@ -7,7 +7,7 @@ require('dotenv').config();
 const sequelize = new Sequelize(
   process.env.DB_NAME, // <-- Puxa 'hive_db' do .env
   process.env.DB_USER, // <-- Puxa 'root' do .env
-  process.env.DB_PASS, // <-- Puxa sua senha do .env
+  process.env.DB_PASS, // <-- Puxa 'root' do .env
   {
     host: process.env.DB_HOST, // <-- Puxa 'localhost' do .env
     dialect: 'mysql',

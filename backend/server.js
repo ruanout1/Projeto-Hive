@@ -22,10 +22,15 @@ const collaboratorAllocationRoutes = require('./routes/collaboratorAllocationRou
 const authRoutes = require('./routes/authRoutes');
 
 // =============================================
-// 🔹 REGISTRAR ASSOCIAÇÕES (NOVO MÉTODO!)
+// 🔹 REGISTRAR ASSOCIAÇÕES
 // =============================================
 const { setupAssociations } = require('./database/associations');
 setupAssociations();
+
+// =============================================
+// 🆕 CRIAR ADMIN PADRÃO (SEED)
+// =============================================
+const { createDefaultAdmin } = require('./database/seedadmin');
 
 const app = express();
 
@@ -34,11 +39,12 @@ const app = express();
 // =============================================
 const corsOptions = {
   origin: [
-    "http://localhost:3000",
-    "http://localhost:5173"
+    "http://localhost:5000",
+    "http://localhost:5173",
+    "http://localhost:3000"
   ],
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-  credentials: true, // PERMITE envio de cookies / headers
+  credentials: true,
 };
 
 app.use(cors(corsOptions));
@@ -76,11 +82,19 @@ app.get('/api/health', (req, res) => {
 // =====================
 // INICIAR SERVIDOR
 // =====================
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, async () => {
   console.log("====================================");
   console.log(`🚀 Servidor backend rodando na porta ${PORT}`);
   console.log("✅ Arquitetura de rotas por Recurso está ATIVA.");
   console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
+  console.log("====================================");
+  
+  // 🆕 CRIAR ADMIN AUTOMATICAMENTE
+  await createDefaultAdmin();
+  
+  console.log("====================================");
+  console.log("✅ Sistema pronto para uso!");
   console.log("====================================");
 });

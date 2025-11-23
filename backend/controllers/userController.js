@@ -1,292 +1,434 @@
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
-const sequelize = require('../database/connection'); // Para transações
+const sequelize = require('../database/connection');
 const User = require('../models/User');
-const Team = require('../models/Team');
-const TeamMember = require('../models/TeamMember');
 const Collaborator = require('../models/Collaborator');
-const Client = require('../models/Client');
+const ManagerArea = require('../models/ManagerArea');
+const Area = require('../models/Area');
 const { handleDatabaseError } = require('../utils/errorHandling');
 
-// =====================================
-// FUNÇÕES DE CRUD (ADMIN)
-// =====================================
-
-// GET /api/users (Lê todos os usuários)
+// ==========================================
+// OBTER TODOS OS USUÁRIOS (Gestores e Colaboradores)
+// ==========================================
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.findAll({
-      attributes: ['user_id', 'full_name', 'email', 'user_type', 'is_active', 'created_at'],
+      where: {
+        user_type: {
+          [Op.in]: ['manager', 'collaborator']
+        }
+      },
+      attributes: [
+        'user_id',
+        'full_name',
+        'email',
+        'phone',
+        'user_type',
+        'is_active',
+        'created_at',
+        'last_login'
+      ],
       include: [
         {
           model: Collaborator,
           as: 'collaboratorDetails',
-          attributes: ['position', 'hire_date']
-        },
-        {
-          model: Client,
-          as: 'clientDetails',
-          attributes: ['main_company_name', 'main_cnpj']
+          attributes: ['position'],
+          required: false
         }
       ],
-      order: [['full_name', 'ASC']]
+      order: [['created_at', 'DESC']]
     });
-    res.status(200).json(users);
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar todos os usuários');
-  }
-};
 
-// GET /api/users/:id (Lê um usuário)
-exports.getUserById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const user = await User.findByPk(id, {
-      attributes: ['user_id', 'full_name', 'email', 'user_type', 'is_active', 'phone', 'avatar_url', 'created_at'],
-      include: [
-        {
-          model: Collaborator,
-          as: 'collaboratorDetails'
-        },
-        {
-          model: Client,
-          as: 'clientDetails'
+    // Formatar para o frontend
+    const formattedUsers = await Promise.all(users.map(async (user) => {
+      const userJson = user.toJSON();
+      
+      // Formatar role
+      const role = userJson.user_type === 'manager' ? 'gestor' : 'colaborador';
+      
+      // Formatar status
+      const status = userJson.is_active ? 'active' : 'inactive';
+      
+      // Formatar data de criação
+      const createdAt = new Date(userJson.created_at).toLocaleDateString('pt-BR');
+      
+      // Formatar último acesso
+      let lastAccess = 'Nunca acessou';
+      if (userJson.last_login) {
+        const lastLoginDate = new Date(userJson.last_login);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (lastLoginDate.toDateString() === today.toDateString()) {
+          lastAccess = `Hoje às ${lastLoginDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+        } else if (lastLoginDate.toDateString() === yesterday.toDateString()) {
+          lastAccess = `Ontem às ${lastLoginDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+        } else {
+          lastAccess = lastLoginDate.toLocaleString('pt-BR', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
         }
-      ]
-    });
+      }
+      
+      // Buscar áreas se for gestor
+      let areas = undefined;
+      if (role === 'gestor') {
+        const managerAreas = await ManagerArea.findAll({
+          where: { manager_user_id: userJson.user_id },
+          include: [{
+            model: Area,
+            as: 'area',
+            attributes: ['name']
+          }]
+        });
+        areas = managerAreas.map(ma => ma.area.name.toLowerCase());
+      }
+      
+      return {
+        id: userJson.user_id.toString(),
+        name: userJson.full_name,
+        email: userJson.email,
+        phone: userJson.phone || '',
+        role,
+        position: userJson.collaboratorDetails?.position,
+        areas,
+        status,
+        createdAt,
+        lastAccess
+      };
+    }));
 
-    if (!user) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
-    }
-    res.status(200).json(user);
+    res.json({
+      success: true,
+      data: formattedUsers
+    });
   } catch (error) {
-    handleDatabaseError(res, error, 'buscar usuário por ID');
+    console.error('Erro ao buscar usuários:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar usuários',
+      error: error.message
+    });
   }
 };
 
-// POST /api/users (Cria um novo usuário)
+// ==========================================
+// CRIAR NOVO USUÁRIO
+// ==========================================
 exports.createUser = async (req, res) => {
-  // 'userData' contém: full_name, email, password, user_type
-  // 'detailsData' contém: { position, hire_date } (se for colaborador)
-  //                      ou { main_company_name, main_cnpj } (se for cliente)
-  const { userData, detailsData } = req.body;
-
-  if (!userData || !userData.email || !userData.password || !userData.full_name || !userData.user_type) {
-    return res.status(400).json({ message: 'Dados do usuário (email, senha, nome, tipo) são obrigatórios.' });
-  }
-
-  const t = await sequelize.transaction(); // Inicia a transação
-
+  const t = await sequelize.transaction();
+  
   try {
-    // 1. Criptografa a senha
-    const salt = await bcrypt.genSalt(10);
-    const password_hash = await bcrypt.hash(userData.password, salt);
+    const { name, email, phone, role, position, team, areas, status } = req.body;
 
-    // 2. Cria o usuário principal
+    // Validações
+    if (!name || !email || !phone || !role) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Campos obrigatórios faltando'
+      });
+    }
+
+    if (role === 'colaborador' && !position) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Cargo é obrigatório para colaboradores'
+      });
+    }
+
+    if (role === 'gestor' && (!areas || areas.length === 0)) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Áreas de responsabilidade são obrigatórias para gestores'
+      });
+    }
+
+    // Verificar se email já existe
+    const existingUser = await User.findOne({
+      where: { email },
+      transaction: t
+    });
+
+    if (existingUser) {
+      await t.rollback();
+      return res.status(409).json({
+        success: false,
+        message: 'Email já cadastrado'
+      });
+    }
+
+    // Senha padrão temporária
+    const defaultPassword = 'Hive@2025';
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    // Inserir usuário
+    const userType = role === 'gestor' ? 'manager' : 'collaborator';
     const newUser = await User.create({
-      full_name: userData.full_name,
-      email: userData.email,
-      password_hash: password_hash,
-      user_type: userData.user_type,
-      is_active: true
+      email,
+      password_hash: hashedPassword,
+      user_type: userType,
+      full_name: name,
+      phone,
+      is_active: status === 'active'
     }, { transaction: t });
 
-    // 3. Cria o registro associado (Colaborador ou Cliente)
-    if (userData.user_type === 'collaborator') {
+    // Se for colaborador, inserir na tabela collaborators
+    if (role === 'colaborador') {
       await Collaborator.create({
         user_id: newUser.user_id,
-        position: detailsData?.position || 'Não definido',
-        hire_date: detailsData?.hire_date || new Date()
-        // ... (outros campos de detailsData)
-      }, { transaction: t });
-
-    } else if (userData.user_type === 'client') {
-      if (!detailsData?.main_company_name || !detailsData?.main_cnpj) {
-        // Se for cliente, esses campos são essenciais
-        throw new Error('Nome da Empresa e CNPJ são obrigatórios para criar um cliente.');
-      }
-      await Client.create({
-        user_id: newUser.user_id,
-        main_company_name: detailsData.main_company_name,
-        main_cnpj: detailsData.main_cnpj
-        // ... (outros campos de detailsData)
+        position
       }, { transaction: t });
     }
-    // (Tipos 'admin' ou 'manager' não precisam de tabela extra)
 
-    // 4. Se tudo deu certo, commita a transação
+    // Se for gestor, inserir áreas de responsabilidade
+    if (role === 'gestor' && areas && areas.length > 0) {
+      for (const areaName of areas) {
+        const area = await Area.findOne({
+          where: {
+            name: {
+              [Op.like]: areaName
+            }
+          },
+          transaction: t
+        });
+
+        if (area) {
+          await ManagerArea.create({
+            manager_user_id: newUser.user_id,
+            area_id: area.area_id
+          }, { transaction: t });
+        }
+      }
+    }
+
     await t.commit();
-    
-    // Retorna o usuário criado (sem a senha)
-    const result = newUser.toJSON();
-    delete result.password_hash;
-    res.status(201).json(result);
+
+    res.status(201).json({
+      success: true,
+      message: 'Usuário criado com sucesso',
+      data: {
+        id: newUser.user_id,
+        name,
+        email,
+        role,
+        defaultPassword
+      }
+    });
 
   } catch (error) {
-    // 5. Se algo deu errado, desfaz tudo
     await t.rollback();
-    handleDatabaseError(res, error, 'criar usuário');
+    console.error('Erro ao criar usuário:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao criar usuário',
+      error: error.message
+    });
   }
 };
 
-// PUT /api/users/:id (Atualiza um usuário)
+// ==========================================
+// ATUALIZAR USUÁRIO
+// ==========================================
 exports.updateUser = async (req, res) => {
-  const { id } = req.params;
-  // 'userData' (full_name, email, is_active)
-  // 'detailsData' (position, main_company_name, etc.)
-  const { userData, detailsData } = req.body;
-
   const t = await sequelize.transaction();
-
+  
   try {
-    const user = await User.findByPk(id);
+    const { id } = req.params;
+    const { name, email, phone, role, position, team, areas, status } = req.body;
+
+    // Verificar se usuário existe
+    const user = await User.findByPk(id, { transaction: t });
+
     if (!user) {
       await t.rollback();
-      return res.status(404).json({ message: 'Usuário não encontrado' });
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado'
+      });
     }
 
-    // 1. Atualiza o User
-    await user.update(userData, { transaction: t });
+    // Atualizar dados básicos
+    const userType = role === 'gestor' ? 'manager' : 'collaborator';
+    await user.update({
+      full_name: name,
+      email,
+      phone,
+      user_type: userType,
+      is_active: status === 'active'
+    }, { transaction: t });
 
-    // 2. Atualiza os detalhes (Collaborator ou Client)
-    if (user.user_type === 'collaborator') {
-      const collaborator = await Collaborator.findOne({ where: { user_id: id } });
+    // Atualizar cargo se for colaborador
+    if (role === 'colaborador' && position) {
+      const collaborator = await Collaborator.findOne({
+        where: { user_id: id },
+        transaction: t
+      });
+
       if (collaborator) {
-        await collaborator.update(detailsData, { transaction: t });
+        await collaborator.update({ position }, { transaction: t });
+      } else {
+        await Collaborator.create({
+          user_id: id,
+          position
+        }, { transaction: t });
       }
-    } else if (user.user_type === 'client') {
-      const client = await Client.findOne({ where: { user_id: id } });
-      if (client) {
-        await client.update(detailsData, { transaction: t });
+    }
+
+    // Atualizar áreas se for gestor
+    if (role === 'gestor' && areas) {
+      // Remover áreas antigas
+      await ManagerArea.destroy({
+        where: { manager_user_id: id },
+        transaction: t
+      });
+
+      // Inserir novas áreas
+      for (const areaName of areas) {
+        const area = await Area.findOne({
+          where: {
+            name: {
+              [Op.like]: areaName
+            }
+          },
+          transaction: t
+        });
+
+        if (area) {
+          await ManagerArea.create({
+            manager_user_id: id,
+            area_id: area.area_id
+          }, { transaction: t });
+        }
       }
     }
 
     await t.commit();
-    res.status(200).json({ message: 'Usuário atualizado com sucesso.' });
+
+    res.json({
+      success: true,
+      message: 'Usuário atualizado com sucesso'
+    });
 
   } catch (error) {
     await t.rollback();
-    handleDatabaseError(res, error, 'atualizar usuário');
+    console.error('Erro ao atualizar usuário:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao atualizar usuário',
+      error: error.message
+    });
   }
 };
 
-// PUT /api/users/:id/status (Ativa/Desativa um usuário)
+// ==========================================
+// DELETAR USUÁRIO
+// ==========================================
+exports.deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findByPk(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado'
+      });
+    }
+
+    await user.destroy();
+
+    res.json({
+      success: true,
+      message: 'Usuário excluído com sucesso'
+    });
+
+  } catch (error) {
+    console.error('Erro ao deletar usuário:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao deletar usuário',
+      error: error.message
+    });
+  }
+};
+
+// ==========================================
+// ALTERNAR STATUS DO USUÁRIO (Ativar/Desativar)
+// ==========================================
 exports.toggleUserStatus = async (req, res) => {
   try {
     const { id } = req.params;
+
     const user = await User.findByPk(id);
+
     if (!user) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado'
+      });
     }
 
-    // Inverte o status atual
     const newStatus = !user.is_active;
+
     await user.update({ is_active: newStatus });
 
-    res.status(200).json({ 
-      message: `Usuário ${newStatus ? 'ativado' : 'desativado'} com sucesso.`,
-      newStatus: newStatus
+    res.json({
+      success: true,
+      message: `Usuário ${newStatus ? 'ativado' : 'desativado'} com sucesso`,
+      data: { status: newStatus ? 'active' : 'inactive' }
     });
+
   } catch (error) {
-    handleDatabaseError(res, error, 'alterar status do usuário');
+    console.error('Erro ao alternar status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao alternar status do usuário',
+      error: error.message
+    });
   }
 };
 
-
-// =====================================
-// FUNÇÕES AUXILIARES (Usado pelo Admin e Gestor)
-// =====================================
+// ==========================================
+// FUNÇÕES AUXILIARES (Mantidas do código original)
+// ==========================================
 
 // GET /api/users/managers (Lista gestores disponíveis para equipes)
 exports.getAvailableManagers = async (req, res) => {
-  try {
-    const managers = await User.findAll({
-      where: {
-        user_type: 'manager', 
-        is_active: true
-      },
-      attributes: ['user_id', 'full_name', 'email']
-    });
-    res.status(200).json(managers);
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar gestores');
-  }
+  try {
+    const managers = await User.findAll({
+      where: {
+        user_type: 'manager', 
+        is_active: true
+      },
+      attributes: ['user_id', 'full_name', 'email']
+    });
+    res.status(200).json(managers);
+  } catch (error) {
+    handleDatabaseError(res, error, 'buscar gestores');
+  }
 };
 
 // GET /api/users/staff (Lista colaboradores disponíveis para equipes)
 exports.getAvailableStaff = async (req, res) => {
-  try {
-    const staff = await User.findAll({
-      where: {
-        user_type: 'collaborator', 
-        is_active: true
-      },
-      attributes: ['user_id', 'full_name', 'email']
-    });
-    res.status(200).json(staff);
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar colaboradores');
-  }
-};
-
-// =====================================
-// FUNÇÕES AUXILIARES PARA GESTOR
-// =====================================
-
-// GET /api/users/list/my-staff (Usado na tela de Alocações)
-exports.getManagerStaffList = async (req, res) => {
   try {
-    const managerId = req.user.id;
-
-    // 1. Encontra as equipes do gestor
-    const managerTeams = await Team.findAll({
-      where: { manager_user_id: managerId },
-      attributes: ['team_id', 'name'] // Pega o nome da equipe
+    const staff = await User.findAll({
+      where: {
+        user_type: 'collaborator', 
+        is_active: true
+      },
+      attributes: ['user_id', 'full_name', 'email']
     });
-
-    if (managerTeams.length === 0) {
-      return res.status(200).json([]); // Gestor sem equipes
-    }
-
-    const teamIds = managerTeams.map(t => t.team_id);
-    const teamIdToNameMap = new Map(managerTeams.map(t => [t.team_id, t.name]));
-
-    // 2. Encontra todos os membros (TeamMember)
-    const teamMembers = await TeamMember.findAll({
-      where: { team_id: { [Op.in]: teamIds } },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['user_id', 'full_name'],
-          where: { user_type: 'collaborator', is_active: true },
-          // CORREÇÃO (Mismatch 3): Inclui 'collaboratorDetails'
-          include: [{
-            model: Collaborator,
-            as: 'collaboratorDetails',
-            attributes: ['position'], // Pega o CARGO
-            required: false // Left join
-          }]
-        }
-      ]
-    });
-
-    // 3. Formata a lista para o frontend
-    const formattedCollaborators = teamMembers.map(member => {
-      const user = member.user;
-      return {
-        id: user.user_id,
-        name: user.full_name,
-        // Pega o cargo (position) do 'collaboratorDetails'
-        position: user.collaboratorDetails?.position || 'Colaborador',
-        team: teamIdToNameMap.get(member.team_id) || 'Equipe',
-        available: true // TODO: Implementar lógica de disponibilidade
-      };
-    });
-
-    res.status(200).json(formattedCollaborators);
-
+    res.status(200).json(staff);
   } catch (error) {
-    handleDatabaseError(res, error, 'buscar lista de colaboradores da equipe');
+    handleDatabaseError(res, error, 'buscar colaboradores');
   }
 };
