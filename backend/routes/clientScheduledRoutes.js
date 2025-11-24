@@ -14,9 +14,10 @@ router.get('/scheduled-services', async (req, res) => {
     try {
       const clientId = req.user.client_id;
       console.log("🔍 Dados do usuário logado:", req.user);
-      console.log("🔍 client_id:", req.user?.client_id);
+      console.log("🔍 client_id:", clientId);
   
-      const [services] = await db.query(`
+      // ✅ CORREÇÃO: QueryTypes.SELECT já retorna array direto (sem desestruturação!)
+      const rows = await db.query(`
         SELECT 
           ss.scheduled_service_id AS id,
           ss.scheduled_date,
@@ -25,19 +26,25 @@ router.get('/scheduled-services', async (req, res) => {
           ss.status,
           ss.notes,
           sc.name AS service_name,
-          c.address
+          CONCAT_WS(', ', ca.street, ca.city, ca.state) AS address
         FROM scheduled_services ss
         LEFT JOIN service_catalog sc 
           ON ss.service_catalog_id = sc.service_catalog_id
         LEFT JOIN clients c 
           ON ss.client_id = c.client_id
-        WHERE ss.client_id = ?
+        LEFT JOIN client_addresses ca 
+          ON c.client_id = ca.client_id
+        WHERE ss.client_id = :clientId
         ORDER BY ss.scheduled_date ASC
-      `, [clientId]
-    );
+      `, {
+        replacements: { clientId },
+        type: db.QueryTypes.SELECT
+      });
+  
+      console.log(`✅ ${rows.length} serviços encontrados`);
   
       // 🔄 MAPEAR PARA O FORMATO QUE O FRONTEND ESPERA
-      const formatted = services.map(s => ({
+      const formatted = rows.map(s => ({
         id: s.id,
         serviceType: s.service_name,
         serviceIcon: "activity",   // temporário
@@ -54,8 +61,11 @@ router.get('/scheduled-services', async (req, res) => {
       res.json(formatted);
   
     } catch (error) {
-      console.error("Erro ao buscar serviços agendados:", error);
-      res.status(500).json({ message: 'Erro interno ao carregar serviços agendados.' });
+      console.error("❌ Erro ao buscar serviços agendados:", error);
+      res.status(500).json({ 
+        message: 'Erro interno ao carregar serviços agendados.',
+        error: error.message 
+      });
     }
   });
   

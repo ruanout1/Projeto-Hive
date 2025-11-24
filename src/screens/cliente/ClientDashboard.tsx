@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { toast } from 'sonner';
 import api from '../../lib/api';
 
-// =============================
+
 // Tipagens
 // =============================
 interface CurrentService {
@@ -123,57 +123,57 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
   const [photoCarousels, setPhotoCarousels] = useState<{ [key: string]: { currentIndex: number, currentType: 'before' | 'after' } }>({});
   const [openPhotoViewer, setOpenPhotoViewer] = useState<string | null>(null);
 
-  // Estados para dados dinâmicos
+  // =============================
+  // ✅ INTEGRAÇÃO COM BACKEND
+  // =============================
   const [currentService, setCurrentService] = useState<CurrentService | null>(null);
   const [serviceHistory, setServiceHistory] = useState<ServiceHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   // =============================================================
-  // ✅ CORREÇÃO: URLs CORRETAS PARA O PORTAL DO CLIENTE
+  // ✅ BUSCAR DADOS DO BACKEND
   // =============================================================
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
-        // ✅ CORRETO: Usando /client-portal em vez de /clients
-        // A baseURL já tem /api, então não precisa repetir
-        const fetchCurrent = api.get('/client-portal/current-service');
-        const fetchHistory = api.get('/client-portal/history');
-
-        const [currentResponse, historyResponse] = await Promise.all([
-          fetchCurrent,
-          fetchHistory
+        console.log('🔄 Buscando dados do backend...');
+        
+        // Faz as duas requisições em paralelo
+        const [currentResponse, historyResponse] = await Promise.allSettled([
+          api.get('/client-portal/current-service'),
+          api.get('/client-portal/history')
         ]);
 
-        // Backend respondeu com dados
-        if (currentResponse.data) {
-          setCurrentService(currentResponse.data);
+        // Processa serviço atual
+        if (currentResponse.status === 'fulfilled' && currentResponse.value.data) {
+          setCurrentService(currentResponse.value.data);
           console.log('✅ Serviço atual carregado do backend');
         } else {
           setCurrentService(FALLBACK_CURRENT_SERVICE);
-          console.log('ℹ️ Usando dados estáticos para Serviço Atual');
+          console.log('ℹ️ Usando dados de fallback para Serviço Atual');
         }
 
-        if (Array.isArray(historyResponse.data) && historyResponse.data.length > 0) {
-          setServiceHistory(historyResponse.data);
-          console.log('✅ Histórico carregado do backend');
+        // Processa histórico
+        if (historyResponse.status === 'fulfilled' && Array.isArray(historyResponse.value.data) && historyResponse.value.data.length > 0) {
+          setServiceHistory(historyResponse.value.data);
+          console.log('✅ Histórico carregado do backend:', historyResponse.value.data.length, 'serviços');
         } else {
           setServiceHistory(FALLBACK_SERVICE_HISTORY);
-          console.log('ℹ️ Usando dados estáticos para Histórico');
+          console.log('ℹ️ Usando dados de fallback para Histórico');
         }
 
       } catch (error: any) {
         console.error("❌ Erro ao buscar dados do backend:", error);
         
-        // Verifica se é erro de rede (backend offline)
+        // Verifica tipo de erro
         if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
           toast.info('Backend offline - usando dados de exemplo', {
             description: 'Os dados mostrados são apenas para demonstração'
           });
         } else if (error.response?.status === 401) {
-          // 401 será tratado pelo interceptor do axios
-          console.log('Token inválido ou expirado');
+          console.log('❌ Token inválido ou expirado');
         } else {
           toast.error('Erro ao carregar dados', {
             description: 'Usando dados de exemplo'
@@ -183,6 +183,7 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
         // Usa fallback em caso de erro
         setCurrentService(FALLBACK_CURRENT_SERVICE);
         setServiceHistory(FALLBACK_SERVICE_HISTORY);
+        
       } finally {
         setLoading(false);
       }
@@ -279,19 +280,20 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
   };
 
   // =============================================================
-  // RENDERIZAÇÃO
+  // RENDERIZAÇÃO - LOADING
   // =============================================================
-
   if (loading) {
     return (
       <div className="p-6 text-center text-gray-500">
         <Clock className="h-8 w-8 mx-auto mb-2 animate-spin" style={{ color: '#6400A4' }} />
-        <p>Conectando ao servidor...</p>
-        <p className="text-sm mt-2">http://localhost:5000/api/client-portal</p>
+        <p>Carregando...</p>
       </div>
     );
   }
   
+  // =============================================================
+  // RENDERIZAÇÃO - ERRO
+  // =============================================================
   if (!currentService) {
     return (
       <div className="p-6 text-center text-red-500">
@@ -301,6 +303,9 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
     );
   }
 
+  // =============================================================
+  // RENDERIZAÇÃO PRINCIPAL
+  // =============================================================
   return (
     <div className="p-6 overflow-hidden">
       {/* Cabeçalho */}

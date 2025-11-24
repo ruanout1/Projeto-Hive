@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   MessageSquare, Send, Phone, Mail, Calendar, Clock, User, Bot, CheckCircle, 
   MoreVertical, Paperclip, Image as ImageIcon, File, X, Search
@@ -10,15 +10,9 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
 import { toast } from 'sonner';
-import api from '../../lib/api'; // ✅ Preparado para usar api.ts quando backend estiver pronto
-
-// ============================================
-// 🔧 STATUS: MOCK DATA (Backend ainda não implementado)
-// ✅ Estrutura preparada para integração futura
-// ✅ api.ts importado e pronto para uso
-// ⏳ Aguardando implementação do backend
-// ============================================
+import api from '../../lib/api';
 
 interface Message {
   id: string;
@@ -40,17 +34,32 @@ interface Conversation {
   unreadCount: number;
   participants: string[];
   status: 'active' | 'archived' | 'closed';
-  messages: Message[];
 }
 
 export default function ClientCommunicationScreen() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
+  const [isNewConversationOpen, setIsNewConversationOpen] = useState(false);
+  const [newConvSubject, setNewConvSubject] = useState('');
+  const [newConvMessage, setNewConvMessage] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // ✅ Auto-scroll para última mensagem
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // ✅ Buscar conversas do backend
   useEffect(() => {
     fetchConversations();
   }, []);
@@ -58,25 +67,71 @@ export default function ClientCommunicationScreen() {
   const fetchConversations = async () => {
     setLoading(true);
     try {
-      // ⏳ TODO: Implementar quando backend estiver pronto
-      // const response = await api.get('/client-portal/communications');
-      // setConversations(response.data.data);
-
-      // MOCK DATA temporário
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simula loading
-      setConversations(mockConversations);
+      const response = await api.get('/client-portal/communications');
       
-      if (mockConversations.length > 0) {
-        setSelectedConversation(mockConversations[0]);
+      if (response.data && Array.isArray(response.data)) {
+        // Formata os dados para o formato esperado
+        const formattedConversations = response.data.map((conv: any) => ({
+          id: conv.id.toString(),
+          subject: conv.subject,
+          lastMessage: conv.lastMessage || 'Sem mensagens',
+          lastMessageTime: conv.lastMessageTime,
+          unreadCount: conv.unreadCount || 0,
+          participants: conv.participants ? conv.participants.split(', ') : [],
+          status: conv.status
+        }));
+
+        setConversations(formattedConversations);
+        
+        if (formattedConversations.length > 0) {
+          selectConversation(formattedConversations[0]);
+        }
+        
+        toast.success(`💬 ${formattedConversations.length} conversas carregadas!`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao carregar conversas:', error);
-      toast.error('Erro ao carregar conversas');
+      
+      if (error.code === 'ERR_NETWORK') {
+        toast.error('Backend offline. Verifique se o servidor está rodando.');
+      } else {
+        toast.error('Erro ao carregar conversas');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ Buscar mensagens de uma conversa
+  const fetchMessages = async (conversationId: string) => {
+    setLoadingMessages(true);
+    try {
+      const response = await api.get(`/client-portal/communications/${conversationId}/messages`);
+      
+      if (response.data && Array.isArray(response.data)) {
+        setMessages(response.data);
+        console.log(`📨 ${response.data.length} mensagens carregadas`);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar mensagens:', error);
+      toast.error('Erro ao carregar mensagens');
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  // ✅ Selecionar conversa e carregar mensagens
+  const selectConversation = async (conv: Conversation) => {
+    setSelectedConversation(conv);
+    await fetchMessages(conv.id);
+    
+    // Marcar como lida se tiver mensagens não lidas
+    if (conv.unreadCount > 0) {
+      handleMarkAsRead(conv.id);
+    }
+  };
+
+  // ✅ Enviar mensagem
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return;
 
@@ -88,37 +143,26 @@ export default function ClientCommunicationScreen() {
         type: 'text'
       };
 
-      // ⏳ TODO: Implementar quando backend estiver pronto
-      // const response = await api.post('/client-portal/communications/message', messageData);
-      // const newMsg = response.data.data;
+      const response = await api.post('/client-portal/communications/message', messageData);
+      
+      if (response.data && response.data.data) {
+        // Adiciona a nova mensagem à lista
+        setMessages([...messages, response.data.data]);
+        
+        // Atualiza a lista de conversas (última mensagem e timestamp)
+        setConversations(conversations.map(conv => 
+          conv.id === selectedConversation.id 
+            ? { 
+                ...conv, 
+                lastMessage: newMessage.trim(),
+                lastMessageTime: new Date().toISOString()
+              } 
+            : conv
+        ));
 
-      // MOCK: Adiciona mensagem localmente
-      const newMsg: Message = {
-        id: Date.now().toString(),
-        sender: 'client',
-        senderName: 'Você',
-        content: newMessage.trim(),
-        timestamp: new Date().toISOString(),
-        type: 'text',
-        read: true
-      };
-
-      // Atualiza conversação selecionada
-      const updatedConversation = {
-        ...selectedConversation,
-        messages: [...selectedConversation.messages, newMsg],
-        lastMessage: newMsg.content,
-        lastMessageTime: newMsg.timestamp
-      };
-
-      // Atualiza lista de conversas
-      setConversations(conversations.map(conv => 
-        conv.id === selectedConversation.id ? updatedConversation : conv
-      ));
-
-      setSelectedConversation(updatedConversation);
-      setNewMessage('');
-      toast.success('Mensagem enviada!');
+        setNewMessage('');
+        toast.success('Mensagem enviada!');
+      }
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
       toast.error('Erro ao enviar mensagem');
@@ -127,12 +171,12 @@ export default function ClientCommunicationScreen() {
     }
   };
 
+  // ✅ Marcar conversa como lida
   const handleMarkAsRead = async (conversationId: string) => {
     try {
-      // ⏳ TODO: Implementar quando backend estiver pronto
-      // await api.patch(`/client-portal/communications/${conversationId}/read`);
+      await api.patch(`/client-portal/communications/${conversationId}/read`);
 
-      // MOCK: Atualiza localmente
+      // Atualiza localmente
       setConversations(conversations.map(conv =>
         conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
       ));
@@ -141,10 +185,30 @@ export default function ClientCommunicationScreen() {
     }
   };
 
-  const handleStartNewConversation = async () => {
+  // ✅ Criar nova conversa
+  const handleCreateConversation = async () => {
+    if (!newConvSubject.trim() || !newConvMessage.trim()) {
+      toast.error('Preencha o assunto e a mensagem inicial');
+      return;
+    }
+
     try {
-      // ⏳ TODO: Implementar modal para nova conversa
-      toast.info('Funcionalidade em desenvolvimento');
+      const response = await api.post('/client-portal/communications', {
+        subject: newConvSubject.trim(),
+        initialMessage: newConvMessage.trim()
+      });
+
+      if (response.data && response.data.data) {
+        toast.success('Conversa criada com sucesso!');
+        
+        // Fecha o modal
+        setIsNewConversationOpen(false);
+        setNewConvSubject('');
+        setNewConvMessage('');
+        
+        // Recarrega as conversas
+        await fetchConversations();
+      }
     } catch (error) {
       console.error('Erro ao criar conversa:', error);
       toast.error('Erro ao criar conversa');
@@ -155,10 +219,6 @@ export default function ClientCommunicationScreen() {
     conv.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const getSenderInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  };
 
   const getSenderColor = (sender: string) => {
     if (sender === 'system') return '#9CA3AF';
@@ -200,7 +260,7 @@ export default function ClientCommunicationScreen() {
                 </div>
                 <Button 
                   className="w-full"
-                  onClick={handleStartNewConversation}
+                  onClick={() => setIsNewConversationOpen(true)}
                   style={{ backgroundColor: '#8B20EE' }}
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
@@ -218,12 +278,7 @@ export default function ClientCommunicationScreen() {
                   filteredConversations.map((conv) => (
                     <div
                       key={conv.id}
-                      onClick={() => {
-                        setSelectedConversation(conv);
-                        if (conv.unreadCount > 0) {
-                          handleMarkAsRead(conv.id);
-                        }
-                      }}
+                      onClick={() => selectConversation(conv)}
                       className={`p-4 border-b cursor-pointer transition-colors hover:bg-gray-50 ${
                         selectedConversation?.id === conv.id ? 'bg-purple-50' : ''
                       }`}
@@ -279,122 +334,89 @@ export default function ClientCommunicationScreen() {
                     <div>
                       <h3 className="font-semibold">{selectedConversation.subject}</h3>
                       <p className="text-xs text-gray-500">
-                        {selectedConversation.participants.join(', ')}
+                        {selectedConversation.participants.join(', ') || 'Equipe Hive'}
                       </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
-                        <Phone className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Mail className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
 
                   {/* Messages */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {selectedConversation.messages.map((message) => {
-                      const isClient = message.sender === 'client';
-                      const isSystem = message.sender === 'system';
+                    {loadingMessages ? (
+                      <div className="flex justify-center items-center h-full">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: '#8B20EE' }}></div>
+                      </div>
+                    ) : messages.length === 0 ? (
+                      <div className="flex justify-center items-center h-full">
+                        <p className="text-gray-500 text-sm">Nenhuma mensagem ainda</p>
+                      </div>
+                    ) : (
+                      messages.map((message) => {
+                        const isClient = message.sender === 'client';
+                        const isSystem = message.sender === 'system';
 
-                      if (isSystem) {
+                        if (isSystem) {
+                          return (
+                            <div key={message.id} className="flex justify-center">
+                              <div className="bg-gray-200 rounded-full px-4 py-1 text-xs text-gray-600">
+                                {message.content}
+                              </div>
+                            </div>
+                          );
+                        }
+
                         return (
-                          <div key={message.id} className="flex justify-center">
-                            <div className="bg-gray-200 rounded-full px-4 py-1 text-xs text-gray-600">
-                              {message.content}
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div 
-                          key={message.id} 
-                          className={`flex gap-3 ${isClient ? 'flex-row-reverse' : ''}`}
-                        >
-                          <Avatar className="flex-shrink-0">
-                            <AvatarFallback 
-                              style={{ 
-                                backgroundColor: `${getSenderColor(message.sender)}20`,
-                                color: getSenderColor(message.sender)
-                              }}
-                            >
-                              {isClient ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className={`flex-1 max-w-[70%] ${isClient ? 'items-end' : ''}`}>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-medium text-gray-700">
-                                {message.senderName}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {new Date(message.timestamp).toLocaleTimeString('pt-BR', {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                            </div>
-                            <div 
-                              className={`rounded-lg p-3 ${
-                                isClient 
-                                  ? 'bg-purple-600 text-white' 
-                                  : 'bg-white border'
-                              }`}
-                            >
-                              {message.type === 'text' ? (
+                          <div 
+                            key={message.id} 
+                            className={`flex gap-3 ${isClient ? 'flex-row-reverse' : ''}`}
+                          >
+                            <Avatar className="flex-shrink-0">
+                              <AvatarFallback 
+                                style={{ 
+                                  backgroundColor: `${getSenderColor(message.sender)}20`,
+                                  color: getSenderColor(message.sender)
+                                }}
+                              >
+                                {isClient ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className={`flex-1 max-w-[70%] ${isClient ? 'items-end' : ''}`}>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-medium text-gray-700">
+                                  {message.senderName}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(message.timestamp).toLocaleTimeString('pt-BR', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+                              <div 
+                                className={`rounded-lg p-3 ${
+                                  isClient 
+                                    ? 'bg-purple-600 text-white' 
+                                    : 'bg-white border'
+                                }`}
+                              >
                                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                              ) : message.type === 'image' ? (
-                                <div>
-                                  <img 
-                                    src={message.fileUrl} 
-                                    alt="Imagem enviada" 
-                                    className="max-w-full rounded mb-2"
-                                  />
-                                  {message.content && (
-                                    <p className="text-sm">{message.content}</p>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <File className="h-5 w-5" />
-                                  <div>
-                                    <p className="text-sm font-medium">{message.fileName}</p>
-                                    <Button 
-                                      variant="link" 
-                                      size="sm" 
-                                      className="h-auto p-0 text-xs"
-                                    >
-                                      Baixar arquivo
-                                    </Button>
-                                  </div>
+                              </div>
+                              {message.read && isClient && (
+                                <div className="flex items-center gap-1 mt-1 justify-end">
+                                  <CheckCircle className="h-3 w-3 text-blue-600" />
+                                  <span className="text-xs text-gray-500">Lida</span>
                                 </div>
                               )}
                             </div>
-                            {message.read && isClient && (
-                              <div className="flex items-center gap-1 mt-1 justify-end">
-                                <CheckCircle className="h-3 w-3 text-blue-600" />
-                                <span className="text-xs text-gray-500">Lida</span>
-                              </div>
-                            )}
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    )}
+                    <div ref={messagesEndRef} />
                   </div>
 
                   {/* Input Area */}
                   <div className="p-4 bg-white border-t">
                     <div className="flex items-end gap-2">
-                      <Button variant="outline" size="sm">
-                        <Paperclip className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <ImageIcon className="h-4 w-4" />
-                      </Button>
                       <Textarea
                         placeholder="Digite sua mensagem..."
                         value={newMessage}
@@ -413,7 +435,11 @@ export default function ClientCommunicationScreen() {
                         disabled={!newMessage.trim() || sending}
                         style={{ backgroundColor: '#8B20EE' }}
                       >
-                        <Send className="h-4 w-4" />
+                        {sending ? (
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -435,145 +461,46 @@ export default function ClientCommunicationScreen() {
           </div>
         </Card>
       </div>
+
+      {/* Modal: Nova Conversa */}
+      <Dialog open={isNewConversationOpen} onOpenChange={setIsNewConversationOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle style={{ color: '#8B20EE' }}>Nova Conversa</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Assunto</label>
+              <Input
+                placeholder="Ex: Dúvida sobre serviço..."
+                value={newConvSubject}
+                onChange={(e) => setNewConvSubject(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Mensagem inicial</label>
+              <Textarea
+                placeholder="Digite sua mensagem..."
+                value={newConvMessage}
+                onChange={(e) => setNewConvMessage(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewConversationOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleCreateConversation}
+              style={{ backgroundColor: '#8B20EE' }}
+              disabled={!newConvSubject.trim() || !newConvMessage.trim()}
+            >
+              Criar Conversa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
-// ============================================
-// MOCK DATA (Temporário - até backend estar pronto)
-// ============================================
-
-const mockConversations: Conversation[] = [
-  {
-    id: '1',
-    subject: 'Dúvida sobre próximo serviço',
-    lastMessage: 'Obrigado pela resposta! Ficou esclarecido.',
-    lastMessageTime: '2024-11-18T10:30:00',
-    unreadCount: 0,
-    participants: ['Você', 'Equipe Hive'],
-    status: 'active',
-    messages: [
-      {
-        id: 'm1',
-        sender: 'client',
-        senderName: 'Você',
-        content: 'Olá! Gostaria de saber se vocês podem adiantar o serviço agendado para semana que vem?',
-        timestamp: '2024-11-18T09:00:00',
-        type: 'text',
-        read: true
-      },
-      {
-        id: 'm2',
-        sender: 'team',
-        senderName: 'Maria Silva',
-        content: 'Olá! Sim, podemos verificar a disponibilidade da equipe. Qual dia seria melhor para você?',
-        timestamp: '2024-11-18T09:15:00',
-        type: 'text',
-        read: true
-      },
-      {
-        id: 'm3',
-        sender: 'client',
-        senderName: 'Você',
-        content: 'Quarta-feira pela manhã seria perfeito!',
-        timestamp: '2024-11-18T09:20:00',
-        type: 'text',
-        read: true
-      },
-      {
-        id: 'm4',
-        sender: 'team',
-        senderName: 'Maria Silva',
-        content: 'Perfeito! Já reagendei para quarta-feira às 09:00. Você receberá uma confirmação por e-mail em breve.',
-        timestamp: '2024-11-18T10:00:00',
-        type: 'text',
-        read: true
-      },
-      {
-        id: 'm5',
-        sender: 'client',
-        senderName: 'Você',
-        content: 'Obrigado pela resposta! Ficou esclarecido.',
-        timestamp: '2024-11-18T10:30:00',
-        type: 'text',
-        read: true
-      }
-    ]
-  },
-  {
-    id: '2',
-    subject: 'Solicitação de orçamento',
-    lastMessage: 'Vou enviar o orçamento detalhado até o final do dia.',
-    lastMessageTime: '2024-11-17T14:20:00',
-    unreadCount: 1,
-    participants: ['Você', 'Equipe Hive'],
-    status: 'active',
-    messages: [
-      {
-        id: 'm6',
-        sender: 'client',
-        senderName: 'Você',
-        content: 'Boa tarde! Preciso de um orçamento para limpeza pós-obra.',
-        timestamp: '2024-11-17T13:00:00',
-        type: 'text',
-        read: true
-      },
-      {
-        id: 'm7',
-        sender: 'team',
-        senderName: 'João Santos',
-        content: 'Boa tarde! Claro, posso ajudar. Você teria fotos do local?',
-        timestamp: '2024-11-17T13:30:00',
-        type: 'text',
-        read: true
-      },
-      {
-        id: 'm8',
-        sender: 'client',
-        senderName: 'Você',
-        content: 'Sim, vou enviar algumas fotos agora.',
-        timestamp: '2024-11-17T14:00:00',
-        type: 'text',
-        read: true
-      },
-      {
-        id: 'm9',
-        sender: 'team',
-        senderName: 'João Santos',
-        content: 'Vou enviar o orçamento detalhado até o final do dia.',
-        timestamp: '2024-11-17T14:20:00',
-        type: 'text',
-        read: false
-      }
-    ]
-  },
-  {
-    id: '3',
-    subject: 'Feedback sobre serviço',
-    lastMessage: 'Muito obrigado pelo feedback positivo!',
-    lastMessageTime: '2024-11-15T16:45:00',
-    unreadCount: 0,
-    participants: ['Você', 'Equipe Hive'],
-    status: 'closed',
-    messages: [
-      {
-        id: 'm10',
-        sender: 'client',
-        senderName: 'Você',
-        content: 'Gostaria de parabenizar a equipe pelo excelente trabalho realizado ontem!',
-        timestamp: '2024-11-15T16:00:00',
-        type: 'text',
-        read: true
-      },
-      {
-        id: 'm11',
-        sender: 'team',
-        senderName: 'Carlos Mendes',
-        content: 'Muito obrigado pelo feedback positivo! Ficamos muito felizes em saber que você gostou do nosso trabalho. 😊',
-        timestamp: '2024-11-15T16:45:00',
-        type: 'text',
-        read: true
-      }
-    ]
-  }
-];

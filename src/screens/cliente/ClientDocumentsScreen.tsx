@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
 import { toast } from 'sonner';
-import api from '../../lib/api'; // ✅ ADICIONADO
+import api from '../../lib/api';
 
 type DocumentType = 'contrato' | 'nota-fiscal' | 'ordem-servico' | 'outros';
 
@@ -108,7 +108,7 @@ export default function ClientDocumentsScreen({ onBack }: { onBack?: () => void 
         const idNum = doc.id.replace('DOC-', '').replace('NF-', '');
         
         // ✅ CORRETO: Usando api.ts para pegar o PDF
-        const response = await api.get(`/client-portal/invoice/${idNum}/pdf`, {
+        const response = await api.get(`/client-portal/invoices/${idNum}/pdf`, {
           responseType: 'blob' // Para arquivos binários
         });
         

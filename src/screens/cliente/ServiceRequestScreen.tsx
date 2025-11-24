@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/pop
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { toast } from 'sonner';
 import { Toaster } from '../../components/ui/sonner'; 
-import RequestsViewScreen from '../../components/RequestsViewScreen';
+import RequestsViewScreen from './RequestsViewScreen';
 import ScreenHeader from '../../components/ScreenHeader';
 import api from '../../lib/api';
 
@@ -36,7 +36,7 @@ interface PendingConfirmation {
 }
 
 interface ServiceRequest {
-  id: string;
+  service_request_id: string;
   service: string;
   date: string;
   priority: string;
@@ -76,13 +76,13 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     name: 'Prédio Comercial São Paulo',
     locations: [
       {
-        id: 'loc-2',
+        id: '1',
         name: 'Matriz - Paulista',
         address: 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP',
         area: 'centro' as const
       },
       {
-        id: 'loc-2b',
+        id: '2',
         name: 'Filial - Zona Sul',
         address: 'Av. Santo Amaro, 2000 - Brooklin, São Paulo - SP',
         area: 'sul' as const
@@ -306,11 +306,10 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
 
     const payload = {
       service: serviceName,
-      location: location?.name,
-      area: location?.area,
       description: description.trim(),
       date: requestedDate.toLocaleDateString('pt-BR'),
       priority,
+      addressId: Number(location?.id)
     };
 
     try {
@@ -860,7 +859,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
               {allRequests.length > 0 ? (
                 <div className="space-y-4">
                   {allRequests.map((request) => (
-                    <div key={request.id} className="border rounded-lg p-3 hover:shadow-sm transition-shadow">
+                    <div key={request.service_request_id} className="border rounded-lg p-3 hover:shadow-sm transition-shadow">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="text-black text-sm">{request.service}</h4>
                         {getStatusBadge(request.status)}
@@ -874,7 +873,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
                       
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-600">ID: {request.id}</span>
+                          <span className="text-gray-600">ID: {request.service_request_id}</span>
                           {getPriorityBadge(request.priority)}
                         </div>
                         
