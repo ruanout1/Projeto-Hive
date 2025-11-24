@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Search, Phone, Video, MoreVertical, Paperclip, Plus, HelpCircle, UserMinus, ArrowLeft, ChevronRight, ChevronDown, Triangle, Bell, Edit, Info, X, AlertTriangle } from 'lucide-react';
-import ScreenHeader from '../../components/ScreenHeader';
+import ScreenHeader from '../public/ScreenHeader';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';

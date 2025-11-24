@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Star, MessageSquare, MapPin, TrendingUp, Filter, Search, Send } from 'lucide-react';
-import ScreenHeader from '../../components/ScreenHeader';
+import ScreenHeader from '../public/ScreenHeader';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';

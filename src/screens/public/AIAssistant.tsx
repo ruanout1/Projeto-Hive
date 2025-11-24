@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Send, Bot, User } from 'lucide-react';
-import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
-import { ScrollArea } from './ui/scroll-area';
-import { Card, CardContent } from './ui/card';
+import { Button } from '../../components/ui/button';
+import { Textarea } from '../../components/ui/textarea';
+import { ScrollArea } from '../../components/ui/scroll-area';
+import { Card, CardContent } from '../../components/ui/card';
 
 interface AIAssistantProps {
   isOpen: boolean;

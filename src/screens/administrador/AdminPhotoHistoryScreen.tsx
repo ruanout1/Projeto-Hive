@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import ScreenHeader from '../../components/ScreenHeader';
+import ScreenHeader from '../public/ScreenHeader';
 import { 
   Camera, 
   CheckCircle,

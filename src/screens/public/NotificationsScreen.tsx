@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Bell, Check, Trash2, Filter, ChevronRight, MessageSquare, Star, Calendar, Users, FileText, AlertCircle, X } from 'lucide-react';
 import ScreenHeader from './ScreenHeader';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 
 interface Notification {
   id: string;

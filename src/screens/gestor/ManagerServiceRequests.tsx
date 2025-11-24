@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import ScreenHeader from '../../components/ScreenHeader';
+import ScreenHeader from '../public/ScreenHeader';
 import { FileText, CheckCircle, Clock, XCircle, Users, Filter, Search, Eye, Calendar, AlertTriangle, UserCog, MapPin, Camera } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';

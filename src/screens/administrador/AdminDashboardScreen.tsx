@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LabelList } from 'recharts';
 import { useState } from 'react';
-import AIAssistant from '../../components/AIAssistant';
+import AIAssistant from '../public/AIAssistant';
 
 interface AdminDashboardProps {
   onSectionChange?: (section: string) => void;

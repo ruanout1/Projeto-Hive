@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Bell, LogOut, User, HelpCircle, Shield, Moon, ChevronRight } from 'lucide-react';
-import { Button } from './ui/button';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
-import HiveSymbol from './Logo/HiveSymbol';
+import { Button } from '../../components/ui/button';
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
+import HiveSymbol from '../../components/Logo/HiveSymbol';
 
 interface NavigationProps {
   activeTab: string;

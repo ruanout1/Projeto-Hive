@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react';
-import ScreenHeader from '../../../components/ScreenHeader';
+import ScreenHeader from '../../public/ScreenHeader';
 import { Button } from '../../../components/ui/button';
 import AllocationStats from './AllocationStats';
 import AllocationFilters from './AllocationFilters';

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import ScreenHeader from '../../components/ScreenHeader';
+import ScreenHeader from '../public/ScreenHeader';
 import { Calendar, Clock, Plus, Edit2, Trash2, CalendarDays, AlertCircle, Bell, BellOff, ChevronLeft, ChevronRight, Eye, UserPlus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';

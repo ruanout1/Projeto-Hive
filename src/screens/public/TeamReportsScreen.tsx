@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TrendingUp, Download, FileText, CheckCircle, AlertCircle, Search, Calendar, Send, Users, Mail, Phone, Clock } from 'lucide-react';
-import ScreenHeader from './ScreenHeader';
+import ScreenHeader from '../screens/public/ScreenHeader';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';

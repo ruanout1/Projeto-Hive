@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
 import { User, Bell, Moon, Sun, HelpCircle, Shield, Camera, Mail, Lock, Smartphone, Clock, AlertCircle, CheckCircle, Settings, UserCog } from 'lucide-react';
 import ScreenHeader from './ScreenHeader';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Switch } from './ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import { Separator } from './ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from './ui/input-otp';
-import { Alert, AlertDescription } from './ui/alert';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Switch } from '../../components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
+import { Separator } from '../../components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '../../components/ui/input-otp';
+import { Alert, AlertDescription } from '../../components/ui/alert';
 import { toast } from 'sonner';
 
 interface ProfileSettingsScreenProps {

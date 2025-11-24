@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Search, Plus, Phone, Video, MoreVertical, Paperclip, ChevronDown, ChevronRight, AlertTriangle, Bell, Edit, Info, X } from 'lucide-react';
-import ScreenHeader from '../../components/ScreenHeader';
+import ScreenHeader from '../public/ScreenHeader';
 import { HighlightText } from '../../components/ui/search-highlight';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';

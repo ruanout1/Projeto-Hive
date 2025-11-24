@@ -1,20 +1,20 @@
 import { useState } from 'react';
 import LoginScreen from './screens/public/LoginScreen';
-import Navigation from './components/Navigation';
-import Sidebar from './components/Sidebar';
+import Navigation from './screens/cliente/Navigation';
+import Sidebar from './screens/public/Sidebar';
 import DashboardScreen from './screens/administrador/AdminDashboardarrumar';
-import UserProfilesScreen from './components/UserProfilesScreen';
+import UserProfilesScreen from './screens/public/UserProfilesScreen';
 import PhotoUploadSection from './screens/colaborador/CollaboratorPhotoUploadSection';
 import CommunicationScreen from './screens/chat/CommunicationScreen';
 import ClientsScreen from './screens/gestor/ManagerClientsScreen';
 import ClientRatingsScreen from './screens/cliente/ClientRatingsScreen';
 import ServiceRequestScreen from './screens/cliente/ServiceRequestScreen';
-import RequestsViewScreen from './components/RequestsViewScreen';
-import ProfileSettingsScreen from './components/ProfileSettingsScreen';
-import NotificationsScreen from './components/NotificationsScreen';
+import RequestsViewScreen from './screens/cliente/RequestsViewScreen';
+import ProfileSettingsScreen from './screens/public/NewPasswordScreen';
+import NotificationsScreen from './screens/public/NotificationsScreen';
 import UserManagementScreen from './screens/administrador/AdminUserManagementScreen';
 import TeamManagementScreen from './screens/administrador/AdminTeamManagementScreen';
-import TeamReportsScreen from './components/TeamReportsScreen';
+import TeamReportsScreen from './screens/public/TeamReportsScreen';
 import ServiceCatalogScreen from './screens/administrador/AdminServiceCatalogScreen';
 import AdminRatingsScreen from './screens/administrador/AdminRatingsScreen';
 import AdminTimeClockScreen from './screens/administrador/AdminEmployeeControlScreen';
@@ -35,7 +35,7 @@ import CollaboratorAllocationsScreen from './screens/gestor/Alocacoes/ManagerAll
 import ManagerPhotoReviewScreen from './screens/gestor/ManagerPhotoReviewScreen';
 import AdminPhotoHistoryScreen from './screens/administrador/AdminPhotoHistoryScreen';
 import ServiceOrdersScreen from './screens/administrador/AdminServiceOrdersScreen';
-import AIAssistant from './components/AIAssistant';
+import AIAssistant from './screens/public/AIAssistant';
 import { Toaster } from './components/ui/sonner';
 import AdminServiceRequests from './screens/administrador/AdminServiceRequests';
 

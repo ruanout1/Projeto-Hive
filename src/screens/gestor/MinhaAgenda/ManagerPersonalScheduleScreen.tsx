@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import ScreenHeader from '../../../components/ScreenHeader'; // Corrigido
+import ScreenHeader from '../../public/ScreenHeader'; // Corrigido
 import { Card, CardContent } from '../../../components/ui/card'; // Corrigido
 import { ScheduleItem, MyScheduleScreenProps, UseScheduleApiReturn } from './types';
 import ScheduleStats from './ScheduleStats';

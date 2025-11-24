@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import ScreenHeader from '../../components/ScreenHeader';
+import ScreenHeader from '../public/ScreenHeader';
 import { 
   Clock, 
   Search, 

@@ -14,8 +14,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/pop
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { toast } from 'sonner';
 import { Toaster } from '../../components/ui/sonner'; 
-import RequestsViewScreen from '../../components/RequestsViewScreen';
-import ScreenHeader from '../../components/ScreenHeader';
+import RequestsViewScreen from './RequestsViewScreen';
+import ScreenHeader from '../public/ScreenHeader';
 import api from '../../lib/api'; // Importamos a API
 
 interface ServiceRequestScreenProps {
