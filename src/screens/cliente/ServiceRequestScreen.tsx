@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'; // Importamos 'useEffect'
+import { useState, useEffect } from 'react';
 import { Plus, Calendar, AlertTriangle, CheckCircle, Bot, Clock, Building2, Shield, TreePine, Droplets, Wrench, UserCheck, MapPin, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -14,16 +14,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/pop
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { toast } from 'sonner';
 import { Toaster } from '../../components/ui/sonner'; 
-import RequestsViewScreen from '../../components/RequestsViewScreen';
+import RequestsViewScreen from './RequestsViewScreen';
 import ScreenHeader from '../../components/ScreenHeader';
-import api from '../../lib/api'; // Importamos a API
+import api from '../../lib/api';
 
 interface ServiceRequestScreenProps {
   onBack?: () => void;
   initialTab?: string;
 }
 
-// ... (Interface PendingConfirmation e ServiceRequest sem alteração) ...
 interface PendingConfirmation {
   id: string;
   serviceType: string;
@@ -37,7 +36,7 @@ interface PendingConfirmation {
 }
 
 interface ServiceRequest {
-  id: string;
+  service_request_id: string;
   service: string;
   date: string;
   priority: string;
@@ -48,10 +47,7 @@ interface ServiceRequest {
   area?: string;
 }
 
-// ===================================
-// DADOS MOCK (PENDENTES)
-// Vamos mover os dados mock para fora do componente
-// ===================================
+// DADOS MOCK (FALLBACK)
 const MOCK_PENDING_CONFIRMATIONS: PendingConfirmation[] = [
   {
     id: 'REQ-2024-156',
@@ -76,24 +72,24 @@ const MOCK_PENDING_CONFIRMATIONS: PendingConfirmation[] = [
 ];
 
 export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequestScreenProps) {
-  // ... (currentClient e estados do formulário sem alteração) ...
   const currentClient = {
     name: 'Prédio Comercial São Paulo',
     locations: [
       {
-        id: 'loc-2',
+        id: '1',
         name: 'Matriz - Paulista',
         address: 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP',
         area: 'centro' as const
       },
       {
-        id: 'loc-2b',
+        id: '2',
         name: 'Filial - Zona Sul',
         address: 'Av. Santo Amaro, 2000 - Brooklin, São Paulo - SP',
         area: 'sul' as const
       }
     ]
   };
+
   const [selectedService, setSelectedService] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [description, setDescription] = useState('');
@@ -106,19 +102,10 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
   const [isConfirmationDialogOpen, setIsConfirmationDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [activeTab, setActiveTab] = useState<string>(initialTab || 'solicitar');
-  
-  // Estados dinâmicos (OK)
   const [allRequests, setAllRequests] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingConfirmations, setPendingConfirmations] = useState<PendingConfirmation[]>(MOCK_PENDING_CONFIRMATIONS);
 
-  // =============================================================
-  // 1. ALTERAÇÃO: 'pendingConfirmations' agora é um ESTADO
-  // =============================================================
-  const [pendingConfirmations, setPendingConfirmations] = useState<PendingConfirmation[]>(
-    MOCK_PENDING_CONFIRMATIONS // Começa com os dados mock
-  );
-
-  // ... (serviceOptions sem alteração) ...
   const serviceOptions = [
     {
       id: 'limpeza-geral',
@@ -218,22 +205,29 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     }
   ];
 
-  // ... (useEffect para buscar solicitações - sem alteração) ...
+  // ✅ CORRIGIDO: useEffect com URL correta
   useEffect(() => {
     const fetchRequests = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/api/clientes/requests');
+        // ✅ CORRETO: Sem /api/ duplicado
+        const response = await api.get('/client-portal/requests');
+        
         if (Array.isArray(response.data)) {
           setAllRequests(response.data);
-          toast.success("Solicitações carregadas do backend.");
+          console.log('✅ Solicitações carregadas do backend');
         } else {
-          toast.error("Erro: O backend não retornou uma lista de solicitações.");
-          setAllRequests([]); 
+          setAllRequests([]);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Erro ao buscar solicitações:", error);
-        toast.error("Backend não encontrado. Usando lista de fallback vazia.");
+        
+        if (error.code === 'ERR_NETWORK') {
+          toast.info("Backend offline - lista vazia");
+        } else {
+          toast.error("Erro ao carregar solicitações");
+        }
+        
         setAllRequests([]);
       } finally {
         setLoading(false);
@@ -241,52 +235,31 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     };
 
     fetchRequests();
-    
-    // Por enquanto, as confirmações pendentes são carregadas do mock
     setPendingConfirmations(MOCK_PENDING_CONFIRMATIONS);
-    
   }, []);
 
-  // ... (Funções getCategoryColor, getCategoryStyle, getStatusBadge, getPriorityBadge - sem alteração) ...
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'Limpeza': return '#35BAE6'; // Azul
-      case 'Segurança': return '#22C55E'; // Verde
-      case 'Manutenção': return '#FFFF20'; // Amarelo
-      case 'Sanitário': return '#8B20EE'; // Roxo
+      case 'Limpeza': return '#35BAE6';
+      case 'Segurança': return '#22C55E';
+      case 'Manutenção': return '#FFFF20';
+      case 'Sanitário': return '#8B20EE';
       default: return '#6400A4';
     }
   };
 
   const getCategoryStyle = (category: string) => {
-    const baseColor = getCategoryColor(category);
-    
     switch (category) {
       case 'Limpeza':
-        return {
-          backgroundColor: '#35BAE6',
-          color: 'white'
-        };
+        return { backgroundColor: '#35BAE6', color: 'white' };
       case 'Segurança':
-        return {
-          backgroundColor: '#22C55E',
-          color: 'white'
-        };
+        return { backgroundColor: '#22C55E', color: 'white' };
       case 'Manutenção':
-        return {
-          backgroundColor: '#FFFF20',
-          color: '#6400A4'
-        };
+        return { backgroundColor: '#FFFF20', color: '#6400A4' };
       case 'Sanitário':
-        return {
-          backgroundColor: '#8B20EE',
-          color: 'white'
-        };
+        return { backgroundColor: '#8B20EE', color: 'white' };
       default:
-        return {
-          backgroundColor: '#6400A4',
-          color: 'white'
-        };
+        return { backgroundColor: '#6400A4', color: 'white' };
     }
   };
 
@@ -321,7 +294,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     );
   };
 
-  // ... (Função handleSubmitRequest - sem alteração) ...
+  // ✅ CORRIGIDO: handleSubmitRequest com URL correta
   const handleSubmitRequest = async () => {
     if (!selectedService || !selectedLocation || !description.trim() || !requestedDate || !priority) {
       toast.error('Preencha todos os campos obrigatórios!');
@@ -333,19 +306,19 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
 
     const payload = {
       service: serviceName,
-      location: location?.name,
-      area: location?.area,
       description: description.trim(),
       date: requestedDate.toLocaleDateString('pt-BR'),
       priority,
+      addressId: Number(location?.id)
     };
 
     try {
-      const response = await api.post('/api/clientes/requests', payload);
+      // ✅ CORRETO: Sem /api/ duplicado
+      const response = await api.post('/client-portal/requests', payload);
       const newRequestFromBackend = response.data;
       setAllRequests(prev => [newRequestFromBackend, ...prev]);
 
-      toast.success(' Solicitação enviada com sucesso!', {
+      toast.success('✅ Solicitação enviada com sucesso!', {
         description: priority === 'urgente' 
           ? '⚡ Solicitação marcada como URGENTE - Nossa equipe será notificada!' 
           : '📋 Sua solicitação está em análise. Acompanhe na aba "Minhas Solicitações".',
@@ -371,13 +344,11 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     }
   };
 
-  // ... (Função handleServiceSelect - sem alteração) ...
   const handleServiceSelect = (serviceId: string) => {
     setSelectedService(serviceId);
     setIsRequestModalOpen(true);
   };
 
-  // ... (Função handleViewRequests - sem alteração) ...
   const handleViewRequests = (category: string) => {
     let filteredRequests = [];
     
@@ -402,23 +373,18 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     setViewMode('requests');
   };
 
-  // ... (Função handleOpenConfirmation - sem alteração) ...
   const handleOpenConfirmation = (confirmation: PendingConfirmation) => {
     setSelectedConfirmation(confirmation);
     setIsConfirmationDialogOpen(true);
     setRejectionReason('');
   };
 
-  // =============================================================
-  // 2. ALTERAÇÃO: 'handleAcceptDate' agora atualiza o estado
-  // =============================================================
   const handleAcceptDate = () => {
     if (selectedConfirmation) {
       toast.success('Data confirmada com sucesso!', {
         description: `O serviço "${selectedConfirmation.serviceType}" foi confirmado para ${selectedConfirmation.proposedDate}.`
       });
       
-      // Remove o item da lista de pendências
       setPendingConfirmations(prevConfirmations =>
         prevConfirmations.filter(conf => conf.id !== selectedConfirmation.id)
       );
@@ -428,16 +394,12 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     }
   };
 
-  // =============================================================
-  // 3. ALTERAÇÃO: 'handleRejectDate' agora atualiza o estado
-  // =============================================================
   const handleRejectDate = () => {
     if (selectedConfirmation && rejectionReason.trim()) {
       toast.info('Data recusada', {
         description: `Sua recusa foi enviada ao gestor. Em breve você receberá uma nova proposta de data.`
       });
       
-      // Remove o item da lista de pendências
       setPendingConfirmations(prevConfirmations =>
         prevConfirmations.filter(conf => conf.id !== selectedConfirmation.id)
       );
@@ -450,7 +412,6 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     }
   };
 
-  // ... (selectedServiceInfo e viewMode 'requests' - sem alteração) ...
   const selectedServiceInfo = serviceOptions.find(s => s.id === selectedService);
 
   if (viewMode === 'requests') {
@@ -482,7 +443,6 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     );
   }
   
-  // ... (tela de loading - sem alteração) ...
   if (loading) {
     return (
       <div className="p-6 text-center text-gray-500">
@@ -492,10 +452,8 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     );
   }
 
-  // RENDERIZAÇÃO PRINCIPAL (todo o JSX abaixo permanece o mesmo)
   return (
     <div className="p-6 space-y-6">
-      {/* ... (Cabeçalho e Modal de Solicitação - sem alteração) ... */}
       <div className="flex justify-between items-start mb-6">
         <div className="flex-1">
           <ScreenHeader 
@@ -696,7 +654,6 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
         </div>
       </div>
 
-      {/* ... (Tabs - sem alteração) ... */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
           <TabsTrigger value="solicitar" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
@@ -704,7 +661,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
           </TabsTrigger>
           <TabsTrigger value="minhas-solicitacoes" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white relative">
             Minhas Solicitações
-            {pendingConfirmations.length > 0 && ( // Agora lê do estado
+            {pendingConfirmations.length > 0 && (
               <Badge 
                 className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
                 style={{ backgroundColor: '#FFFF20', color: '#6400A4' }}
@@ -716,130 +673,123 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
         </TabsList>
 
         <TabsContent value="solicitar" className="space-y-6">
-          {/* ... (Aviso, Estatísticas, Catálogo - sem alteração) ... */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-sm text-blue-800">
               💡 <strong>Importante:</strong> Acompanhe o status da sua solicitação aqui no painel, em até 2 horas será atualizado sobre a disponibilidade dos serviços!
             </p>
           </div>
 
-          {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 flex-shrink-0">
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border-2 cursor-pointer hover:shadow-lg transition-shadow" 
-              style={{ borderColor: '#6400A4' }}
-              onClick={() => handleViewRequests('total')}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total de Solicitações</p>
-              <p className="text-2xl" style={{ color: '#6400A4' }}>{allRequests.length}</p>
-              <p className="text-xs text-gray-500 mt-1">Clique para visualizar</p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 flex-shrink-0">
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border-2 cursor-pointer hover:shadow-lg transition-shadow" 
+                  style={{ borderColor: '#6400A4' }}
+                  onClick={() => handleViewRequests('total')}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Total de Solicitações</p>
+                  <p className="text-2xl" style={{ color: '#6400A4' }}>{allRequests.length}</p>
+                  <p className="text-xs text-gray-500 mt-1">Clique para visualizar</p>
+                </div>
+                <Plus className="h-8 w-8" style={{ color: '#6400A4', opacity: 0.5 }} />
+              </div>
             </div>
-            <Plus className="h-8 w-8" style={{ color: '#6400A4', opacity: 0.5 }} />
-          </div>
-        </div>
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border-2 border-green-500 cursor-pointer hover:shadow-lg transition-shadow" 
-              onClick={() => handleViewRequests('aprovadas')}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Aprovadas</p>
-              <p className="text-2xl text-green-600">
-                {allRequests.filter(r => r.status === 'aprovado').length}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Clique para visualizar</p>
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border-2 border-green-500 cursor-pointer hover:shadow-lg transition-shadow" 
+                  onClick={() => handleViewRequests('aprovadas')}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Aprovadas</p>
+                  <p className="text-2xl text-green-600">
+                    {allRequests.filter(r => r.status === 'aprovado').length}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Clique para visualizar</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-500 opacity-50" />
+              </div>
             </div>
-            <CheckCircle className="h-8 w-8 text-green-500 opacity-50" />
-          </div>
-        </div>
 
-        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 border-2 border-red-500 cursor-pointer hover:shadow-lg transition-shadow" 
-              onClick={() => handleViewRequests('urgentes')}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Urgentes</p>
-              <p className="text-2xl text-red-600">
-                {allRequests.filter(r => r.priority === 'urgente').length}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Clique para visualizar</p>
+            <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 border-2 border-red-500 cursor-pointer hover:shadow-lg transition-shadow" 
+                  onClick={() => handleViewRequests('urgentes')}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Urgentes</p>
+                  <p className="text-2xl text-red-600">
+                    {allRequests.filter(r => r.priority === 'urgente').length}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Clique para visualizar</p>
+                </div>
+                <AlertTriangle className="h-8 w-8 text-red-500 opacity-50" />
+              </div>
             </div>
-            <AlertTriangle className="h-8 w-8 text-red-500 opacity-50" />
-          </div>
-        </div>
 
-        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-4 border-2 cursor-pointer hover:shadow-lg transition-shadow" 
-              style={{ borderColor: '#FFFF20' }}
-              onClick={() => handleViewRequests('em-analise')}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Em Análise</p>
-              <p className="text-2xl text-gray-800">
-                {allRequests.filter(r => r.status === 'em-analise').length}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Clique para visualizar</p>
+            <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-4 border-2 cursor-pointer hover:shadow-lg transition-shadow" 
+                  style={{ borderColor: '#FFFF20' }}
+                  onClick={() => handleViewRequests('em-analise')}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Em Análise</p>
+                  <p className="text-2xl text-gray-800">
+                    {allRequests.filter(r => r.status === 'em-analise').length}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Clique para visualizar</p>
+                </div>
+                <Clock className="h-8 w-8" style={{ color: '#8B20EE', opacity: 0.5 }} />
+              </div>
             </div>
-            <Clock className="h-8 w-8" style={{ color: '#8B20EE', opacity: 0.5 }} />
           </div>
-        </div>
-      </div>
 
-      <div className="mt-6">
-        {/* Catálogo de Serviços Expandido */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-black">Catálogo de Serviços Disponíveis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {serviceOptions.map((service) => {
-                const IconComponent = service.icon;
-                return (
-                  <div
-                    key={service.id}
-                    className="border-2 rounded-lg p-4 cursor-pointer hover:shadow-lg transition-all bg-white hover:scale-105"
-                    style={{ 
-                      borderColor: getCategoryColor(service.category),
-                      borderTopWidth: '4px'
-                    }}
-                    onClick={() => handleServiceSelect(service.id)}
-                  >
-                    <div className="w-full text-left">
-                      <div className="flex items-start space-x-3 mb-3">
-                        <div 
-                          className="p-2 rounded-lg"
-                          style={{ backgroundColor: getCategoryColor(service.category) + '20' }}
-                        >
-                          <IconComponent 
-                            className="h-6 w-6" 
-                            style={{ color: getCategoryColor(service.category) }} 
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-black mb-1">{service.name}</h4>
-                          <Badge 
-                            className="text-xs border-none"
-                            style={getCategoryStyle(service.category)}
-                          >
-                            {service.category}
-                          </Badge>
+          <div className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-black">Catálogo de Serviços Disponíveis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {serviceOptions.map((service) => {
+                    const IconComponent = service.icon;
+                    return (
+                      <div
+                        key={service.id}
+                        className="border-2 rounded-lg p-4 cursor-pointer hover:shadow-lg transition-all bg-white hover:scale-105"
+                        style={{ 
+                          borderColor: getCategoryColor(service.category),
+                          borderTopWidth: '4px'
+                        }}
+                        onClick={() => handleServiceSelect(service.id)}
+                      >
+                        <div className="w-full text-left">
+                          <div className="flex items-start space-x-3 mb-3">
+                            <div 
+                              className="p-2 rounded-lg"
+                              style={{ backgroundColor: getCategoryColor(service.category) + '20' }}
+                            >
+                              <IconComponent 
+                                className="h-6 w-6" 
+                                style={{ color: getCategoryColor(service.category) }} 
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="text-black mb-1">{service.name}</h4>
+                              <Badge 
+                                className="text-xs border-none"
+                                style={getCategoryStyle(service.category)}
+                              >
+                                {service.category}
+                              </Badge>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">{service.description}</p>
+                          <p className="text-xs text-gray-500">⏱️ {service.estimatedTime}</p>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600 mb-2">{service.description}</p>
-                      <p className="text-xs text-gray-500">⏱️ {service.estimatedTime}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Minhas Solicitações */}
-
-      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="minhas-solicitacoes" className="space-y-6">
-          {/* Alertas de Confirmação Pendente (agora dinâmico) */}
           {pendingConfirmations.length > 0 && (
             <div className="space-y-3">
               <h3 className="font-semibold text-black">Confirmações de Data Pendentes</h3>
@@ -891,7 +841,6 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
             </div>
           )}
 
-          {/* Lista de Todas as Solicitações (sem alteração) */}
           <Card>
             <CardHeader>
               <CardTitle className="text-black flex items-center justify-between">
@@ -910,7 +859,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
               {allRequests.length > 0 ? (
                 <div className="space-y-4">
                   {allRequests.map((request) => (
-                    <div key={request.id} className="border rounded-lg p-3 hover:shadow-sm transition-shadow">
+                    <div key={request.service_request_id} className="border rounded-lg p-3 hover:shadow-sm transition-shadow">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="text-black text-sm">{request.service}</h4>
                         {getStatusBadge(request.status)}
@@ -924,7 +873,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
                       
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-600">ID: {request.id}</span>
+                          <span className="text-gray-600">ID: {request.service_request_id}</span>
                           {getPriorityBadge(request.priority)}
                         </div>
                         
@@ -948,7 +897,6 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
         </TabsContent>
       </Tabs>
 
-      {/* ... (Dialog de Confirmação de Data - sem alteração) ... */}
       <Dialog open={isConfirmationDialogOpen} onOpenChange={setIsConfirmationDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -962,7 +910,6 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
 
           {selectedConfirmation && (
             <div className="space-y-4">
-              {/* Informações do Serviço */}
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                 <div>
                   <Label className="text-xs text-gray-600">Descrição do Serviço</Label>
@@ -986,7 +933,6 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
                 </div>
               </div>
 
-              {/* Detalhes do Agendamento */}
               <div className="p-4 rounded-lg border-2" style={{ borderColor: '#6400A4', backgroundColor: 'rgba(100, 0, 164, 0.02)' }}>
                 <Label className="flex items-center gap-2 mb-2" style={{ color: '#6400A4' }}>
                   <Calendar className="h-4 w-4" />
@@ -1009,7 +955,6 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
                 )}
               </div>
 
-              {/* Motivo da Recusa (se for recusar) */}
               <div className="space-y-2">
                 <Label htmlFor="rejection-reason">Motivo da Recusa (opcional)</Label>
                 <Textarea

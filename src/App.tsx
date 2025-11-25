@@ -9,7 +9,7 @@ import CommunicationScreen from './screens/chat/CommunicationScreen';
 import ClientsScreen from './screens/gestor/ManagerClientsScreen';
 import ClientRatingsScreen from './screens/cliente/ClientRatingsScreen';
 import ServiceRequestScreen from './screens/cliente/ServiceRequestScreen';
-import RequestsViewScreen from './components/RequestsViewScreen';
+import RequestsViewScreen from './screens/cliente/RequestsViewScreen';
 import ProfileSettingsScreen from './components/ProfileSettingsScreen';
 import NotificationsScreen from './components/NotificationsScreen';
 import UserManagementScreen from './screens/administrador/AdminUserManagementScreen';

@@ -1,6 +1,12 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
 
+if (!sequelize) {
+  console.log('⚙️ [User Model] Modo mock ativo - sem banco de dados.');
+  module.exports = {};
+  return;
+}
+
 const ServiceCategory = sequelize.define('ServiceCategory', {
   category_id: {
     type: DataTypes.BIGINT.UNSIGNED,

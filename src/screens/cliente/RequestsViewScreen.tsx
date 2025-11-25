@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { ArrowLeft, Calendar, AlertTriangle, CheckCircle, Clock, Plus, Filter } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Input } from './ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Input } from '../../components/ui/input';
 
 interface RequestsViewScreenProps {
   category: string;
@@ -75,11 +75,17 @@ export default function RequestsViewScreen({ category, requests, onBack }: Reque
     }
   };
 
-  const filteredRequests = requests.filter(request => 
-    request.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    request.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRequests = requests.filter(request => {
+    const search = searchTerm.toLowerCase();
+    
+    return (
+      request.service?.toLowerCase().includes(search) ||
+      request.id?.toString().includes(search) ||
+      request.description?.toLowerCase().includes(search) ||
+      request.status?.toLowerCase().includes(search) ||
+      request.priority?.toLowerCase().includes(search)
+    );
+  });
 
   return (
     <div className="p-6 h-screen flex flex-col overflow-hidden">
