@@ -16,9 +16,9 @@ router.get('/scheduled-services', async (req, res) => {
       console.log("🔍 Dados do usuário logado:", req.user);
       console.log("🔍 client_id:", clientId);
   
-      // ✅ CORREÇÃO: QueryTypes.SELECT já retorna array direto (sem desestruturação!)
+      // ✅ CORREÇÃO: Query sem duplicatas usando DISTINCT
       const rows = await db.query(`
-        SELECT 
+        SELECT DISTINCT
           ss.scheduled_service_id AS id,
           ss.scheduled_date,
           ss.start_time,
@@ -26,14 +26,15 @@ router.get('/scheduled-services', async (req, res) => {
           ss.status,
           ss.notes,
           sc.name AS service_name,
-          CONCAT_WS(', ', ca.street, ca.city, ca.state) AS address
+          COALESCE(
+            CONCAT_WS(', ', ca.street, ca.city, ca.state),
+            'Endereço não informado'
+          ) AS address
         FROM scheduled_services ss
         LEFT JOIN service_catalog sc 
           ON ss.service_catalog_id = sc.service_catalog_id
-        LEFT JOIN clients c 
-          ON ss.client_id = c.client_id
         LEFT JOIN client_addresses ca 
-          ON c.client_id = ca.client_id
+          ON ss.area_id = ca.area_id
         WHERE ss.client_id = :clientId
         ORDER BY ss.scheduled_date ASC
       `, {
