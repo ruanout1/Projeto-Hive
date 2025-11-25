@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
 import { toast } from 'sonner';
 import api from '../../lib/api';
 
@@ -265,6 +265,9 @@ export default function ClientDocumentsScreen({ onBack }: { onBack?: () => void 
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle style={{ color: '#6400A4' }}>{viewingDocument?.name}</DialogTitle>
+            <DialogDescription>
+              Detalhes do documento selecionado
+            </DialogDescription>
           </DialogHeader>
           {viewingDocument && (
             <div className="p-4 bg-gray-50 rounded-lg space-y-2">
@@ -287,6 +290,9 @@ export default function ClientDocumentsScreen({ onBack }: { onBack?: () => void 
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="w-5 h-5" /> Confirmar exclusão
             </DialogTitle>
+            <DialogDescription>
+              Esta ação não pode ser desfeita
+            </DialogDescription>
           </DialogHeader>
           <p className="text-gray-700 mb-4">
             Tem certeza que deseja excluir o documento <strong>{documentToDelete?.name}</strong>?<br />

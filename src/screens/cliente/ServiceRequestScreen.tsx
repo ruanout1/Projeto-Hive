@@ -36,7 +36,8 @@ interface PendingConfirmation {
 }
 
 interface ServiceRequest {
-  service_request_id: string;
+  service_request_id?: string;  // Opcional para compatibilidade
+  id?: string;                   // Opcional para dados mock
   service: string;
   date: string;
   priority: string;
@@ -859,7 +860,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
               {allRequests.length > 0 ? (
                 <div className="space-y-4">
                   {allRequests.map((request) => (
-                    <div key={request.service_request_id} className="border rounded-lg p-3 hover:shadow-sm transition-shadow">
+                    <div key={request.service_request_id || request.id} className="border rounded-lg p-3 hover:shadow-sm transition-shadow">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="text-black text-sm">{request.service}</h4>
                         {getStatusBadge(request.status)}
@@ -873,7 +874,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
                       
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-600">ID: {request.service_request_id}</span>
+                          <span className="text-gray-600">ID: {request.service_request_id || request.id}</span>
                           {getPriorityBadge(request.priority)}
                         </div>
                         

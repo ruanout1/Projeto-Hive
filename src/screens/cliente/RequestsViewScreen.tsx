@@ -77,10 +77,11 @@ export default function RequestsViewScreen({ category, requests, onBack }: Reque
 
   const filteredRequests = requests.filter(request => {
     const search = searchTerm.toLowerCase();
+    const requestId = (request.service_request_id || request.id)?.toString() || '';
     
     return (
       request.service?.toLowerCase().includes(search) ||
-      request.id?.toString().includes(search) ||
+      requestId.toLowerCase().includes(search) ||
       request.description?.toLowerCase().includes(search) ||
       request.status?.toLowerCase().includes(search) ||
       request.priority?.toLowerCase().includes(search)
@@ -137,7 +138,7 @@ export default function RequestsViewScreen({ category, requests, onBack }: Reque
             {filteredRequests.length > 0 ? (
               <div className="space-y-4 p-6">
                 {filteredRequests.map((request) => (
-                  <div key={request.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div key={request.service_request_id || request.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
@@ -145,7 +146,7 @@ export default function RequestsViewScreen({ category, requests, onBack }: Reque
                           {getStatusBadge(request.status)}
                           {getPriorityBadge(request.priority)}
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">ID: {request.id}</p>
+                        <p className="text-sm text-gray-600 mb-2">ID: {request.service_request_id || request.id}</p>
                       </div>
                     </div>
 
