@@ -149,23 +149,23 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
         // Processa serviço atual
         if (currentResponse.status === 'fulfilled' && currentResponse.value.data) {
           setCurrentService(currentResponse.value.data);
-          console.log('✅ Serviço atual carregado do backend');
+          console.log(' Serviço atual carregado do backend');
         } else {
           setCurrentService(FALLBACK_CURRENT_SERVICE);
-          console.log('ℹ️ Usando dados de fallback para Serviço Atual');
+          console.log('ℹ Usando dados de fallback para Serviço Atual');
         }
 
         // Processa histórico
         if (historyResponse.status === 'fulfilled' && Array.isArray(historyResponse.value.data) && historyResponse.value.data.length > 0) {
           setServiceHistory(historyResponse.value.data);
-          console.log('✅ Histórico carregado do backend:', historyResponse.value.data.length, 'serviços');
+          console.log(' Histórico carregado do backend:', historyResponse.value.data.length, 'serviços');
         } else {
           setServiceHistory(FALLBACK_SERVICE_HISTORY);
-          console.log('ℹ️ Usando dados de fallback para Histórico');
+          console.log('ℹ Usando dados de fallback para Histórico');
         }
 
       } catch (error: any) {
-        console.error("❌ Erro ao buscar dados do backend:", error);
+        console.error(" Erro ao buscar dados do backend:", error);
         
         // Verifica tipo de erro
         if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {

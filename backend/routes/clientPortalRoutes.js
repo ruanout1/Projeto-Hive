@@ -96,10 +96,70 @@ router.post('/ratings', (req, res) => {
 // =====================
 
 // Listar solicitações do cliente
-router.get('/requests', (req, res) => {
-  // TODO: Filtrar solicitações do cliente logado
-  console.log('📋 Enviando lista de solicitações');
-  res.json(serviceRequestsData);
+router.get('/requests', async (req, res) => {
+  try {
+    const clientId = req.user.client_id;
+
+    if (!clientId) {
+      return res.status(400).json({ message: 'Cliente não encontrado no token' });
+    }
+
+    console.log('📋 Buscando solicitações do cliente:', clientId);
+
+    const requests = await db.query(`
+      SELECT 
+        sr.service_request_id,
+        sr.request_number,
+        sr.title,
+        sr.description,
+        sr.status,
+        sr.priority,
+        DATE_FORMAT(sr.desired_date, '%d/%m/%Y') AS desired_date,
+        DATE_FORMAT(sr.created_at, '%d/%m/%Y %H:%i') AS created_at,
+        -- Cliente
+        c.client_id,
+        c.main_company_name AS company_name,
+        -- Tipo de serviço (do catálogo)
+        sc.service_catalog_id,
+        sc.name AS service_type,
+        sc.price AS service_price,
+        sc.description AS service_description,
+        -- Endereço/Unidade
+        ca.address_id,
+        ca.nickname AS unit_name,
+        CONCAT(ca.street, ', ', ca.number) AS full_address,
+        ca.complement,
+        ca.neighborhood,
+        ca.city,
+        ca.state,
+        ca.zip_code,
+        -- Área geográfica
+        a.area_id,
+        a.name AS area_name,
+        a.code AS area_code
+      FROM service_requests sr
+      INNER JOIN clients c ON sr.client_id = c.client_id
+      LEFT JOIN service_catalog sc ON sr.service_catalog_id = sc.service_catalog_id
+      LEFT JOIN client_addresses ca ON sr.address_id = ca.address_id
+      LEFT JOIN areas a ON ca.area_id = a.area_id
+      WHERE sr.client_id = :clientId
+      ORDER BY sr.created_at DESC
+    `, {
+      replacements: { clientId },
+      type: db.QueryTypes.SELECT
+    });
+
+    console.log(` ${requests.length} solicitações encontradas`);
+
+    res.json(requests);
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar solicitações:', error);
+    res.status(500).json({
+      message: 'Erro ao buscar solicitações',
+      error: error.message
+    });
+  }
 });
 
 // Criar nova solicitação
@@ -108,7 +168,6 @@ router.post('/requests', async (req, res) => {
     const clientId = req.user.client_id;
     const userId = req.user.id;
 
-    // Campos enviados pelo frontend 
     const { 
       service,
       description,
@@ -116,12 +175,12 @@ router.post('/requests', async (req, res) => {
       date,
       location,
       area,
-      addressId,          // <-- OBRIGATÓRIO AGORA
-      serviceCatalogId    // <-- opcional, depende do front
+      addressId,
+      serviceCatalogId    // Pode vir ou não do frontend
     } = req.body;
 
     console.log("Nova solicitação recebida:", {
-      clientId, userId, service, description, priority, date, location, area, addressId
+      clientId, userId, service, description, priority, date, location, area, addressId, serviceCatalogId
     });
 
     // Validações obrigatórias
@@ -130,6 +189,30 @@ router.post('/requests', async (req, res) => {
     if (!clientId) return res.status(400).json({ message: 'Cliente inválido' });
     if (!userId) return res.status(400).json({ message: 'Usuário inválido' });
     if (!addressId) return res.status(400).json({ message: 'Endereço é obrigatório' });
+
+    // ✅ NOVO: Buscar service_catalog_id se não vier do frontend
+    let finalServiceCatalogId = serviceCatalogId;
+    
+    if (!finalServiceCatalogId && service) {
+      console.log('🔍 Buscando service_catalog_id para:', service);
+      
+      const [serviceData] = await db.query(`
+        SELECT service_catalog_id 
+        FROM service_catalog 
+        WHERE name = :serviceName
+        LIMIT 1
+      `, {
+        replacements: { serviceName: service },
+        type: db.QueryTypes.SELECT
+      });
+      
+      if (serviceData && serviceData.service_catalog_id) {
+        finalServiceCatalogId = serviceData.service_catalog_id;
+        console.log(' Service catalog ID encontrado:', finalServiceCatalogId);
+      } else {
+        console.log('⚠️  Serviço não encontrado no catálogo:', service);
+      }
+    }
 
     // Mapeamento de prioridade
     const priorityMap = {
@@ -160,8 +243,9 @@ router.post('/requests', async (req, res) => {
     const requestNumber = `REQ-${new Date().getFullYear()}-${timestamp}-${randomSuffix}`;
 
     console.log("Número da solicitação:", requestNumber);
+    console.log("Service Catalog ID final:", finalServiceCatalogId);
 
-    // INSERT CORRIGIDO
+    // INSERT
     const [result] = await db.query(`
       INSERT INTO service_requests (
         client_id,
@@ -196,7 +280,7 @@ router.post('/requests', async (req, res) => {
         userId,
         requestNumber,
         addressId,
-        serviceCatalogId: serviceCatalogId || null,
+        serviceCatalogId: finalServiceCatalogId || null,  // ✅ Usa o ID encontrado
         title: service,
         description: fullDescription,
         priority: mappedPriority,
@@ -208,10 +292,11 @@ router.post('/requests', async (req, res) => {
     res.status(201).json({
       service_request_id: result,
       service: service,
+      service_catalog_id: finalServiceCatalogId,  // ✅ Retorna o ID também
       description: fullDescription,
-      priority: priority,               // ← mantém 'urgente' como veio do front
-      status: 'pendente',               // ← frontend usa 'pendente', não 'pending'
-      date: desiredDate,                // ← data desejada YYYY-MM-DD
+      priority: priority,
+      status: 'pendente',
+      date: desiredDate,
       requestedAt: new Date().toLocaleDateString('pt-BR'),
       location: location || null,
       area: area || null
@@ -270,7 +355,7 @@ let clientDocuments = [
 // Listar documentos do cliente
 router.get('/documents', (req, res) => {
   // TODO: Filtrar documentos do cliente logado
-  console.log('📄 Enviando documentos do cliente');
+  console.log(' Enviando documentos do cliente');
   res.json(clientDocuments);
 });
 
@@ -293,7 +378,7 @@ router.post('/documents', (req, res) => {
   newDoc.fileSize = newDoc.fileSize || '--- KB';
   
   clientDocuments.unshift(newDoc);
-  console.log('📎 Novo documento adicionado:', newDoc);
+  console.log(' Novo documento adicionado:', newDoc);
   
   res.status(201).json({
     message: 'Documento enviado com sucesso!',
@@ -315,7 +400,7 @@ router.delete('/documents/:id', (req, res) => {
   }
 
   const deletedDoc = clientDocuments.splice(index, 1);
-  console.log('🗑️ Documento removido:', deletedDoc[0].name);
+  console.log(' Documento removido:', deletedDoc[0].name);
   
   res.json({ 
     message: 'Documento removido com sucesso!' 
@@ -408,10 +493,10 @@ const invoices = [
 router.get('/invoices', (req, res) => {
   try {
     // TODO: Filtrar faturas do cliente logado (req.user.client_id)
-    console.log('💰 Enviando lista de faturas');
+    console.log(' Enviando lista de faturas');
     res.json(invoices);
   } catch (error) {
-    console.error('❌ Erro ao buscar faturas:', error);
+    console.error(' Erro ao buscar faturas:', error);
     res.status(500).json({ message: 'Erro ao buscar faturas' });
   }
 });
@@ -445,7 +530,7 @@ router.get('/expenses/summary', (req, res) => {
     console.log('📊 Resumo financeiro calculado:', summary);
     res.json(summary);
   } catch (error) {
-    console.error('❌ Erro ao calcular resumo:', error);
+    console.error(' Erro ao calcular resumo:', error);
     res.status(500).json({ message: 'Erro ao calcular resumo financeiro' });
   }
 });
@@ -488,10 +573,10 @@ router.get('/expenses/trends', (req, res) => {
       a.month.localeCompare(b.month)
     );
     
-    console.log('📈 Tendências calculadas:', trends.length, 'meses');
+    console.log(' Tendências calculadas:', trends.length, 'meses');
     res.json(trends);
   } catch (error) {
-    console.error('❌ Erro ao calcular tendências:', error);
+    console.error(' Erro ao calcular tendências:', error);
     res.status(500).json({ message: 'Erro ao calcular tendências' });
   }
 });
@@ -655,10 +740,10 @@ router.get('/invoices/:id/pdf', (req, res) => {
     // Finaliza o PDF
     doc.end();
     
-    console.log(`📄 PDF gerado: ${invoice.number}`);
+    console.log(` PDF gerado: ${invoice.number}`);
     
   } catch (error) {
-    console.error('❌ Erro ao gerar PDF:', error);
+    console.error(' Erro ao gerar PDF:', error);
     res.status(500).json({ message: 'Erro ao gerar PDF' });
   }
 });
@@ -750,7 +835,7 @@ router.get('/communications', async (req, res) => {
     res.json(conversations);
 
   } catch (error) {
-    console.error('❌ Erro ao buscar conversas:', error);
+    console.error(' Erro ao buscar conversas:', error);
     res.status(500).json({ 
       message: 'Erro ao buscar conversas',
       error: error.message 
@@ -800,7 +885,7 @@ router.get('/communications/:conversationId/messages', async (req, res) => {
     res.json(messages);
 
   } catch (error) {
-    console.error('❌ Erro ao buscar mensagens:', error);
+    console.error(' Erro ao buscar mensagens:', error);
     res.status(500).json({ 
       message: 'Erro ao buscar mensagens',
       error: error.message 
@@ -876,14 +961,14 @@ router.post('/communications/message', async (req, res) => {
       WHERE message_id = ?
     `, [result.insertId]);
 
-    console.log(`✉️ Mensagem enviada na conversa ${conversationId} pelo cliente ${clientId}`);
+    console.log(` Mensagem enviada na conversa ${conversationId} pelo cliente ${clientId}`);
     res.status(201).json({
       message: 'Mensagem enviada com sucesso!',
       data: newMessage[0]
     });
 
   } catch (error) {
-    console.error('❌ Erro ao enviar mensagem:', error);
+    console.error(' Erro ao enviar mensagem:', error);
     res.status(500).json({ 
       message: 'Erro ao enviar mensagem',
       error: error.message 
@@ -921,11 +1006,11 @@ router.patch('/communications/:conversationId/read', async (req, res) => {
         AND is_read = FALSE
     `, [conversationId]);
 
-    console.log(`✅ Mensagens marcadas como lidas na conversa ${conversationId}`);
+    console.log(` Mensagens marcadas como lidas na conversa ${conversationId}`);
     res.json({ message: 'Mensagens marcadas como lidas' });
 
   } catch (error) {
-    console.error('❌ Erro ao marcar como lida:', error);
+    console.error(' Erro ao marcar como lida:', error);
     res.status(500).json({ 
       message: 'Erro ao marcar como lida',
       error: error.message 
@@ -986,14 +1071,14 @@ router.post('/communications', async (req, res) => {
       WHERE conversation_id = ?
     `, [initialMessage, conversationId]);
 
-    console.log(`🆕 Nova conversa criada: ${conversationId} - ${subject}`);
+    console.log(` Nova conversa criada: ${conversationId} - ${subject}`);
     res.status(201).json({
       message: 'Conversa criada com sucesso!',
       data: newConversation[0]
     });
 
   } catch (error) {
-    console.error('❌ Erro ao criar conversa:', error);
+    console.error(' Erro ao criar conversa:', error);
     res.status(500).json({ 
       message: 'Erro ao criar conversa',
       error: error.message 
@@ -1046,7 +1131,7 @@ router.get('/ratings/pending', async (req, res) => {
     res.json(pendingServices);
 
   } catch (error) {
-    console.error('❌ Erro:', error);
+    console.error(' Erro:', error);
     res.status(500).json({ 
       message: 'Erro ao buscar serviços pendentes',
       error: error.message 

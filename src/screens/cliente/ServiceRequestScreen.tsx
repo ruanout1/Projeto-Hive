@@ -216,7 +216,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
         
         if (Array.isArray(response.data)) {
           setAllRequests(response.data);
-          console.log('✅ Solicitações carregadas do backend');
+          console.log(' Solicitações carregadas do backend');
         } else {
           setAllRequests([]);
         }
@@ -319,10 +319,10 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
       const newRequestFromBackend = response.data;
       setAllRequests(prev => [newRequestFromBackend, ...prev]);
 
-      toast.success('✅ Solicitação enviada com sucesso!', {
+      toast.success(' Solicitação enviada com sucesso!', {
         description: priority === 'urgente' 
           ? '⚡ Solicitação marcada como URGENTE - Nossa equipe será notificada!' 
-          : '📋 Sua solicitação está em análise. Acompanhe na aba "Minhas Solicitações".',
+          : ' Sua solicitação está em análise. Acompanhe na aba "Minhas Solicitações".',
         style: {
           background: '#6400A4',
           color: 'white',

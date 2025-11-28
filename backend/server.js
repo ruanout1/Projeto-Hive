@@ -153,7 +153,7 @@ app.listen(PORT, () => {
   console.log(`   • Usuários:         http://localhost:${PORT}/api/users`);
   console.log(`   • Gestores:         http://localhost:${PORT}/api/manager`);
   console.log(`   • Comunicação:      http://localhost:${PORT}/api/communication`);
-  console.log("\n✅ Arquitetura de rotas por Recurso está ATIVA");
+  console.log("\n Arquitetura de rotas por Recurso está ATIVA");
   console.log("====================================\n");
 });
 

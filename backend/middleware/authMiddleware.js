@@ -51,14 +51,28 @@ exports.protect = async (req, res, next) => {
         .json({ message: "Usuário desativado. Contate o suporte." });
     }
 
-    // 4. Reconstrói req.user com dados atualizados do banco + token
+    // 4. ✅ NOVO: Se for cliente, buscar o client_id automaticamente
+    let client_id = decoded.client_id || null;
+    
+    if (user.user_type === 'client' && !client_id) {
+      const client = await Client.findOne({ 
+        where: { user_id: user.user_id },
+        attributes: ['client_id']
+      });
+      
+      if (client) {
+        client_id = client.client_id;
+      }
+    }
+
+    // 5. Reconstrói req.user com dados completos
     req.user = {
       id: user.user_id,
       name: user.full_name,
       email: user.email,
       avatar_url: user.avatar_url || null,
       user_type: user.user_type,
-      client_id: decoded.client_id || null, // usado nas rotas do cliente
+      client_id: client_id, // ✅ Agora sempre terá valor para clientes
     };
 
     return next();

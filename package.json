@@ -59,6 +59,7 @@
         "@types/react": "^19.2.2",
         "@types/react-dom": "^19.2.2",
         "@vitejs/plugin-react-swc": "^3.10.2",
+        "sequelize-auto": "^0.8.8",
         "vite": "6.3.5"
     },
     "scripts": {

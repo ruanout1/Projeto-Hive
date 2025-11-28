@@ -114,7 +114,7 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
             
             setRatedServices(backendRatedServices);
             backendWorking = true;
-            console.log('✅ Avaliações carregadas:', backendRatedServices.length);
+            console.log(' Avaliações carregadas:', backendRatedServices.length);
           }
         } catch (error: any) {
           console.error("Erro ao buscar avaliações:", error);
@@ -128,10 +128,10 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
           if (Array.isArray(pendingResponse.data)) {
             setPendingServices(pendingResponse.data);
             backendWorking = true;
-            console.log('✅ Serviços pendentes carregados:', pendingResponse.data.length);
+            console.log(' Serviços pendentes carregados:', pendingResponse.data.length);
             
             if (backendWorking) {
-              toast.success(`📊 Dados carregados do backend!`);
+              toast.success(` Dados carregados do backend!`);
             }
           }
         } catch (error: any) {
@@ -231,7 +231,7 @@ export default function ClientRatingsScreen({ onBack }: ClientRatingsScreenProps
       setRatedServices(prev => [newRatedService, ...prev]); 
       setPendingServices(prev => prev.filter(s => s.id !== selectedServiceId));
       
-      toast.success("✅ Avaliação enviada com sucesso!");
+      toast.success(" Avaliação enviada com sucesso!");
       
       // Limpa o formulário
       setSelectedRating(0);

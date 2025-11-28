@@ -89,15 +89,15 @@ export default function ClientExpensesDashboardScreen({ onBack }: { onBack?: () 
         // Processa faturas
         if (invoicesRes.status === 'fulfilled' && Array.isArray(invoicesRes.value.data) && invoicesRes.value.data.length > 0) {
           setInvoices(invoicesRes.value.data);
-          console.log('✅ Faturas carregadas do backend:', invoicesRes.value.data.length);
+          console.log(' Faturas carregadas do backend:', invoicesRes.value.data.length);
         } else {
           setInvoices(FALLBACK_INVOICES);
-          console.log('ℹ️ Usando faturas de fallback');
+          console.log('ℹ Usando faturas de fallback');
         }
 
         // Processa resumo financeiro
         if (summaryRes.status === 'fulfilled' && summaryRes.value.data) {
-          console.log('✅ Resumo financeiro carregado');
+          console.log(' Resumo financeiro carregado');
           // Dados já estão sendo calculados localmente
         }
 
@@ -109,13 +109,13 @@ export default function ClientExpensesDashboardScreen({ onBack }: { onBack?: () 
           if (trendsRes.value.data.trendData) {
             setTrendData(trendsRes.value.data.trendData);
           }
-          console.log('✅ Gráficos carregados do backend');
+          console.log(' Gráficos carregados do backend');
         } else {
-          console.log('ℹ️ Usando gráficos de fallback');
+          console.log('ℹ Usando gráficos de fallback');
         }
 
       } catch (error: any) {
-        console.error('❌ Erro ao buscar dados financeiros:', error);
+        console.error(' Erro ao buscar dados financeiros:', error);
         
         // Verifica tipo de erro
         if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
@@ -123,7 +123,7 @@ export default function ClientExpensesDashboardScreen({ onBack }: { onBack?: () 
             description: 'Os dados mostrados são apenas para demonstração'
           });
         } else if (error.response?.status === 401) {
-          console.log('❌ Token inválido ou expirado');
+          console.log(' Token inválido ou expirado');
         } else {
           toast.error('Erro ao carregar dados financeiros', {
             description: 'Usando dados de exemplo'
@@ -146,7 +146,7 @@ export default function ClientExpensesDashboardScreen({ onBack }: { onBack?: () 
   // ==========================
   const handleDownloadPDF = async (invoiceId: string) => {
     try {
-      console.log('📄 Baixando PDF da fatura:', invoiceId);
+      console.log(' Baixando PDF da fatura:', invoiceId);
 
       // ✅ CORRETO: Download seguro com JWT
       const response = await api.get(`/client-portal/invoices/${invoiceId}/pdf`, {
@@ -166,7 +166,7 @@ export default function ClientExpensesDashboardScreen({ onBack }: { onBack?: () 
       toast.success('PDF baixado com sucesso!');
 
     } catch (error: any) {
-      console.error('❌ Erro ao baixar PDF:', error);
+      console.error(' Erro ao baixar PDF:', error);
       
       if (error.response?.status === 404) {
         toast.error('PDF não encontrado');
