@@ -2,9 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/authMiddleware");
 const { checkRole } = require("../middleware/authorizationMiddleware");
-const ScheduledService = require("../models/ScheduledService");
-const Client = require("../models/Client");
-const ServiceCatalog = require("../models/ServiceCatalog");
+const { ScheduledService, Company, ServiceCatalog } = require('../database/db');
 const db = require('../database/connection');
 
 // Cliente logado, role = client

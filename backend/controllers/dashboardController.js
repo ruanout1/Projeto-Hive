@@ -1,9 +1,19 @@
 const { Op, Sequelize } = require('sequelize');
-const ServiceRequest = require('../models/ServiceRequest');
-const Client = require('../models/Client');
-const Team = require('../models/Team');
-const User = require('../models/User');
-const { handleDatabaseError } = require('../utils/errorHandling');
+const {
+  ServiceRequest,
+  Company,
+  Team,
+  User
+} = require('../database/db');
+
+// Helper para erros de banco
+const handleDatabaseError = (res, error, action) => {
+  console.error(`Erro ao ${action}:`, error);
+  return res.status(500).json({
+    message: `Erro ao ${action}`,
+    error: error.message
+  });
+};
 
 // Mapeamento de status (necessário para getActiveRequests)
 const statusMap = {

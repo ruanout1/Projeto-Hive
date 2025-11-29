@@ -1,10 +1,21 @@
 const { Op, Sequelize } = require('sequelize');
-const Client = require('../models/Client');
-const User = require('../models/User');
-const ServiceRequest = require('../models/ServiceRequest');
-const ClientAddress = require('../models/ClientAddress');
-const Area = require('../models/Area');
-const { handleDatabaseError } = require('../utils/errorHandling');
+const {
+  Company,
+  User,
+  ServiceRequest,
+  ClientBranch,
+  Area,
+  ClientUser
+} = require('../database/db');
+
+// Helper para erros de banco (se não existir, vamos criar inline)
+const handleDatabaseError = (res, error, action) => {
+  console.error(`Erro ao ${action}:`, error);
+  return res.status(500).json({
+    message: `Erro ao ${action}`,
+    error: error.message
+  });
+};
 
 // =====================================
 // FUNÇÕES DE CLIENTES (PARA GESTOR E ADMIN)
@@ -17,25 +28,25 @@ exports.getClientsStats = async (req, res) => {
     const clientWhere = {};
     const revenueWhere = { status: 'completed' };
 
-    // Se for gestor, filtra por clientes da sua área (via ClientAddress)
-    if (loggedInUser.user_type === 'manager') {
+    // Se for gestor, filtra por clientes da sua área (via ClientBranch)
+    if (loggedInUser.role_key === 'manager') {
       const managerAreaId = req.user.area_id; // Vem do middleware 'protect'
-      clientWhere.area_id = managerAreaId; // Assumindo que a área está em ClientAddress
-      revenueWhere['$client.addresses.area_id$'] = managerAreaId;
+      clientWhere.area_id = managerAreaId; // Assumindo que a área está em ClientBranch
+      revenueWhere['$company.client_branches.area_id$'] = managerAreaId;
     }
 
-    const counts = await Client.findAll({
+    const counts = await Company.findAll({
       attributes: [
         'is_active',
-        [Sequelize.fn('COUNT', Sequelize.col('client.client_id')), 'count'],
+        [Sequelize.fn('COUNT', Sequelize.col('companies.company_id')), 'count'],
       ],
       include: [{
-        model: ClientAddress,
-        as: 'addresses',
+        model: ClientBranch,
+        as: 'client_branches',
         attributes: [],
         where: clientWhere, // Aplica o filtro de área aqui
       }],
-      group: ['client.is_active'],
+      group: ['companies.is_active'],
     });
 
     const stats = counts.reduce((acc, item) => {
@@ -48,12 +59,12 @@ exports.getClientsStats = async (req, res) => {
       where: revenueWhere,
       include: [
         {
-          model: Client,
-          as: 'client',
+          model: Company,
+          as: 'company',
           attributes: [],
           include: [{
-            model: ClientAddress,
-            as: 'addresses',
+            model: ClientBranch,
+            as: 'client_branches',
             attributes: [],
           }]
         },
@@ -82,8 +93,8 @@ exports.getClients = async (req, res) => {
     const whereCondition = {};
     const includeWhere = {};
 
-    // Se for gestor, filtra por área via ClientAddress
-    if (loggedInUser.user_type === 'manager') {
+    // Se for gestor, filtra por área via ClientBranch
+    if (loggedInUser.role_key === 'manager') {
       includeWhere.area_id = loggedInUser.area_id;
     }
 
@@ -95,48 +106,53 @@ exports.getClients = async (req, res) => {
     // Filtro por busca
     if (search) {
       whereCondition[Op.or] = [
-        { main_company_name: { [Op.like]: `%${search}%` } },
-        { main_cnpj: { [Op.like]: `%${search}%` } },
-        { '$user.full_name$': { [Op.like]: `%${search}%` } },
-        { '$user.email$': { [Op.like]: `%${search}%` } }
+        { name: { [Op.like]: `%${search}%` } },
+        { cnpj: { [Op.like]: `%${search}%` } },
+        { '$client_users.user.full_name$': { [Op.like]: `%${search}%` } },
+        { '$client_users.user.email$': { [Op.like]: `%${search}%` } }
       ];
     }
 
     const offset = (page - 1) * limit;
 
-    const { count, rows: clients } = await Client.findAndCountAll({
+    const { count, rows: clients } = await Company.findAndCountAll({
       where: whereCondition,
       include: [
         {
-          model: User,
-          as: 'user',
-          attributes: ['full_name', 'email', 'phone']
+          model: ClientUser,
+          as: 'client_users',
+          include: [{
+            model: User,
+            as: 'user',
+            attributes: ['full_name', 'email', 'phone']
+          }]
         },
         {
-          model: ClientAddress,
-          as: 'addresses',
+          model: ClientBranch,
+          as: 'client_branches',
           where: includeWhere, // Filtra pela área do gestor
-          required: (loggedInUser.user_type === 'manager'), // Garante que só venham clientes da área
+          required: (loggedInUser.role_key === 'manager'), // Garante que só venham clientes da área
           include: [{ model: Area, as: 'area', attributes: ['name'] }]
         }
         // TODO: Adicionar include para ServiceRequest para estatísticas
       ],
-      order: [['main_company_name', 'ASC']],
+      order: [['name', 'ASC']],
       limit: parseInt(limit),
       offset: offset,
-      distinct: true, 
+      distinct: true,
       subQuery: false // Necessário para 'search' em 'include' funcionar
     });
 
     const clientsWithStats = clients.map((client) => {
+      const primaryUser = client.client_users?.find(cu => cu.is_primary_contact) || client.client_users?.[0];
       // TODO: Lógica de stats (activeServices, etc.) precisa de include de ServiceRequest
       return {
-        id: client.client_id,
-        name: client.main_company_name,
-        cnpj: client.main_cnpj,
-        email: client.user?.email,
-        phone: client.user?.phone,
-        area: client.addresses?.[0]?.area?.name || 'Sem área',
+        id: client.company_id,
+        name: client.name,
+        cnpj: client.cnpj,
+        email: primaryUser?.user?.email,
+        phone: primaryUser?.user?.phone,
+        area: client.client_branches?.[0]?.area?.name || 'Sem área',
         status: client.is_active ? 'active' : 'inactive',
         // ... stats mockados por enquanto
         servicesActive: 0,
@@ -145,7 +161,7 @@ exports.getClients = async (req, res) => {
         rating: 0,
         totalValue: 'R$ 0,00',
         notes: client.notes,
-        createdAt: client.created_at.toLocaleDateString('pt-BR'),
+        createdAt: client.createdAt ? new Date(client.createdAt).toLocaleDateString('pt-BR') : '-',
       };
     });
 

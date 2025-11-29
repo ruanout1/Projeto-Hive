@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const Client = require("../models/Client");
+const { User, ClientUser } = require("../database/db");
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
@@ -27,7 +26,7 @@ exports.protect = async (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
 
     // decoded contém:
-    // { id, user_type, client_id }
+    // { id, role_key, client_id }
 
     // 3. Busca o usuário no banco (garante active e dados atualizados)
     const user = await User.findByPk(decoded.id, {
@@ -36,7 +35,7 @@ exports.protect = async (req, res, next) => {
         "full_name",
         "email",
         "avatar_url",
-        "user_type",
+        "role_key",
         "is_active",
       ],
     });
@@ -51,17 +50,17 @@ exports.protect = async (req, res, next) => {
         .json({ message: "Usuário desativado. Contate o suporte." });
     }
 
-    // 4. ✅ NOVO: Se for cliente, buscar o client_id automaticamente
+    // 4. Se for cliente, buscar o client_user_id automaticamente
     let client_id = decoded.client_id || null;
-    
-    if (user.user_type === 'client' && !client_id) {
-      const client = await Client.findOne({ 
+
+    if (user.role_key === 'client' && !client_id) {
+      const clientUser = await ClientUser.findOne({
         where: { user_id: user.user_id },
-        attributes: ['client_id']
+        attributes: ['client_user_id']
       });
-      
-      if (client) {
-        client_id = client.client_id;
+
+      if (clientUser) {
+        client_id = clientUser.client_user_id;
       }
     }
 
@@ -71,8 +70,8 @@ exports.protect = async (req, res, next) => {
       name: user.full_name,
       email: user.email,
       avatar_url: user.avatar_url || null,
-      user_type: user.user_type,
-      client_id: client_id, // ✅ Agora sempre terá valor para clientes
+      role_key: user.role_key,
+      client_id: client_id, // Sempre terá valor para clientes
     };
 
     return next();

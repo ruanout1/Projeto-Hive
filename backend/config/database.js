@@ -8,7 +8,6 @@ if (process.env.USE_DB === 'false') {
   return;
 }
 
-// Cria instância do Sequelize com variáveis do .env
 const sequelize = new Sequelize(
   process.env.DB_NAME,
   process.env.DB_USER,
@@ -17,13 +16,13 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     dialect: 'mysql',
     logging: false,
+
+    // ✅ IMPORTANTE: mapear timestamps snake_case do MySQL
+    define: {
+      underscored: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
-
-// Tenta autenticar
-sequelize
-  .authenticate()
-  .then(() => console.log(' Conexão com o banco de dados estabelecida!'))
-  .catch((err) => console.error(' Erro ao conectar no banco:', err));
-
 module.exports = sequelize;

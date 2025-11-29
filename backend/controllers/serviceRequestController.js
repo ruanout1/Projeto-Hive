@@ -1,9 +1,19 @@
 const { Op, Sequelize } = require('sequelize');
-const ServiceRequest = require('../models/ServiceRequest');
-const Client = require('../models/Client');
-const Team = require('../models/Team');
-const User = require('../models/User');
-const { handleDatabaseError } = require('../utils/errorHandling');
+const {
+  ServiceRequest,
+  Company,
+  Team,
+  User
+} = require('../database/db');
+
+// Helper para erros de banco
+const handleDatabaseError = (res, error, action) => {
+  console.error(`Erro ao ${action}:`, error);
+  return res.status(500).json({
+    message: `Erro ao ${action}`,
+    error: error.message
+  });
+};
 
 
 // Mapeamento de status (copiado do managerController)
@@ -25,7 +35,7 @@ const statusMap = {
 
 // Função auxiliar para criar a condição 'WHERE' baseada no papel
 const buildServiceRequestWhere = (user) => {
-  if (user.user_type === 'admin') {
+  if (user.role_key === 'admin') {
     // Admin vê tudo, sem filtro de área/gestor
     return {}; 
   }
@@ -284,7 +294,7 @@ exports.getRequestsByArea = async (req, res) => {
     const baseWhere = buildServiceRequestWhere(req.user);
 
     // Se um gestor tentar ver uma área que não é a dele, bloqueia.
-    if (req.user.user_type === 'manager' && area && area !== req.user.area) {
+    if (req.user.role_key === 'manager' && area && area !== req.user.area) {
       return res.status(403).json({
         error: 'Você só pode visualizar solicitações da sua área'
       });
@@ -292,7 +302,7 @@ exports.getRequestsByArea = async (req, res) => {
 
     // Se for gestor, a 'baseWhere' já filtra pela área dele.
     // Se for admin, ele pode adicionar um filtro de área.
-    if (req.user.user_type === 'admin' && area) {
+    if (req.user.role_key === 'admin' && area) {
       baseWhere.assigned_manager_area = area;
     }
 
