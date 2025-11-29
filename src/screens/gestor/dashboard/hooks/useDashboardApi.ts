@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import { toast } from 'sonner';
-import { DashboardStats, Service } from '../types';
+import api from '../../../../lib/api'; // CORREÇÃO: Importa a instância configurada do Axios
+import { DashboardStats, Service, Team } from '../types';
 
-const API_URL = 'http://localhost:5000/api/manager';
+// A constante API_URL não é mais necessária, pois a baseURL está no 'api'
 
 export const useDashboardApi = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [services, setServices] = useState<Service[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -21,9 +22,11 @@ export const useDashboardApi = () => {
     setError(null);
 
     try {
-      const [statsRes, servicesRes] = await Promise.all([
-        axios.get(`${API_URL}/dashboard/stats`),
-        axios.get(`${API_URL}/requests/active`)
+      // CORREÇÃO: Usa a instância 'api' em vez de 'axios.get'
+      const [statsRes, servicesRes, teamsRes] = await Promise.all([
+        api.get('/manager/dashboard/stats'),
+        api.get('/manager/requests/active'),
+        api.get('/manager/teams')
       ]);
 
       if (!statsRes.data || typeof statsRes.data !== 'object') {
@@ -32,9 +35,14 @@ export const useDashboardApi = () => {
       if (!Array.isArray(servicesRes.data)) {
         throw new Error('Formato de dados inválido para serviços');
       }
+      if (!Array.isArray(teamsRes.data)) {
+        throw new Error('Formato de dados inválido para equipes');
+      }
 
       setStats(statsRes.data);
       setServices(servicesRes.data);
+      setTeams(teamsRes.data);
+
       if (isRefresh) {
         toast.success('Dados atualizados com sucesso!');
       }
@@ -62,5 +70,5 @@ export const useDashboardApi = () => {
     fetchData(true);
   };
 
-  return { stats, services, loading, error, actionLoading, handleRefresh };
+  return { stats, services, teams, loading, error, actionLoading, handleRefresh };
 };

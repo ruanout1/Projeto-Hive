@@ -353,3 +353,56 @@ exports.searchServiceRequests = async (req, res) => {
     handleDatabaseError(res, error, 'buscar solicitações');
   }
 };
+
+/**
+ * @desc    Busca requisições de serviço ativas para o dashboard do gestor.
+ * @route   GET /api/manager/requests/active
+ * @access  Private (Manager)
+ */
+exports.getActiveRequests = async (req, res) => {
+  try {
+    // Constrói a condição de busca baseada no usuário (área do gestor)
+    const whereCondition = buildServiceRequestWhere(req.user);
+
+    // Adiciona a condição de status à busca
+    whereCondition.status = {
+      [Op.notIn]: ['completed', 'cancelled']
+    };
+
+    // Busca todas as requisições que correspondem às condições
+    const activeRequests = await ServiceRequest.findAll({
+      where: whereCondition,
+      include: [
+        {
+          model: Client,
+          as: 'client',
+          attributes: ['main_company_name'], 
+        },
+        {
+          model: Team,
+          as: 'assignedTeam',
+          attributes: ['name']
+        },
+      ],
+      order: [['desired_date', 'ASC']], 
+      limit: 10 
+    });
+
+    // Formata a resposta para corresponder à interface 'Service' do frontend
+    const formattedServices = activeRequests.map(req => ({
+      id: req.service_request_id, 
+      cliente: req.client?.main_company_name || 'Cliente não associado',
+      servico: req.title, 
+      equipe: req.assignedTeam?.name || 'Não atribuída',
+      status: req.status, 
+      prazo: req.desired_date, 
+    }));
+
+    res.status(200).json(formattedServices);
+
+  } catch (error) {
+    console.error("Erro ao buscar requisições ativas:", error);
+    handleDatabaseError(res, error, 'buscar requisições ativas');
+  }
+};
+

@@ -1,21 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const dashboardController = require('../controllers/dashboardController');
-const { protect } = require('../middleware/authMiddleware');
-const { checkRole } = require('../middleware/authorizationMiddleware');
+const { getCollaboratorDashboard, getManagerDashboard } = require('../controllers/dashboardController');
+const { protect, restrictTo } = require('../middleware/authMiddleware');
 
-// =====================
-// ROTAS DO DASHBOARD
-// =====================
+// Rota para o dashboard do Colaborador
+// Acessível apenas para usuários autenticados com o tipo 'collaborator'
+router.route('/collaborator').get(protect, restrictTo('collaborator'), getCollaboratorDashboard);
 
-// Proteger TODAS as rotas do Dashboard.
-// Apenas Admins e Gestores podem ver.
-router.use(protect, checkRole(['admin', 'manager']));
-
-// (GET /api/dashboard/stats)
-router.get('/stats', dashboardController.getDashboardStats);
-
-// (GET /api/dashboard/active-requests)
-router.get('/active-requests', dashboardController.getActiveRequests);
+// Rota para o dashboard do Gestor
+// Acessível apenas para usuários autenticados com o tipo 'manager'
+router.route('/manager').get(protect, restrictTo('manager'), getManagerDashboard);
 
 module.exports = router;

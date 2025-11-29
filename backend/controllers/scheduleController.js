@@ -1,463 +1,259 @@
-const db = require('../database/connection'); // Pega sua conexão SQL
-// Importa o helper de erro que acabamos de criar
+const { models, sequelize } = require('../config/database');
+const { Op } = require('sequelize');
 const { handleDatabaseError } = require('../utils/errorHandling');
 
-// ===================================
-// FUNÇÕES AUXILIARES DE BANCO DE DADOS
-// (Lógica do seu antigo ScheduleService.js)
-// ===================================
+module.exports = {
+  // ========================================================================
+  // 1. ESTATÍSTICAS (Cards do Dashboard)
+  // Usa a VIEW para contar rápido, sem joins manuais
+  // ========================================================================
+  async getScheduleStats(req, res) {
+    try {
+      const userId = req.user.id;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Zera hora para comparar data
 
-// Utilitário para formatar data para o banco (YYYY-MM-DD)
-const formatDateForDB = (date) => {
-  return date.toISOString().split('T')[0];
-};
+      // Busca tudo da view para este usuário (futuro e hoje)
+      const items = await models.vw_user_agenda.findAll({
+        where: {
+          user_id: userId,
+          start_at: { [Op.gte]: today } // A partir de hoje
+        }
+      });
 
-// Converter dados do banco para o formato do frontend
-const formatScheduleItemForFrontend = (dbItem) => {
-  if (!dbItem) return null;
-  
-  const startTime = new Date(dbItem.start_date);
-  const endTime = new Date(dbItem.end_date);
-  
-  return {
-    id: dbItem.event_id.toString(),
-    date: startTime.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-    time: startTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    endTime: endTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    title: dbItem.title,
-    type: dbItem.event_type,
-    client: dbItem.client_name,
-    clientPhone: dbItem.client_phone,
-    service: dbItem.service_name,
-    location: dbItem.location,
-    status: dbItem.status,
-    notes: dbItem.service_notes || dbItem.meeting_agenda,
-    organizer: dbItem.organizer_name
-  };
-};
+      const stats = {
+        total: items.length,
+        // Conta serviços agendados
+        upcoming_services: items.filter(i => i.item_type === 'service' && i.status === 'scheduled').length,
+        // Conta reuniões/eventos agendados
+        upcoming_meetings: items.filter(i => i.item_type === 'event').length,
+        // Conta concluídos hoje
+        completed_today: items.filter(i => 
+          i.status === 'completed' && 
+          new Date(i.end_at).toDateString() === today.toDateString()
+        ).length
+      };
 
-// Função auxiliar para buscar item por ID (usada internamente por 'create' e 'update')
-const fetchScheduleItemById = async (id, managerId) => {
-  const [results] = await db.query(`
-    SELECT 
-      ce.*, c.main_company_name as client_name, u_client.phone as client_phone,
-      sc.name as service_name, u_organizer.full_name as organizer_name
-    FROM calendar_events ce
-    LEFT JOIN clients c ON ce.client_id = c.client_id
-    LEFT JOIN users u_client ON c.user_id = u_client.user_id
-    LEFT JOIN service_catalog sc ON ce.service_catalog_id = sc.service_catalog_id
-    LEFT JOIN users u_organizer ON ce.organizer_user_id = u_organizer.user_id
-    WHERE ce.event_id = ? AND ce.organizer_user_id = ?
-  `, [id, managerId]);
-  return results[0] || null;
-};
+      return res.json(stats);
+    } catch (error) {
+      handleDatabaseError(res, error, 'buscar estatísticas da agenda');
+    }
+  },
 
-// Função auxiliar para checar conflitos
-const checkTimeConflict = async (managerId, startDate, endDate, excludeId = null) => {
-  let query = `
-    SELECT event_id, title, start_date, end_date 
-    FROM calendar_events 
-    WHERE organizer_user_id = ? 
-    AND status != 'cancelled'
-    AND (
-      (start_date < ? AND end_date > ?) OR
-      (start_date < ? AND end_date > ?) OR
-      (start_date >= ? AND start_date < ?)
-    )
-  `;
-  
-  const params = [
-    managerId, 
-    endDate, startDate,
-    startDate, endDate,
-    startDate, endDate
-  ];
-  
-  if (excludeId) {
-    query += ` AND event_id != ?`;
-    params.push(excludeId);
+  // ========================================================================
+  // 2. LISTAGEM DA AGENDA (GET /api/schedule)
+  // Consome a VIEW vw_user_agenda que já une Serviços + Eventos
+  // ========================================================================
+  async getSchedule(req, res) {
+    try {
+      const userId = req.user.id;
+      const { startDate, endDate, type, status } = req.query;
+
+      // Filtros dinâmicos
+      const whereClause = {
+        user_id: userId
+      };
+
+      // Filtro de Data (obrigatório ou padrão mês atual)
+      if (startDate && endDate) {
+        whereClause.start_at = {
+          [Op.between]: [new Date(startDate), new Date(endDate)]
+        };
+      }
+
+      // Filtro por Tipo (service ou event)
+      if (type) {
+        whereClause.item_type = type;
+      }
+
+      // Filtro por Status
+      if (status) {
+        whereClause.status = status;
+      }
+
+      const agendaItems = await models.vw_user_agenda.findAll({
+        where: whereClause,
+        order: [['start_at', 'ASC']]
+      });
+
+      // Retorna direto, pois a View já formata Title, Color, Start, End, etc.
+      return res.json(agendaItems);
+
+    } catch (error) {
+      handleDatabaseError(res, error, 'buscar agenda');
+    }
+  },
+
+  // ========================================================================
+  // 3. DETALHES DO ITEM (GET /api/schedule/:id)
+  // Precisamos saber se é Evento ou Serviço para buscar na tabela certa
+  // ========================================================================
+  async getScheduleItemById(req, res) {
+    try {
+      const { id } = req.params;
+      const { type } = req.query; // O front deve mandar ?type=service ou ?type=event
+
+      if (!type) {
+        return res.status(400).json({ message: 'Tipo do item (service/event) é obrigatório' });
+      }
+
+      let item = null;
+
+      if (type === 'service') {
+        // Busca na tabela de Serviços com os dados do cliente e catálogo
+        item = await models.scheduled_services.findByPk(id, {
+          include: [
+            { model: models.companies, as: 'company' }, // Ajuste o 'as' conforme init-models
+            { model: models.service_catalog, as: 'service_catalog' }
+          ]
+        });
+      } else {
+        // Busca na tabela de Eventos
+        item = await models.calendar_events.findByPk(id, {
+          include: [
+             { model: models.event_participants, as: 'event_participants' }
+          ]
+        });
+      }
+
+      if (!item) {
+        return res.status(404).json({ message: 'Item não encontrado' });
+      }
+
+      return res.json(item);
+
+    } catch (error) {
+      handleDatabaseError(res, error, 'buscar detalhes do item');
+    }
+  },
+
+  // ========================================================================
+  // 4. CRIAR NOVO ITEM (POST /api/schedule)
+  // Decide se grava em scheduled_services ou calendar_events
+  // ========================================================================
+  async createScheduleItem(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const managerId = req.user.id;
+      const data = req.body;
+      const isService = data.event_type === 'service'; // Front define o tipo
+
+      // 1. Checagem de Conflito de Horário (Simples)
+      // Verifica na VIEW para cobrir tanto serviços quanto eventos
+      const hasConflict = await models.vw_user_agenda.findOne({
+        where: {
+          user_id: managerId,
+          start_at: { [Op.lt]: data.end_date },
+          end_at: { [Op.gt]: data.start_date },
+          status: { [Op.ne]: 'cancelled' } // Ignora cancelados
+        },
+        transaction
+      });
+
+      if (hasConflict) {
+        await transaction.rollback();
+        return res.status(409).json({ message: 'Conflito de horário detectado.' });
+      }
+
+      let newItem = null;
+
+      if (isService) {
+        // --- CRIAR SERVIÇO ---
+        // Mapeia campos do body para tabela scheduled_services
+        newItem = await models.scheduled_services.create({
+          company_id: data.client_id, // Atenção: no banco novo é company_id
+          service_catalog_id: data.service_catalog_id,
+          collaborator_user_id: managerId, // Gestor se auto-atribuindo ou vindo do body
+          scheduled_date: data.start_date.split('T')[0], // Pega só a data YYYY-MM-DD
+          start_time: data.start_time, // HH:MM
+          end_time: data.end_time,     // HH:MM
+          status_key: 'scheduled',
+          notes: data.description,
+          created_by_user_id: managerId
+        }, { transaction });
+
+      } else {
+        // --- CRIAR EVENTO (Reunião/Pessoal) ---
+        // Mapeia campos para calendar_events
+        newItem = await models.calendar_events.create({
+          title: data.title,
+          description: data.description,
+          event_type: data.event_type || 'meeting',
+          start_at: data.start_date, // DATETIME completo
+          end_at: data.end_date,     // DATETIME completo
+          is_all_day: data.is_all_day || false,
+          location: data.location,
+          meeting_link: data.meeting_link,
+          created_by_user_id: managerId,
+          color_hex: data.color || '#8E44AD'
+        }, { transaction });
+      }
+
+      await transaction.commit();
+      return res.status(201).json(newItem);
+
+    } catch (error) {
+      await transaction.rollback();
+      handleDatabaseError(res, error, 'criar agendamento');
+    }
+  },
+
+  // ========================================================================
+  // 5. ATUALIZAR STATUS (PUT /api/schedule/:id/status)
+  // ========================================================================
+  async updateScheduleItemStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status, type } = req.body; // Front precisa mandar o tipo
+      const userId = req.user.id;
+
+      if (!type) return res.status(400).json({ message: 'Tipo é obrigatório' });
+
+      let updated = 0;
+
+      if (type === 'service') {
+        [updated] = await models.scheduled_services.update(
+          { 
+            status_key: status, 
+            updated_by_user_id: userId // Gatilho para histórico se tiver campo
+          },
+          { where: { scheduled_service_id: id } }
+        );
+      } else {
+        // Eventos não têm status complexo na tabela calendar_events, 
+        // mas podemos assumir logica customizada ou ignorar
+        return res.status(400).json({ message: 'Apenas serviços têm fluxo de status.' });
+      }
+
+      if (updated === 0) return res.status(404).json({ message: 'Item não encontrado' });
+
+      return res.json({ success: true, status });
+
+    } catch (error) {
+      handleDatabaseError(res, error, 'atualizar status');
+    }
+  },
+
+  // ========================================================================
+  // 6. DELETAR (DELETE /api/schedule/:id)
+  // ========================================================================
+  async deleteScheduleItem(req, res) {
+    try {
+      const { id } = req.params;
+      const { type } = req.query; // Obrigatório saber onde deletar
+
+      if (type === 'service') {
+        await models.scheduled_services.destroy({ where: { scheduled_service_id: id } });
+      } else if (type === 'event') {
+        await models.calendar_events.destroy({ where: { event_id: id } });
+      } else {
+        return res.status(400).json({ message: 'Tipo inválido para exclusão.' });
+      }
+
+      return res.json({ message: 'Item excluído com sucesso.' });
+
+    } catch (error) {
+      handleDatabaseError(res, error, 'excluir item');
+    }
   }
-  
-  const [results] = await db.query(query, params);
-  return results;
-};
-
-
-// ===================================
-// CONTROLLERS DA AGENDA (CRUD Completo)
-// ===================================
-
-// GET /api/schedule/stats
-exports.getScheduleStats = async (req, res) => {
-  try {
-    const managerId = req.user.id; // Vem do middleware 'protect'
-    const today = new Date();
-    const todayFormatted = formatDateForDB(today);
-    
-    const [stats] = await db.query(`
-      SELECT 
-        COUNT(*) as total,
-        COUNT(CASE WHEN event_type = 'service' AND status = 'scheduled' AND DATE(start_date) >= ? THEN 1 END) as upcoming_services,
-        COUNT(CASE WHEN event_type = 'meeting' AND status = 'scheduled' AND DATE(start_date) >= ? THEN 1 END) as upcoming_meetings,
-        COUNT(CASE WHEN DATE(start_date) = ? AND status = 'completed' THEN 1 END) as completed_today
-      FROM calendar_events 
-      WHERE organizer_user_id = ? AND status != 'cancelled'
-    `, [todayFormatted, todayFormatted, todayFormatted, managerId]);
-    
-    res.status(200).json(stats[0] || {
-      total: 0, upcoming_services: 0, upcoming_meetings: 0, completed_today: 0
-    });
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar estatísticas da agenda');
-  }
-};
-
-// GET /api/schedule (com filtros)
-exports.getSchedule = async (req, res) => {
-  try {
-    const managerId = req.user.id;
-    const { startDate, endDate, type, status } = req.query; 
-
-    let query = `
-      SELECT 
-        ce.*, c.main_company_name as client_name, u_client.phone as client_phone,
-        sc.name as service_name, u_organizer.full_name as organizer_name
-      FROM calendar_events ce
-      LEFT JOIN clients c ON ce.client_id = c.client_id
-      LEFT JOIN users u_client ON c.user_id = u_client.user_id
-      LEFT JOIN service_catalog sc ON ce.service_catalog_id = sc.service_catalog_id
-      LEFT JOIN users u_organizer ON ce.organizer_user_id = u_organizer.user_id
-      WHERE ce.organizer_user_id = ?
-    `;
-    
-    const params = [managerId];
-    
-    if (startDate && endDate) {
-      query += ` AND DATE(ce.start_date) BETWEEN ? AND ?`;
-      params.push(formatDateForDB(new Date(startDate)));
-      params.push(formatDateForDB(new Date(endDate)));
-    }
-    if (type) {
-      query += ` AND ce.event_type = ?`;
-      params.push(type);
-    }
-    if (status) {
-      query += ` AND ce.status = ?`;
-      params.push(status);
-    }
-    query += ` ORDER BY DATE(ce.start_date), TIME(ce.start_date)`;
-    
-    const [results] = await db.query(query, params);
-    const formattedSchedule = results.map(formatScheduleItemForFrontend);
-    res.status(200).json(formattedSchedule);
-
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar agenda');
-  }
-};
-
-// GET /api/schedule/:id
-exports.getScheduleItemById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const managerId = req.user.id;
-    
-    const dbItem = await fetchScheduleItemById(id, managerId);
-      
-    if (!dbItem) {
-      return res.status(404).json({ message: 'Agendamento não encontrado' });
-    }
-    
-    res.status(200).json(formatScheduleItemForFrontend(dbItem));
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar agendamento');
-  }
-};
-
-// POST /api/schedule (NOVO - Lógica do seu ScheduleService)
-exports.createScheduleItem = async (req, res) => {
-  try {
-    const managerId = req.user.id;
-    const scheduleData = {
-      ...req.body,
-      organizer_user_id: managerId, // Garante que o gestor é o organizador
-      created_by_user_id: managerId // Garante que o gestor é o criador
-    };
-    
-    // 1. Verificar conflitos
-    const conflicts = await checkTimeConflict(
-      managerId,
-      scheduleData.start_date,
-      scheduleData.end_date
-    );
-    
-    if (conflicts.length > 0) {
-      // 409: Conflict
-      return res.status(409).json({
-        message: 'Conflito de horário: Já existe um agendamento neste horário',
-        conflicts: conflicts
-      });
-    }
-    
-    // 2. Inserir no banco
-    const [result] = await db.query(`
-      INSERT INTO calendar_events 
-      (event_number, title, description, event_type, event_subtype, start_date, end_date, 
-       is_all_day, location, address_details, status, priority, organizer_user_id, 
-       client_id, service_catalog_id, area_id, client_phone, service_notes, 
-       meeting_agenda, meeting_room, meeting_link, created_by_user_id)
-      VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      scheduleData.title,
-      scheduleData.description || null,
-      scheduleData.event_type,
-      scheduleData.event_subtype || null,
-      scheduleData.start_date,
-      scheduleData.end_date,
-      scheduleData.is_all_day || false,
-      scheduleData.location || null,
-      scheduleData.address_details ? JSON.stringify(scheduleData.address_details) : null,
-      scheduleData.status || 'scheduled',
-      scheduleData.priority || 'medium',
-      managerId, // organizer_user_id
-      scheduleData.client_id || null,
-      scheduleData.service_catalog_id || null,
-      scheduleData.area_id || null,
-      scheduleData.client_phone || null,
-      scheduleData.service_notes || null,
-      scheduleData.meeting_agenda || null,
-      scheduleData.meeting_room || null,
-      scheduleData.meeting_link || null,
-      managerId // created_by_user_id
-    ]);
-    
-    // 3. Retornar o item criado
-    const newItem = await fetchScheduleItemById(result.insertId, managerId);
-    res.status(201).json(formatScheduleItemForFrontend(newItem));
-  } catch (error) {
-    handleDatabaseError(res, error, 'criar agendamento');
-  }
-};
-
-// PUT /api/schedule/:id (NOVO)
-exports.updateScheduleItem = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const managerId = req.user.id;
-    const updateData = req.body;
-
-    // 1. Verificar se o item existe e pertence ao gestor
-    const existingItem = await fetchScheduleItemById(id, managerId);
-    if (!existingItem) {
-      return res.status(404).json({ message: 'Agendamento não encontrado' });
-    }
-
-    // 2. Verificar conflitos (excluindo o próprio item)
-    const conflicts = await checkTimeConflict(
-      managerId,
-      updateData.start_date,
-      updateData.end_date,
-      id // Exclui este ID da verificação
-    );
-    
-    if (conflicts.length > 0) {
-      return res.status(409).json({
-        message: 'Conflito de horário: Já existe outro agendamento neste horário',
-        conflicts: conflicts
-      });
-    }
-
-    // 3. Atualizar no banco
-    await db.query(`
-      UPDATE calendar_events SET
-        title = ?, description = ?, event_type = ?, event_subtype = ?, 
-        start_date = ?, end_date = ?, is_all_day = ?, location = ?, 
-        address_details = ?, status = ?, priority = ?, client_id = ?, 
-        service_catalog_id = ?, area_id = ?, client_phone = ?, service_notes = ?, 
-        meeting_agenda = ?, meeting_room = ?, meeting_link = ?, 
-        updated_by_user_id = ?
-      WHERE event_id = ? AND organizer_user_id = ?
-    `, [
-      updateData.title,
-      updateData.description || null,
-      updateData.event_type,
-      updateData.event_subtype || null,
-      updateData.start_date,
-      updateData.end_date,
-      updateData.is_all_day || false,
-      updateData.location || null,
-      updateData.address_details ? JSON.stringify(updateData.address_details) : null,
-      updateData.status || 'scheduled',
-      updateData.priority || 'medium',
-      updateData.client_id || null,
-      updateData.service_catalog_id || null,
-      updateData.area_id || null,
-      updateData.client_phone || null,
-      updateData.service_notes || null,
-      updateData.meeting_agenda || null,
-      updateData.meeting_room || null,
-      updateData.meeting_link || null,
-      managerId, // updated_by_user_id
-      id, // WHERE event_id = ?
-      managerId // AND organizer_user_id = ?
-    ]);
-
-    // 4. Retornar o item atualizado
-    const updatedItem = await fetchScheduleItemById(id, managerId);
-    res.status(200).json(formatScheduleItemForFrontend(updatedItem));
-  } catch (error) {
-    handleDatabaseError(res, error, 'atualizar agendamento');
-  }
-};
-
-// PUT /api/schedule/:id/status (NOVO)
-exports.updateScheduleItemStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const managerId = req.user.id;
-    const { status } = req.body;
-
-    if (!status) {
-      return res.status(400).json({ message: 'Status é obrigatório' });
-    }
-
-    const [result] = await db.query(`
-      UPDATE calendar_events SET
-        status = ?,
-        updated_by_user_id = ?
-      WHERE event_id = ? AND organizer_user_id = ?
-    `, [status, managerId, id, managerId]);
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Agendamento não encontrado ou não pertence a você' });
-    }
-    
-    const updatedItem = await fetchScheduleItemById(id, managerId);
-    res.status(200).json(formatScheduleItemForFrontend(updatedItem));
-  } catch (error) {
-    handleDatabaseError(res, error, 'atualizar status do agendamento');
-  }
-};
-
-// DELETE /api/schedule/:id (NOVO)
-exports.deleteScheduleItem = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const managerId = req.user.id;
-    
-    const [result] = await db.query(`
-      DELETE FROM calendar_events 
-      WHERE event_id = ? AND organizer_user_id = ?
-    `, [id, managerId]);
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Agendamento não encontrado ou não pertence a você' });
-    }
-    
-    res.status(200).json({ message: 'Agendamento excluído com sucesso' });
-  } catch (error) {
-    handleDatabaseError(res, error, 'excluir agendamento');
-  }
-};
-
-// ===================================
-// CONTROLLERS DAS ROTAS ANTIGAS (que não estão mais no frontend, mas existiam)
-// =Obs: O frontend não parece usar estas, mas vou mantê-las caso você precise
-// ===================================
-
-// GET /api/schedule/filter/date
-exports.getScheduleByDate = async (req, res) => {
-  try {
-    const managerId = req.user.id;
-    const { date } = req.query;
-    
-    const [results] = await db.query(`
-      SELECT ce.*, c.main_company_name as client_name, u_client.phone as client_phone,
-             sc.name as service_name, u_organizer.full_name as organizer_name
-      FROM calendar_events ce
-      LEFT JOIN clients c ON ce.client_id = c.client_id
-      LEFT JOIN users u_client ON c.user_id = u_client.user_id
-      LEFT JOIN service_catalog sc ON ce.service_catalog_id = sc.service_catalog_id
-      LEFT JOIN users u_organizer ON ce.organizer_user_id = u_organizer.user_id
-      WHERE ce.organizer_user_id = ? AND DATE(ce.start_date) = ?
-      ORDER BY TIME(ce.start_date)
-    `, [managerId, formatDateForDB(new Date(date))]);
-    
-    res.status(200).json(results.map(formatScheduleItemForFrontend));
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar agenda por data');
-  }
-};
-
-// GET /api/schedule/:id/conflicts
-exports.checkScheduleConflicts = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const managerId = req.user.id;
-
-    // Pega o item atual para saber o start/end
-    const item = await fetchScheduleItemById(id, managerId);
-    if (!item) {
-      return res.status(404).json({ message: 'Agendamento não encontrado' });
-    }
-    
-    const conflicts = await checkTimeConflict(
-      managerId,
-      item.start_date,
-      item.end_date,
-      id // Exclui ele mesmo
-    );
-    
-    res.status(200).json(conflicts);
-  } catch (error) {
-    handleDatabaseError(res, error, 'verificar conflitos');
-  }
-};
-
-// GET /api/schedule/filter/type
-exports.getScheduleByType = async (req, res) => {
-  try {
-    const managerId = req.user.id;
-    const { type } = req.query;
-    
-    const [results] = await db.query(`
-      SELECT ce.*, c.main_company_name as client_name, u_client.phone as client_phone,
-             sc.name as service_name, u_organizer.full_name as organizer_name
-      FROM calendar_events ce
-      LEFT JOIN clients c ON ce.client_id = c.client_id
-      LEFT JOIN users u_client ON c.user_id = u_client.user_id
-      LEFT JOIN service_catalog sc ON ce.service_catalog_id = sc.service_catalog_id
-      LEFT JOIN users u_organizer ON ce.organizer_user_id = u_organizer.user_id
-      WHERE ce.organizer_user_id = ? AND ce.event_type = ?
-      ORDER BY DATE(ce.start_date), TIME(ce.start_date)
-    `, [managerId, type]);
-    
-    res.status(200).json(results.map(formatScheduleItemForFrontend));
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar agenda por tipo');
-  }
-};
-
-// GET /api/schedule/filter/status  
-exports.getScheduleByStatus = async (req, res) => {
-  try {
-    const managerId = req.user.id;
-    const { status } = req.query;
-    
-    const [results] = await db.query(`
-      SELECT ce.*, c.main_company_name as client_name, u_client.phone as client_phone,
-             sc.name as service_name, u_organizer.full_name as organizer_name
-      FROM calendar_events ce
-      LEFT JOIN clients c ON ce.client_id = c.client_id
-      LEFT JOIN users u_client ON c.user_id = u_client.user_id
-      LEFT JOIN service_catalog sc ON ce.service_catalog_id = sc.service_catalog_id
-      LEFT JOIN users u_organizer ON ce.organizer_user_id = u_organizer.user_id
-      WHERE ce.organizer_user_id = ? AND ce.status = ?
-      ORDER BY DATE(ce.start_date), TIME(ce.start_date)
-    `, [managerId, status]);
-    
-    res.status(200).json(results.map(formatScheduleItemForFrontend));
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar agenda por status');
-  }
 };

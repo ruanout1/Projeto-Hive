@@ -1,4 +1,4 @@
-const ScheduleService = require('../models/ScheduleService');
+const ScheduleService = require('../models/ScheduledService');
 const TeamMember = require('../models/TeamMember');
 const ServiceRequest = require('../models/ServiceRequest');
 const Client = require('../models/Client');

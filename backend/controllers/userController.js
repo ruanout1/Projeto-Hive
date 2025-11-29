@@ -1,292 +1,104 @@
-const { Op } = require('sequelize');
+const { models, sequelize } = require('../config/database');
 const bcrypt = require('bcryptjs');
-const sequelize = require('../database/connection'); // Para transações
-const User = require('../models/User');
-const Team = require('../models/Team');
-const TeamMember = require('../models/TeamMember');
-const Collaborator = require('../models/Collaborator');
-const Client = require('../models/Client');
-const { handleDatabaseError } = require('../utils/errorHandling');
+const { Op } = require('sequelize');
 
-// =====================================
-// FUNÇÕES DE CRUD (ADMIN)
-// =====================================
-
-// GET /api/users (Lê todos os usuários)
+// GET /api/users
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.findAll({
-      attributes: ['user_id', 'full_name', 'email', 'user_type', 'is_active', 'created_at'],
+    const users = await models.users.findAll({
+      // Busca gestores e colaboradores
+      where: { role_key: { [Op.in]: ['manager', 'collaborator'] } },
+      attributes: ['user_id', 'full_name', 'email', 'phone', 'role_key', 'is_active', 'created_at', 'last_login'],
       include: [
-        {
-          model: Collaborator,
-          as: 'collaboratorDetails',
-          attributes: ['position', 'hire_date']
-        },
-        {
-          model: Client,
-          as: 'clientDetails',
-          attributes: ['main_company_name', 'main_cnpj']
-        }
+        { model: models.collaborators, as: 'collaborator', attributes: ['position'] } // as 'collaborator' vem do init-models
       ],
-      order: [['full_name', 'ASC']]
+      order: [['created_at', 'DESC']]
     });
-    res.status(200).json(users);
+
+    // Formata retorno
+    const formatted = users.map(u => ({
+      id: u.user_id,
+      name: u.full_name,
+      email: u.email,
+      phone: u.phone,
+      role: u.role_key === 'manager' ? 'Gestor' : 'Colaborador',
+      position: u.collaborator?.position || '-',
+      status: u.is_active ? 'active' : 'inactive',
+      lastAccess: u.last_login
+    }));
+
+    res.json({ success: true, data: formatted });
   } catch (error) {
-    handleDatabaseError(res, error, 'buscar todos os usuários');
+    console.error(error);
+    res.status(500).json({ message: 'Erro ao buscar usuários' });
   }
 };
 
-// GET /api/users/:id (Lê um usuário)
-exports.getUserById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const user = await User.findByPk(id, {
-      attributes: ['user_id', 'full_name', 'email', 'user_type', 'is_active', 'phone', 'avatar_url', 'created_at'],
-      include: [
-        {
-          model: Collaborator,
-          as: 'collaboratorDetails'
-        },
-        {
-          model: Client,
-          as: 'clientDetails'
-        }
-      ]
-    });
-
-    if (!user) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
-    }
-    res.status(200).json(user);
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar usuário por ID');
-  }
-};
-
-// POST /api/users (Cria um novo usuário)
+// POST /api/users
 exports.createUser = async (req, res) => {
-  // 'userData' contém: full_name, email, password, user_type
-  // 'detailsData' contém: { position, hire_date } (se for colaborador)
-  //                      ou { main_company_name, main_cnpj } (se for cliente)
-  const { userData, detailsData } = req.body;
-
-  if (!userData || !userData.email || !userData.password || !userData.full_name || !userData.user_type) {
-    return res.status(400).json({ message: 'Dados do usuário (email, senha, nome, tipo) são obrigatórios.' });
-  }
-
-  const t = await sequelize.transaction(); // Inicia a transação
-
+  const t = await sequelize.transaction();
   try {
-    // 1. Criptografa a senha
-    const salt = await bcrypt.genSalt(10);
-    const password_hash = await bcrypt.hash(userData.password, salt);
+    const { name, email, phone, role, position, areas, status } = req.body;
 
-    // 2. Cria o usuário principal
-    const newUser = await User.create({
-      full_name: userData.full_name,
-      email: userData.email,
-      password_hash: password_hash,
-      user_type: userData.user_type,
-      is_active: true
+    // Validação básica
+    if (!name || !email || !role) {
+      await t.rollback();
+      return res.status(400).json({ message: 'Dados incompletos' });
+    }
+
+    const existing = await models.users.findOne({ where: { email } });
+    if (existing) {
+      await t.rollback();
+      return res.status(409).json({ message: 'Email já existe' });
+    }
+
+    const hash = await bcrypt.hash('Senha123', 10); // Senha padrão
+    const roleKey = role === 'Gestor' ? 'manager' : 'collaborator';
+
+    // 1. Cria Usuário
+    const newUser = await models.users.create({
+      full_name: name,
+      email,
+      phone,
+      password_hash: hash,
+      role_key: roleKey,
+      is_active: status === 'active'
     }, { transaction: t });
 
-    // 3. Cria o registro associado (Colaborador ou Cliente)
-    if (userData.user_type === 'collaborator') {
-      await Collaborator.create({
+    // 2. Se for Colaborador, cria perfil extra
+    if (roleKey === 'collaborator') {
+      await models.collaborators.create({
         user_id: newUser.user_id,
-        position: detailsData?.position || 'Não definido',
-        hire_date: detailsData?.hire_date || new Date()
-        // ... (outros campos de detailsData)
-      }, { transaction: t });
-
-    } else if (userData.user_type === 'client') {
-      if (!detailsData?.main_company_name || !detailsData?.main_cnpj) {
-        // Se for cliente, esses campos são essenciais
-        throw new Error('Nome da Empresa e CNPJ são obrigatórios para criar um cliente.');
-      }
-      await Client.create({
-        user_id: newUser.user_id,
-        main_company_name: detailsData.main_company_name,
-        main_cnpj: detailsData.main_cnpj
-        // ... (outros campos de detailsData)
+        position: position || 'Operacional'
       }, { transaction: t });
     }
-    // (Tipos 'admin' ou 'manager' não precisam de tabela extra)
 
-    // 4. Se tudo deu certo, commita a transação
-    await t.commit();
-    
-    // Retorna o usuário criado (sem a senha)
-    const result = newUser.toJSON();
-    delete result.password_hash;
-    res.status(201).json(result);
+    // 3. Se for Gestor, vincula áreas
+    if (roleKey === 'manager' && areas && areas.length > 0) {
+      // Busca IDs das áreas pelo nome
+      const areaRecs = await models.areas.findAll({
+        where: { name: { [Op.in]: areas } },
+        transaction: t
+      });
+      
+      const bulkAreas = areaRecs.map(a => ({
+        manager_user_id: newUser.user_id,
+        area_id: a.area_id
+      }));
 
-  } catch (error) {
-    // 5. Se algo deu errado, desfaz tudo
-    await t.rollback();
-    handleDatabaseError(res, error, 'criar usuário');
-  }
-};
-
-// PUT /api/users/:id (Atualiza um usuário)
-exports.updateUser = async (req, res) => {
-  const { id } = req.params;
-  // 'userData' (full_name, email, is_active)
-  // 'detailsData' (position, main_company_name, etc.)
-  const { userData, detailsData } = req.body;
-
-  const t = await sequelize.transaction();
-
-  try {
-    const user = await User.findByPk(id);
-    if (!user) {
-      await t.rollback();
-      return res.status(404).json({ message: 'Usuário não encontrado' });
-    }
-
-    // 1. Atualiza o User
-    await user.update(userData, { transaction: t });
-
-    // 2. Atualiza os detalhes (Collaborator ou Client)
-    if (user.user_type === 'collaborator') {
-      const collaborator = await Collaborator.findOne({ where: { user_id: id } });
-      if (collaborator) {
-        await collaborator.update(detailsData, { transaction: t });
-      }
-    } else if (user.user_type === 'client') {
-      const client = await Client.findOne({ where: { user_id: id } });
-      if (client) {
-        await client.update(detailsData, { transaction: t });
+      if(bulkAreas.length) {
+        await models.manager_areas.bulkCreate(bulkAreas, { transaction: t });
       }
     }
 
     await t.commit();
-    res.status(200).json({ message: 'Usuário atualizado com sucesso.' });
+    res.status(201).json({ success: true, message: 'Usuário criado!' });
 
   } catch (error) {
     await t.rollback();
-    handleDatabaseError(res, error, 'atualizar usuário');
+    console.error(error);
+    res.status(500).json({ message: 'Erro ao criar usuário' });
   }
 };
 
-// PUT /api/users/:id/status (Ativa/Desativa um usuário)
-exports.toggleUserStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const user = await User.findByPk(id);
-    if (!user) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
-    }
-
-    // Inverte o status atual
-    const newStatus = !user.is_active;
-    await user.update({ is_active: newStatus });
-
-    res.status(200).json({ 
-      message: `Usuário ${newStatus ? 'ativado' : 'desativado'} com sucesso.`,
-      newStatus: newStatus
-    });
-  } catch (error) {
-    handleDatabaseError(res, error, 'alterar status do usuário');
-  }
-};
-
-
-// =====================================
-// FUNÇÕES AUXILIARES (Usado pelo Admin e Gestor)
-// =====================================
-
-// GET /api/users/managers (Lista gestores disponíveis para equipes)
-exports.getAvailableManagers = async (req, res) => {
-  try {
-    const managers = await User.findAll({
-      where: {
-        user_type: 'manager', 
-        is_active: true
-      },
-      attributes: ['user_id', 'full_name', 'email']
-    });
-    res.status(200).json(managers);
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar gestores');
-  }
-};
-
-// GET /api/users/staff (Lista colaboradores disponíveis para equipes)
-exports.getAvailableStaff = async (req, res) => {
-  try {
-    const staff = await User.findAll({
-      where: {
-        user_type: 'collaborator', 
-        is_active: true
-      },
-      attributes: ['user_id', 'full_name', 'email']
-    });
-    res.status(200).json(staff);
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar colaboradores');
-  }
-};
-
-// =====================================
-// FUNÇÕES AUXILIARES PARA GESTOR
-// =====================================
-
-// GET /api/users/list/my-staff (Usado na tela de Alocações)
-exports.getManagerStaffList = async (req, res) => {
-  try {
-    const managerId = req.user.id;
-
-    // 1. Encontra as equipes do gestor
-    const managerTeams = await Team.findAll({
-      where: { manager_user_id: managerId },
-      attributes: ['team_id', 'name'] // Pega o nome da equipe
-    });
-
-    if (managerTeams.length === 0) {
-      return res.status(200).json([]); // Gestor sem equipes
-    }
-
-    const teamIds = managerTeams.map(t => t.team_id);
-    const teamIdToNameMap = new Map(managerTeams.map(t => [t.team_id, t.name]));
-
-    // 2. Encontra todos os membros (TeamMember)
-    const teamMembers = await TeamMember.findAll({
-      where: { team_id: { [Op.in]: teamIds } },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['user_id', 'full_name'],
-          where: { user_type: 'collaborator', is_active: true },
-          // CORREÇÃO (Mismatch 3): Inclui 'collaboratorDetails'
-          include: [{
-            model: Collaborator,
-            as: 'collaboratorDetails',
-            attributes: ['position'], // Pega o CARGO
-            required: false // Left join
-          }]
-        }
-      ]
-    });
-
-    // 3. Formata a lista para o frontend
-    const formattedCollaborators = teamMembers.map(member => {
-      const user = member.user;
-      return {
-        id: user.user_id,
-        name: user.full_name,
-        // Pega o cargo (position) do 'collaboratorDetails'
-        position: user.collaboratorDetails?.position || 'Colaborador',
-        team: teamIdToNameMap.get(member.team_id) || 'Equipe',
-        available: true // TODO: Implementar lógica de disponibilidade
-      };
-    });
-
-    res.status(200).json(formattedCollaborators);
-
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar lista de colaboradores da equipe');
-  }
-};
+// ... (Implementar update e delete seguindo a mesma lógica de transaction)

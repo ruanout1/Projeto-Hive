@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { TrendingUp, Download, FileText, CheckCircle, AlertCircle, Search, Calendar, Send, Users, Mail, Phone, Clock } from 'lucide-react';
-import ScreenHeader from '../screens/public/ScreenHeader';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { Textarea } from './ui/textarea';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import { HighlightText } from './ui/search-highlight';
+// CORREÇÃO: Caminho para o ScreenHeader a partir da mesma pasta
+import ScreenHeader from './ScreenHeader';
+// CORREÇÃO: Caminho para os componentes da UI
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../../components/ui/dialog';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Textarea } from '../../components/ui/textarea';
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
+import { HighlightText } from '../../components/ui/search-highlight';
 import { toast } from 'sonner';
 
 interface TeamMember {
@@ -645,7 +647,7 @@ export default function TeamReportsScreen({ onBack }: TeamReportsScreenProps) {
                               <AlertCircle className="h-4 w-4 text-red-500 mt-0.5" />
                               <span className="text-gray-700">{issue}</span>
                             </li>
-                          ))}
+                          ))}\
                         </ul>
                       </div>
                     )}
@@ -701,7 +703,7 @@ export default function TeamReportsScreen({ onBack }: TeamReportsScreenProps) {
                 </Button>
               </DialogFooter>
             </>
-          )}
+          )}\
         </DialogContent>
       </Dialog>
 

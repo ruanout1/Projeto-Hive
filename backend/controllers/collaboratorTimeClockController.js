@@ -10,7 +10,6 @@ exports.clockIn = async (req, res) => {
     const { latitude, longitude, address } = req.body;
     const userId = req.user.id;
 
-    // Check for an existing open time clock entry for the user
     const existingEntry = await TimeClockEntry.findOne({
       where: {
         userId,

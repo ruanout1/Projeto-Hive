@@ -1,20 +1,18 @@
-/*
- * Middleware 'checkRole'
- * 1. Recebe uma lista de papéis (ex: ['admin', 'manager'])
- * 2. Verifica se o 'req.user' (definido pelo 'protect') tem um desses papéis.
- */
-const checkRole = (roles) => {
-  return (req, res, next) => {
-    // `req.user` foi definido no middleware `protect`
-    if (!req.user || !roles.includes(req.user.user_type)) {
-      // Se o usuário não tem o papel (role) correto
-      return res.status(403).json({ 
-        message: 'Acesso negado. Você não tem permissão para executar esta ação.' 
-      });
-    }
-    // Se ele tem o papel, pode continuar
-    next();
+exports.checkRole = (roles) => {
+    return (req, res, next) => {
+      // Se o usuário não estiver logado (erro no middleware anterior)
+      if (!req.user) {
+        return res.status(401).json({ message: 'Usuário não autenticado' });
+      }
+  
+      // Verifica se a role_key do usuário está na lista de permitidos
+      // Ex: roles pode ser ['admin', 'manager']
+      if (!roles.includes(req.user.role)) {
+        return res.status(403).json({ 
+          message: `Acesso negado. Sua função (${req.user.role}) não tem permissão.` 
+        });
+      }
+  
+      next();
+    };
   };
-};
-
-module.exports = { checkRole };

@@ -7,7 +7,8 @@ import { OperationalMap } from './OperationalMap';
 import { ActiveServicesTable } from './ActiveServicesTable';
 
 const ManagerDashboard = () => {
-  const { stats, services, loading, error, actionLoading, handleRefresh } = useDashboardApi();
+  // 1. Obter o estado 'teams' do nosso hook atualizado
+  const { stats, services, teams, loading, error, actionLoading, handleRefresh } = useDashboardApi();
 
   if (loading) {
     return <LoadingSkeleton />;
@@ -22,7 +23,8 @@ const ManagerDashboard = () => {
       <DashboardHeader onRefresh={handleRefresh} isRefreshing={actionLoading} />
       <main>
         <StatsCards stats={stats} />
-        <OperationalMap />
+        {/* 2. Passar os dados reais das equipes para o componente do mapa */}
+        <OperationalMap teams={teams} />
         <ActiveServicesTable services={services} />
       </main>
     </div>

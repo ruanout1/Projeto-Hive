@@ -1,17 +1,35 @@
 const express = require('express');
 const router = express.Router();
 
-// Importando os controllers corretos
+// Importando os controllers
 const scheduleController = require('../controllers/scheduleController');
-const dashboardController = require('../controllers/dashboardController');
 const serviceRequestController = require('../controllers/serviceRequestController');
 const clientController = require('../controllers/clientController');
 const timeClockController = require('../controllers/timeClockController');
+const dashboardController = require('../controllers/dashboardController');
+const teamController = require('../controllers/teamController');
+
+// CORREÇÃO CRÍTICA: Importando os middlewares do local correto
+const { protect, restrictTo } = require('../middleware/authMiddleware');
+
+// =========================================================================
+// APLICAÇÃO GLOBAL DE MIDDLEWARES
+// Todas as rotas definidas abaixo serão protegidas e restritas a 'manager'
+// =========================================================================
+router.use(protect);
+router.use(restrictTo('manager'));
 
 // =====================
-// ROTAS DA AGENDA PESSOAL DO GESTOR
+// ROTAS DO DASHBOARD
 // =====================
+// A rota /manager/dashboard/stats será tratada pelo controller do dashboard
+router.get('/dashboard/stats', dashboardController.getDashboardStats);
+router.get('/requests/active', serviceRequestController.getActiveRequests);
+router.get('/teams', teamController.getManagerTeams); 
 
+// =====================
+// ROTAS DA AGENDA PESSOAL
+// =====================
 router.get('/schedule/stats', scheduleController.getScheduleStats);
 router.get('/schedule', scheduleController.getSchedule);
 router.get('/schedule/:id', scheduleController.getScheduleItemById);
@@ -25,16 +43,8 @@ router.delete('/schedule/:id', scheduleController.deleteScheduleItem);
 router.get('/schedule/:id/conflicts', scheduleController.checkScheduleConflicts);
 
 // =====================
-// ROTAS DO DASHBOARD
-// =====================
-
-router.get('/dashboard/stats', dashboardController.getDashboardStats);
-router.get('/requests/active', dashboardController.getActiveRequests);
-
-// =====================
 // ROTAS DAS SOLICITAÇÕES DE SERVIÇO
 // =====================
-
 router.get('/service-requests/stats', serviceRequestController.getServiceRequestsStats);
 router.get('/service-requests', serviceRequestController.getServiceRequests);
 router.get('/service-requests/:id', serviceRequestController.getServiceRequestById);
@@ -46,7 +56,6 @@ router.get('/service-requests/search', serviceRequestController.searchServiceReq
 // =====================
 // ROTAS DOS CLIENTES
 // =====================
-
 router.get('/clients/stats', clientController.getClientsStats);
 router.get('/clients', clientController.getClients);
 router.get('/clients/:id', clientController.getClientById);
@@ -58,12 +67,10 @@ router.put('/clients/:id/locations/:locationId', clientController.updateClientLo
 router.delete('/clients/:id/locations/:locationId', clientController.removeClientLocation);
 
 // =====================
-// ROTAS DO CONTROLE DE PONTO (NOVA TELA)
+// ROTAS DO CONTROLE DE PONTO
 // =====================
-
 router.get('/time-records/stats', timeClockController.getTimeRecordsStats);
 router.get('/time-records', timeClockController.getTimeRecords);
-// CORREÇÃO APLICADA AQUI
 router.get('/time-records/teams', timeClockController.getManagableTeams);
 router.get('/time-records/:id', timeClockController.getTimeRecordById);
 router.post('/time-records/:id/justify', timeClockController.justifyTimeRecord);
@@ -71,4 +78,3 @@ router.post('/time-records/export', timeClockController.exportTimeRecords);
 router.post('/time-records/export/preview', timeClockController.previewTimeRecordsExport);
 
 module.exports = router;
-

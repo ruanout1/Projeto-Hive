@@ -1,65 +1,52 @@
 const jwt = require('jsonwebtoken');
-// Importando os modelos diretamente, como no padrão original do projeto
-const User = require('../models/User');
-const ManagerArea = require('../models/ManagerArea');
-const Area = require('../models/Area');
+const { models } = require('../config/database'); // <--- AQUI MUDOU (Usa a conexão central)
 
-const protect = async (req, res, next) => {
+exports.protect = async (req, res, next) => {
   let token;
 
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+  // 1. Verifica se o header Authorization existe e começa com Bearer
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
     try {
+      // Pega o token
       token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'um-salvador-puro-eterno-glorioso-sempre-reinara-&&&@!@!@***§§§');
 
-      // A consulta com 'include' agora funciona porque as associações são carregadas no server.js
-      const user = await User.findByPk(decoded.id, {
-        attributes: ['user_id', 'user_type', 'full_name', 'is_active'],
-        // Usando os apelidos definidos em 'database/associations.js'
-        include: {
-          model: ManagerArea,
-          as: 'managerAreas', // Apelido da associação User -> ManagerArea
-          required: false,
-          include: {
-            model: Area,
-            as: 'area', // Apelido da associação ManagerArea -> Area
-            attributes: ['name'], 
-          },
-        },
+      // Decodifica
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+
+      // 2. Busca o usuário no banco NOVO (usando models.users)
+      // O 'findByPk' é o jeito do Sequelize buscar por ID
+      const user = await models.users.findByPk(decoded.id, {
+        attributes: ['user_id', 'full_name', 'email', 'role_key', 'is_active']
       });
 
-      if (!user || !user.is_active) {
-        return res.status(401).json({ message: 'Usuário não encontrado ou inativo.' });
+      if (!user) {
+        return res.status(401).json({ message: 'Usuário não encontrado com este token' });
       }
 
-      const userJson = user.toJSON();
-
-      if (userJson.user_type === 'manager') {
-        // O resultado vem como um array 'managerAreas'
-        if (userJson.managerAreas && userJson.managerAreas.length > 0 && userJson.managerAreas[0].area) {
-          userJson.area = userJson.managerAreas[0].area.name;
-        } else {
-          console.error(`O gestor ${userJson.user_id} não possui uma área associada.`);
-          return res.status(401).json({ message: 'Acesso negado: o gestor não tem uma área designada.' });
-        }
+      if (!user.is_active) {
+        return res.status(403).json({ message: 'Usuário desativado' });
       }
-      
-      // Limpa o objeto aninhado
-      delete userJson.managerAreas;
 
-      req.user = userJson;
+      // 3. Anexa o usuário na requisição para as próximas rotas usarem
+      req.user = {
+        id: user.user_id,
+        name: user.full_name,
+        email: user.email,
+        role: user.role_key, // Atenção: no banco novo chama role_key
+        is_active: user.is_active
+      };
+
       next();
-
     } catch (error) {
-      console.error('Erro de autenticação:', error);
-      res.status(500).json({ message: 'Erro interno no servidor durante a autenticação.', details: error.message });
+      console.error(error);
+      return res.status(401).json({ message: 'Não autorizado, token falhou' });
     }
-    return;
   }
 
   if (!token) {
-    res.status(401).json({ message: 'Não autorizado, sem token.' });
+    return res.status(401).json({ message: 'Não autorizado, sem token' });
   }
 };
-
-module.exports = { protect };

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import api from '../../../../lib/api';
+import api from '../../../../lib/api'; // Ajuste o caminho se necessário
 import { Service, Category } from '../types';
 
 export const useCatalog = () => {
@@ -13,39 +13,39 @@ export const useCatalog = () => {
     setLoading(true);
     setError(null);
     try {
-      // Busca os dados em paralelo
       const [servicesRes, categoriesRes] = await Promise.all([
         api.get('/service-catalog'),
         api.get('/service-catalog/categories')
       ]);
       
-      if (!servicesRes.data || !categoriesRes.data) {
-        throw new Error('Resposta da API inválida');
-      }
+      // AJUSTE DE FLEXIBILIDADE: Aceita tanto array direto quanto objeto { data: [] }
+      const servicesData = Array.isArray(servicesRes.data) ? servicesRes.data : (servicesRes.data?.data || []);
+      const categoriesData = Array.isArray(categoriesRes.data) ? categoriesRes.data : (categoriesRes.data?.data || []);
       
-      setServices(servicesRes.data);
-      setCategories(categoriesRes.data);
+      setServices(servicesData);
+      setCategories(categoriesData);
+
     } catch (err: any) {
       console.error("Erro ao buscar dados:", err);
-      const errorMsg = err.response?.data?.message || err.message || "Não foi possível carregar os dados.";
+      const errorMsg = err.response?.data?.message || "Não foi possível carregar o catálogo.";
       setError(errorMsg);
-      toast.error("Erro ao carregar dados", { description: errorMsg });
+      toast.error("Erro de conexão");
     } finally {
       setLoading(false);
     }
-  }, []); // useCallback para estabilizar a função
+  }, []);
 
   useEffect(() => {
-    fetchData(); // Busca na primeira renderização
+    fetchData();
   }, [fetchData]);
 
   return {
     services,
-    setServices, // Para atualizações locais (ex: toggle status)
+    setServices,
     categories,
-    setCategories, // Para atualizações locais
+    setCategories,
     loading,
     error,
-    refetch: fetchData, // Para recarregar tudo após uma mutação
+    refetch: fetchData,
   };
 };

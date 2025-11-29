@@ -1,65 +1,64 @@
 const express = require('express');
 const router = express.Router();
-const clientController = require('../controllers/clientController'); 
+const ClientController = require('../controllers/clientController'); // Controller NOVO
 const { protect } = require('../middleware/authMiddleware');
-const { checkRole } = require('../middleware/authorizationMiddleware');
+// const { checkRole } = require('../middleware/authorizationMiddleware'); // Use se precisar restringir acesso
 
-// 2. APLIQUE OS MIDDLEWARES AQUI
-// Isso garante que *todas* as rotas abaixo:
-// 1. Exigem que o usuário esteja logado (protect)
-// 2. Exigem que o usuário seja 'admin' OU 'manager' (checkRole)
-router.use(protect, checkRole(['admin', 'manager']));
+// ===================================
+// ROTAS DE CLIENTES (EMPRESAS)
+// ===================================
 
-// =====================
-// ROTAS DOS CLIENTES
-// =====================
+// Proteção global: Usuário precisa estar logado
+router.use(protect);
 
-// 3. Limpe os prefixos das rotas (agora o prefixo /clients vai ficar no app.js)
-// (GET /api/clients/stats)
-router.get('/stats', clientController.getClientsStats);
+// --- ROTAS DE LEITURA ---
 
-// (GET /api/clients)
-router.get('/', clientController.getClients);
+// GET /api/clients
+// Lista clientes com paginação e filtros
+if (ClientController.getClients) {
+    router.get('/', ClientController.getClients);
+}
 
-// (GET /api/clients/:id)
-router.get('/:id', clientController.getClientById);
+// GET /api/clients/:id
+// Detalhes de um cliente específico + Filiais + Contatos
+if (ClientController.getClientById) {
+    router.get('/:id', ClientController.getClientById);
+}
 
-// (POST /api/clients)
-router.post('/', clientController.createClient);
+// --- ROTAS DE ESCRITA ---
 
-// (PUT /api/clients/:id)
-router.put('/:id', clientController.updateClient);
+// POST /api/clients
+// Cria novo cliente (Empresa + Filial Matriz)
+if (ClientController.createClient) {
+    router.post('/', ClientController.createClient);
+}
 
-// (PUT /api/clients/:id/status)
-router.put('/:id/status', clientController.toggleClientStatus);
+// PUT /api/clients/:id
+// Atualiza dados básicos da empresa
+if (ClientController.updateClient) {
+    router.put('/:id', ClientController.updateClient);
+}
 
-// (GET /api/clients/filter/area) - Esta rota pode ser removida ou simplificada, já que getClients fará o filtro
-// router.get('/filter/area', clientController.getClientsByArea);
+// --- GESTÃO DE FILIAIS (LOCATIONS) ---
 
-// (GET /api/clients/search) - Também pode ser removida se a rota principal (/) aceitar query params
-// router.get('/search', clientController.searchClients);
+// POST /api/clients/:id/locations
+// Adiciona nova filial
+if (ClientController.addClientLocation) {
+    router.post('/:id/locations', ClientController.addClientLocation);
+}
 
-// (POST /api/clients/:id/locations)
-router.post('/:id/locations', clientController.addClientLocation);
+// DELETE /api/clients/:id/locations/:locationId
+// Remove uma filial (exceto matriz)
+if (ClientController.removeClientLocation) {
+    router.delete('/:id/locations/:locationId', ClientController.removeClientLocation);
+}
 
-// (PUT /api/clients/:id/locations/:locationId)
-router.put('/:id/locations/:locationId', clientController.updateClientLocation);
-
-// (DELETE /api/clients/:id/locations/:locationId)
-router.delete('/:id/locations/:locationId', clientController.removeClientLocation);
-
-// =====================
-// ROTA AUXILIAR PARA FORMULÁRIOS
-// =====================
-// (GET /api/clients/list/my-area)
-router.get(
-  '/list/my-area', 
-  protect, 
-  checkRole(['manager']), // Apenas gestores usam esta
-  clientController.getManagerClientsList
-);
-
+router.delete('/:id', ClientController.deleteClient);
+router.patch('/:id/toggle-status', ClientController.toggleClientStatus);
+// --- ROTAS ANTIGAS (COMENTADAS PARA NÃO QUEBRAR) ---
+// Estas funções ainda não foram migradas para o controller novo.
+// router.get('/stats', ClientController.getClientsStats); 
+// router.get('/list/my-area', ClientController.getManagerClientsList);
+// router.patch('/:id/toggle-status', ClientController.toggleClientStatus);
 
 module.exports = router;
-
-
