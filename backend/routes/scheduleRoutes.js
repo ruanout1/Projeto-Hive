@@ -42,6 +42,8 @@ router.post('/', ScheduleController.createScheduleItem);
 // Update status only (e.g. dragging card to "Completed")
 router.put('/:id/status', ScheduleController.updateScheduleItemStatus);
 
+router.put('/:id/reminder', ScheduleController.updateScheduleItemReminder);
+
 // DELETE /api/schedule/:id
 // Deletes an item. Usage: /api/schedule/123?type=event
 router.delete('/:id', ScheduleController.deleteScheduleItem);

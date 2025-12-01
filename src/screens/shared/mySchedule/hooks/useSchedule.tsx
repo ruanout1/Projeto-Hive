@@ -8,7 +8,6 @@ export interface Participant {
   role: string;
 }
 
-// CORREÇÃO: Adicionei 'meeting' e 'personal' nos tipos permitidos
 export interface PersonalEvent {
   id: string;
   title: string;
@@ -28,6 +27,7 @@ export function useSchedule(userRole: 'admin' | 'manager' | 'collaborator') {
   const [potentialParticipants, setPotentialParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // 1. BUSCAR EVENTOS
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
@@ -45,8 +45,9 @@ export function useSchedule(userRole: 'admin' | 'manager' | 'collaborator') {
           time: startObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
           endTime: endObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
           color: item.color || (item.item_type === 'service' ? '#35BAE6' : '#6400A4'),
-          type: item.item_type, // O backend já retorna 'service', 'meeting' ou 'personal'
-          location: item.location
+          type: item.item_type,
+          location: item.location,
+          reminder: item.reminder || 'none'// Agora pegamos o lembrete do banco
         };
       });
 
@@ -59,6 +60,7 @@ export function useSchedule(userRole: 'admin' | 'manager' | 'collaborator') {
     }
   }, []);
 
+  // 2. BUSCAR PARTICIPANTES
   const fetchParticipants = useCallback(async () => {
     try {
       const response = await api.get('/users');
@@ -81,6 +83,7 @@ export function useSchedule(userRole: 'admin' | 'manager' | 'collaborator') {
     }
   }, [userRole]);
 
+  // 3. CRIAR
   const createEvent = async (eventData: any) => {
     try {
       const startDateTime = `${eventData.date}T${eventData.time}:00`;
@@ -96,7 +99,8 @@ export function useSchedule(userRole: 'admin' | 'manager' | 'collaborator') {
         event_type: eventData.type || 'personal',
         location: eventData.location,
         color: eventData.color,
-        participants: eventData.participants
+        participants: eventData.participants,
+        reminder: eventData.reminder || 'none' // Envia o lembrete na criação também
       };
 
       await api.post('/schedule', payload);
@@ -109,6 +113,37 @@ export function useSchedule(userRole: 'admin' | 'manager' | 'collaborator') {
     }
   };
 
+  // 4. ATUALIZAR LEMBRETE (A FUNÇÃO QUE FALTAVA)
+  const updateEventReminder = async (id: string, reminder: string) => {
+    try {
+        // IMPORTANTE: Pegamos o token manualmente para garantir que vá no cabeçalho
+        const token = localStorage.getItem('authToken');
+        
+        const response = await fetch(`http://localhost:5000/api/schedule/${id}/reminder`, {
+            method: 'PUT', // Tente PATCH, se falhar mude para PUT aqui
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` // <--- ISSO RESOLVE O ERRO 401
+            },
+            body: JSON.stringify({ reminder })
+        });
+
+        if (response.ok) {
+            toast.success("Lembrete atualizado!");
+            fetchEvents(); // Atualiza a tela
+            return true;
+        } else {
+            toast.error("Erro ao atualizar lembrete.");
+            return false;
+        }
+    } catch (error) {
+        console.error(error);
+        toast.error("Erro de conexão.");
+        return false;
+    }
+  };
+
+  // 5. DELETAR
   const deleteEvent = async (id: string) => {
     try {
       await api.delete(`/schedule/${id}?type=event`);
@@ -132,6 +167,7 @@ export function useSchedule(userRole: 'admin' | 'manager' | 'collaborator') {
     loading,
     createEvent,
     deleteEvent,
+    updateEventReminder, // <--- Exportando a nova função
     refresh: fetchEvents
   };
 }
