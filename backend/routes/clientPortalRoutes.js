@@ -52,9 +52,107 @@ router.get('/service-notes', (req, res) => {
   res.json(serviceNotesData);
 });
 
-// Alias para serviços (mantém compatibilidade)
-router.get('/services', (req, res) => {
-  res.json(serviceHistory);
+// GET /api/client-portal/services - Lista serviços do catálogo (ativos)
+router.get('/services', async (req, res) => {
+  try {
+    const services = await db.query(`
+      SELECT
+        sc.service_catalog_id AS id,
+        sc.name,
+        sc.description,
+        sc.price,
+        sc.duration_value,
+        sc.duration_type,
+        sc.status,
+        scat.category_id,
+        scat.name AS category,
+        scat.color AS category_color
+      FROM service_catalog sc
+      LEFT JOIN service_categories scat ON sc.category_id = scat.category_id
+      WHERE sc.status = 'active'
+      ORDER BY scat.name, sc.name
+    `, {
+      type: db.QueryTypes.SELECT
+    });
+
+    console.log(`✅ ${services.length} serviços ativos encontrados`);
+    res.json(services);
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar serviços:', error);
+    res.status(500).json({
+      message: 'Erro ao buscar serviços',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/client-portal/categories - Lista categorias de serviços
+router.get('/categories', async (req, res) => {
+  try {
+    const categories = await db.query(`
+      SELECT
+        category_id AS id,
+        name,
+        color,
+        description
+      FROM service_categories
+      ORDER BY name
+    `, {
+      type: db.QueryTypes.SELECT
+    });
+
+    console.log(`✅ ${categories.length} categorias encontradas`);
+    res.json(categories);
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar categorias:', error);
+    res.status(500).json({
+      message: 'Erro ao buscar categorias',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/client-portal/branches - Lista filiais do cliente logado
+router.get('/branches', async (req, res) => {
+  try {
+    const clientId = req.user.client_id;
+
+    if (!clientId) {
+      return res.status(400).json({ message: 'Cliente não encontrado no token' });
+    }
+
+    const branches = await db.query(`
+      SELECT
+        branch_id AS id,
+        nickname AS name,
+        CONCAT(street, ', ', number, COALESCE(CONCAT(' - ', complement), '')) AS address,
+        neighborhood,
+        city,
+        state,
+        zip_code,
+        area,
+        is_active
+      FROM client_branches
+      WHERE company_id = :clientId
+        AND is_active = 1
+      ORDER BY nickname
+    `, {
+      replacements: { clientId },
+      type: db.QueryTypes.SELECT
+    });
+
+    console.log(`✅ ${branches.length} filiais ativas encontradas para o cliente ${clientId}`);
+    res.json(branches);
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar filiais:', error);
+    res.status(500).json({
+      message: 'Erro ao buscar filiais',
+      error: error.message
+    });
+  }
 });
 
 // =====================
@@ -200,10 +298,11 @@ router.post('/requests', async (req, res) => {
     if (!finalServiceCatalogId && service) {
       console.log('🔍 Buscando service_catalog_id para:', service);
 
+      // Busca case-insensitive e ignora espaços extras
       const serviceData = await db.query(`
         SELECT service_catalog_id
         FROM service_catalog
-        WHERE name = :serviceName
+        WHERE LOWER(TRIM(name)) = LOWER(TRIM(:serviceName))
           AND status = 'active'
         LIMIT 1
       `, {

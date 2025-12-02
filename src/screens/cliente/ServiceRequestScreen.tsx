@@ -48,49 +48,30 @@ interface ServiceRequest {
   area?: string;
 }
 
-// DADOS MOCK (FALLBACK)
-const MOCK_PENDING_CONFIRMATIONS: PendingConfirmation[] = [
-  {
-    id: 'REQ-2024-156',
-    serviceType: 'Limpeza Geral',
-    description: 'Limpeza completa do escritório incluindo todas as salas, banheiros e área comum',
-    requestedDate: '28/10/2024',
-    proposedDate: '30/10/2024',
-    proposedBy: 'Ana Paula Rodrigues (Gestora)',
-    scheduledDescription: 'Agendamento para quarta-feira, 30/10, às 8h. A equipe Alpha completa estará disponível (4 profissionais). Previsão de duração: 6 horas.',
-    assignedTeam: 'Equipe Alpha'
-  },
-  {
-    id: 'REQ-2024-142',
-    serviceType: 'Jardinagem',
-    description: 'Poda de árvores e manutenção do jardim frontal',
-    requestedDate: '25/10/2024',
-    proposedDate: '27/10/2024',
-    proposedBy: 'Ana Paula Rodrigues (Gestora)',
-    scheduledDescription: 'Devido à previsão de chuva no dia 25/10, propomos reagendar para domingo 27/10 às 7h, com melhor condição climática. Equipe especializada em jardinagem.',
-    assignedCollaborator: 'Pedro Oliveira'
-  }
-];
+// Interfaces para dados da API
+interface ServiceOption {
+  id: number;
+  name: string;
+  description: string;
+  category: string;
+  category_color: string;
+  price?: number;
+  duration_value?: number;
+  duration_type?: string;
+}
+
+interface Branch {
+  id: number;
+  name: string;
+  address: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  area?: string;
+}
 
 export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequestScreenProps) {
-  const currentClient = {
-    name: 'Prédio Comercial São Paulo',
-    locations: [
-      {
-        id: '1',
-        name: 'Matriz - Paulista',
-        address: 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP',
-        area: 'centro' as const
-      },
-      {
-        id: '2',
-        name: 'Filial - Zona Sul',
-        address: 'Av. Santo Amaro, 2000 - Brooklin, São Paulo - SP',
-        area: 'sul' as const
-      }
-    ]
-  };
-
+  // Estados do formulário
   const [selectedService, setSelectedService] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [description, setDescription] = useState('');
@@ -103,140 +84,51 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
   const [isConfirmationDialogOpen, setIsConfirmationDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [activeTab, setActiveTab] = useState<string>(initialTab || 'solicitar');
-  const [allRequests, setAllRequests] = useState<ServiceRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [pendingConfirmations, setPendingConfirmations] = useState<PendingConfirmation[]>(MOCK_PENDING_CONFIRMATIONS);
 
-  const serviceOptions = [
-    {
-      id: 'limpeza-geral',
-      name: 'Limpeza Geral',
-      icon: Building2,
-      description: 'Limpeza completa de ambientes internos e externos',
-      estimatedTime: '4-8 horas',
-      category: 'Limpeza'
-    },
-    {
-      id: 'limpeza-pesada',
-      name: 'Limpeza Pesada',
-      icon: Building2,
-      description: 'Limpeza profunda pós-obra ou situações especiais',
-      estimatedTime: '6-12 horas',
-      category: 'Limpeza'
-    },
-    {
-      id: 'limpeza-piscina',
-      name: 'Limpeza de Piscina',
-      icon: Droplets,
-      description: 'Limpeza e tratamento químico de piscinas',
-      estimatedTime: '2-4 horas',
-      category: 'Limpeza'
-    },
-    {
-      id: 'limpeza-vidros',
-      name: 'Limpeza de Vidros',
-      icon: Building2,
-      description: 'Limpeza especializada de vidros e fachadas',
-      estimatedTime: '2-5 horas',
-      category: 'Limpeza'
-    },
-    {
-      id: 'portaria',
-      name: 'Portaria',
-      icon: UserCheck,
-      description: 'Serviços de portaria e recepção predial',
-      estimatedTime: 'Período contratado',
-      category: 'Segurança'
-    },
-    {
-      id: 'seguranca-armada',
-      name: 'Segurança Armada',
-      icon: Shield,
-      description: 'Segurança patrimonial com vigilantes armados',
-      estimatedTime: 'Período contratado',
-      category: 'Segurança'
-    },
-    {
-      id: 'rondas-noturnas',
-      name: 'Rondas Noturnas',
-      icon: Shield,
-      description: 'Serviço de rondas de segurança no período noturno',
-      estimatedTime: 'Período contratado',
-      category: 'Segurança'
-    },
-    {
-      id: 'jardinagem',
-      name: 'Jardinagem',
-      icon: TreePine,
-      description: 'Manutenção de jardins, podas e paisagismo',
-      estimatedTime: '2-6 horas',
-      category: 'Manutenção'
-    },
-    {
-      id: 'manutencao-predial',
-      name: 'Manutenção Predial',
-      icon: Wrench,
-      description: 'Reparos e manutenções gerais do edifício',
-      estimatedTime: 'Conforme demanda',
-      category: 'Manutenção'
-    },
-    {
-      id: 'zeladoria',
-      name: 'Zeladoria',
-      icon: Building2,
-      description: 'Serviços de zeladoria e manutenção cotidiana',
-      estimatedTime: 'Período contratado',
-      category: 'Manutenção'
-    },
-    {
-      id: 'manutencao-eletrica',
-      name: 'Manutenção Elétrica',
-      icon: Wrench,
-      description: 'Serviços elétricos e instalações prediais',
-      estimatedTime: '2-8 horas',
-      category: 'Manutenção'
-    },
-    {
-      id: 'controle-pragas',
-      name: 'Controle de Pragas',
-      icon: Shield,
-      description: 'Dedetização e controle de insetos e roedores',
-      estimatedTime: '1-3 horas',
-      category: 'Sanitário'
-    }
-  ];
+  // Estados dos dados da API
+  const [allRequests, setAllRequests] = useState<ServiceRequest[]>([]);
+  const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pendingConfirmations, setPendingConfirmations] = useState<PendingConfirmation[]>([]);
+
+  
 
   // ✅ CORRIGIDO: useEffect com URL correta
   useEffect(() => {
-    const fetchRequests = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        // ✅ CORRETO: Sem /api/ duplicado
-        const response = await api.get('/client-portal/requests');
-        
-        if (Array.isArray(response.data)) {
-          setAllRequests(response.data);
-          console.log(' Solicitações carregadas do backend');
-        } else {
-          setAllRequests([]);
-        }
+
+        // Buscar solicitações
+        const [requestsRes, servicesRes, branchesRes] = await Promise.all([
+          api.get('/client-portal/requests'),
+          api.get('/client-portal/services'),
+          api.get('/client-portal/branches')
+        ]);
+
+        setAllRequests(Array.isArray(requestsRes.data) ? requestsRes.data : []);
+        setServiceOptions(Array.isArray(servicesRes.data) ? servicesRes.data : []);
+        setBranches(Array.isArray(branchesRes.data) ? branchesRes.data : []);
+
+        console.log('✅ Dados carregados:', {
+          requests: requestsRes.data.length,
+          services: servicesRes.data.length,
+          branches: branchesRes.data.length
+        });
+
       } catch (error: any) {
-        console.error("Erro ao buscar solicitações:", error);
-        
-        if (error.code === 'ERR_NETWORK') {
-          toast.info("Backend offline - lista vazia");
-        } else {
-          toast.error("Erro ao carregar solicitações");
-        }
-        
+        console.error("❌ Erro ao carregar dados:", error);
+        toast.error("Erro ao carregar dados. Verifique sua conexão.");
         setAllRequests([]);
+        setServiceOptions([]);
+        setBranches([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRequests();
-    setPendingConfirmations(MOCK_PENDING_CONFIRMATIONS);
+    fetchData();
   }, []);
 
   const getCategoryColor = (category: string) => {
@@ -302,46 +194,51 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
       return;
     }
 
-    const serviceName = serviceOptions.find(s => s.id === selectedService)?.name || selectedService;
-    const location = currentClient.locations.find(l => l.id === selectedLocation);
+    // selectedService agora é um ID numérico
+    const service = serviceOptions.find(s => s.id === Number(selectedService));
+    const branch = branches.find(b => b.id === Number(selectedLocation));
+
+    if (!service || !branch) {
+      toast.error('Serviço ou filial inválidos');
+      return;
+    }
 
     const payload = {
-      service: serviceName,
+      service: service.name,  // Nome do serviço
       description: description.trim(),
       date: requestedDate.toLocaleDateString('pt-BR'),
       priority,
-      addressId: Number(location?.id)
+      addressId: branch.id  // ID da filial
     };
 
     try {
-      // ✅ CORRETO: Sem /api/ duplicado
       const response = await api.post('/client-portal/requests', payload);
-      const newRequestFromBackend = response.data;
-      setAllRequests(prev => [newRequestFromBackend, ...prev]);
+      setAllRequests(prev => [response.data, ...prev]);
 
-      toast.success(' Solicitação enviada com sucesso!', {
-        description: priority === 'urgente' 
-          ? '⚡ Solicitação marcada como URGENTE - Nossa equipe será notificada!' 
-          : ' Sua solicitação está em análise. Acompanhe na aba "Minhas Solicitações".',
+      toast.success('Solicitação enviada com sucesso!', {
+        description: priority === 'urgente'
+          ? 'Solicitação marcada como URGENTE!'
+          : 'Sua solicitação está em análise.',
         style: {
           background: '#6400A4',
           color: 'white',
-          border: '2px solid #8B20EE',
-          fontSize: '16px'
+          border: '2px solid #8B20EE'
         }
       });
 
+      // Limpar formulário
       setSelectedService('');
       setSelectedLocation('');
       setDescription('');
       setRequestedDate(undefined);
       setPriority('');
       setIsRequestModalOpen(false);
-      setActiveTab('minhas-solicitacoes'); 
+      setActiveTab('minhas-solicitacoes');
 
-    } catch (error) {
-      console.error("Erro ao enviar solicitação:", error);
-      toast.error("Falha ao enviar solicitação. Verifique o backend.");
+    } catch (error: any) {
+      console.error("❌ Erro ao enviar solicitação:", error);
+      const message = error.response?.data?.message || "Falha ao enviar solicitação";
+      toast.error(message);
     }
   };
 
@@ -401,9 +298,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
         description: `Sua recusa foi enviada ao gestor. Em breve você receberá uma nova proposta de data.`
       });
       
-      setPendingConfirmations(prevConfirmations =>
-        prevConfirmations.filter(conf => conf.id !== selectedConfirmation.id)
-      );
+     
       
       setIsConfirmationDialogOpen(false);
       setSelectedConfirmation(null);
@@ -413,7 +308,7 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
     }
   };
 
-  const selectedServiceInfo = serviceOptions.find(s => s.id === selectedService);
+  const selectedServiceInfo = serviceOptions.find(s => s.id === Number(selectedService));
 
   if (viewMode === 'requests') {
     let filteredRequests = [];
@@ -489,11 +384,15 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
                       <SelectValue placeholder="Selecione o tipo de serviço" />
                     </SelectTrigger>
                     <SelectContent>
-                      {serviceOptions.map((service) => (
-                        <SelectItem key={service.id} value={service.id}>
-                          {service.name} - {service.category}
-                        </SelectItem>
-                      ))}
+                      {serviceOptions.length === 0 ? (
+                        <div className="p-2 text-sm text-gray-500">Nenhum serviço disponível</div>
+                      ) : (
+                        serviceOptions.map((service) => (
+                          <SelectItem key={service.id} value={service.id.toString()}>
+                            {service.name} - {service.category}
+                          </SelectItem> 
+                        )) 
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -501,22 +400,25 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
                 {selectedServiceInfo && (
                   <div className="p-4 border rounded-lg bg-gray-50">
                     <div className="flex items-center space-x-3 mb-2">
-                      <selectedServiceInfo.icon 
-                        className="h-6 w-6" 
-                        style={{ color: getCategoryColor(selectedServiceInfo.category) }} 
+                      <Building2
+                        className="h-6 w-6"
+                        style={{ color: getCategoryColor(selectedServiceInfo.category) }}
                       />
                       <div>
                         <h4 className="text-black">{selectedServiceInfo.name}</h4>
-                        <Badge 
-                          className="text-xs border-none"
-                          style={getCategoryStyle(selectedServiceInfo.category)}
-                        >
+                        <Badge className="text-xs border-none" style={getCategoryStyle(selectedServiceInfo.category)}>
                           {selectedServiceInfo.category}
                         </Badge>
                       </div>
                     </div>
+
                     <p className="text-sm text-gray-600 mb-2">{selectedServiceInfo.description}</p>
-                    <p className="text-xs text-gray-500">Tempo estimado: {selectedServiceInfo.estimatedTime}</p>
+
+                    {selectedServiceInfo.duration_value && selectedServiceInfo.duration_type && (
+                      <p className="text-xs text-gray-500">
+                        ⏱️ {selectedServiceInfo.duration_value} {selectedServiceInfo.duration_type}
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -527,26 +429,21 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
                       <SelectValue placeholder="Selecione a unidade para o serviço" />
                     </SelectTrigger>
                     <SelectContent>
-                      {currentClient.locations.map((location) => (
-                        <SelectItem key={location.id} value={location.id}>
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            <div>
-                              <div className="font-medium">{location.name}</div>
-                              <div className="text-xs text-gray-500">{location.address}</div>
-                              <Badge 
-                                className="text-xs mt-1" 
-                                style={{ 
-                                  backgroundColor: `rgba(100, 0, 164, 0.1)`,
-                                  color: '#6400A4'
-                                }}
-                              >
-                                Área: {location.area.charAt(0).toUpperCase() + location.area.slice(1)}
-                              </Badge>
+                      {branches.length === 0 ? (
+                        <div className="p-2 text-sm text-gray-500">Nenhuma filial disponível</div>
+                      ) : (
+                        branches.map((branch) => (
+                          <SelectItem key={branch.id} value={branch.id.toString()}>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4" />
+                              <div>
+                                <div className="font-medium">{branch.name}</div>
+                                <div className="text-xs text-gray-500">{branch.address}</div>
+                              </div>
                             </div>
-                          </div>
-                        </SelectItem>
-                      ))}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -745,45 +642,52 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {serviceOptions.map((service) => {
-                    const IconComponent = service.icon;
-                    return (
-                      <div
-                        key={service.id}
-                        className="border-2 rounded-lg p-4 cursor-pointer hover:shadow-lg transition-all bg-white hover:scale-105"
-                        style={{ 
-                          borderColor: getCategoryColor(service.category),
-                          borderTopWidth: '4px'
-                        }}
-                        onClick={() => handleServiceSelect(service.id)}
-                      >
-                        <div className="w-full text-left">
-                          <div className="flex items-start space-x-3 mb-3">
-                            <div 
-                              className="p-2 rounded-lg"
-                              style={{ backgroundColor: getCategoryColor(service.category) + '20' }}
-                            >
-                              <IconComponent 
-                                className="h-6 w-6" 
-                                style={{ color: getCategoryColor(service.category) }} 
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="text-black mb-1">{service.name}</h4>
-                              <Badge 
-                                className="text-xs border-none"
-                                style={getCategoryStyle(service.category)}
-                              >
-                                {service.category}
-                              </Badge>
-                            </div>
+                {serviceOptions.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    Nenhum serviço disponível
+                  </div>
+                ) : (
+                  serviceOptions.map((service) => (
+                    <div
+                      key={service.id}
+                      className="border-2 rounded-lg p-4 cursor-pointer hover:shadow-lg transition-all bg-white hover:scale-105"
+                      style={{ 
+                        borderColor: service.category_color || getCategoryColor(service.category),
+                        borderTopWidth: '4px'
+                      }}
+                      onClick={() => handleServiceSelect(service.id.toString())}
+                    >
+                      <div className="w-full text-left">
+                        <div className="flex items-start space-x-3 mb-3">
+                          <div 
+                            className="p-2 rounded-lg"
+                            style={{ backgroundColor: (service.category_color || getCategoryColor(service.category)) + '20' }}
+                          >
+                            <Building2 
+                              className="h-6 w-6" 
+                              style={{ color: service.category_color || getCategoryColor(service.category) }} 
+                            />
                           </div>
-                          <p className="text-sm text-gray-600 mb-2">{service.description}</p>
-                          <p className="text-xs text-gray-500">⏱️ {service.estimatedTime}</p>
+                          <div className="flex-1">
+                            <h4 className="text-black mb-1">{service.name}</h4>
+                            <Badge 
+                              className="text-xs border-none"
+                              style={getCategoryStyle(service.category)}
+                            >
+                              {service.category}
+                            </Badge>
+                          </div>
                         </div>
+                        <p className="text-sm text-gray-600 mb-2">{service.description}</p>
+                        {service.duration_value && service.duration_type && (
+                          <p className="text-xs text-gray-500">
+                            ⏱️ {service.duration_value} {service.duration_type}
+                          </p>
+                        )}
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))
+                )}
                 </div>
               </CardContent>
             </Card>
