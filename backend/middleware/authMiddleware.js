@@ -50,17 +50,18 @@ exports.protect = async (req, res, next) => {
         .json({ message: "Usuário desativado. Contate o suporte." });
     }
 
-    // 4. Se for cliente, buscar o client_user_id automaticamente
+    // 4. Se for cliente, buscar o company_id automaticamente
+    // IMPORTANTE: client_id no token/API representa company_id no banco
     let client_id = decoded.client_id || null;
 
     if (user.role_key === 'client' && !client_id) {
       const clientUser = await ClientUser.findOne({
         where: { user_id: user.user_id },
-        attributes: ['client_user_id']
+        attributes: ['company_id']
       });
 
       if (clientUser) {
-        client_id = clientUser.client_user_id;
+        client_id = clientUser.company_id;
       }
     }
 

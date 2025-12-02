@@ -107,42 +107,42 @@ router.get('/requests', async (req, res) => {
     console.log('📋 Buscando solicitações do cliente:', clientId);
 
     const requests = await db.query(`
-      SELECT 
+      SELECT
         sr.service_request_id,
         sr.request_number,
         sr.title,
         sr.description,
-        sr.status,
-        sr.priority,
+        sr.status_key AS status,
+        sr.priority_key AS priority,
         DATE_FORMAT(sr.desired_date, '%d/%m/%Y') AS desired_date,
         DATE_FORMAT(sr.created_at, '%d/%m/%Y %H:%i') AS created_at,
-        -- Cliente
-        c.client_id,
-        c.main_company_name AS company_name,
+        -- Cliente/Empresa
+        c.company_id AS client_id,
+        c.name AS company_name,
         -- Tipo de serviço (do catálogo)
         sc.service_catalog_id,
         sc.name AS service_type,
         sc.price AS service_price,
         sc.description AS service_description,
-        -- Endereço/Unidade
-        ca.address_id,
-        ca.nickname AS unit_name,
-        CONCAT(ca.street, ', ', ca.number) AS full_address,
-        ca.complement,
-        ca.neighborhood,
-        ca.city,
-        ca.state,
-        ca.zip_code,
+        -- Endereço/Unidade (filial)
+        cb.branch_id AS address_id,
+        cb.nickname AS unit_name,
+        CONCAT(cb.street, ', ', cb.number) AS full_address,
+        cb.complement,
+        cb.neighborhood,
+        cb.city,
+        cb.state,
+        cb.zip_code,
         -- Área geográfica
         a.area_id,
         a.name AS area_name,
         a.code AS area_code
       FROM service_requests sr
-      INNER JOIN clients c ON sr.client_id = c.client_id
+      INNER JOIN companies c ON sr.company_id = c.company_id
       LEFT JOIN service_catalog sc ON sr.service_catalog_id = sc.service_catalog_id
-      LEFT JOIN client_addresses ca ON sr.address_id = ca.address_id
-      LEFT JOIN areas a ON ca.area_id = a.area_id
-      WHERE sr.client_id = :clientId
+      LEFT JOIN client_branches cb ON sr.branch_id = cb.branch_id
+      LEFT JOIN areas a ON cb.area IS NOT NULL AND a.code = cb.area
+      WHERE sr.company_id = :clientId
       ORDER BY sr.created_at DESC
     `, {
       replacements: { clientId },
@@ -168,7 +168,7 @@ router.post('/requests', async (req, res) => {
     const clientId = req.user.client_id;
     const userId = req.user.id;
 
-    const { 
+    const {
       service,
       description,
       priority,
@@ -183,38 +183,78 @@ router.post('/requests', async (req, res) => {
       clientId, userId, service, description, priority, date, location, area, addressId, serviceCatalogId
     });
 
-    // Validações obrigatórias
+    // ==========================================
+    // VALIDAÇÕES BÁSICAS
+    // ==========================================
     if (!service) return res.status(400).json({ message: 'Tipo de serviço é obrigatório' });
     if (!description) return res.status(400).json({ message: 'Descrição é obrigatória' });
     if (!clientId) return res.status(400).json({ message: 'Cliente inválido' });
     if (!userId) return res.status(400).json({ message: 'Usuário inválido' });
     if (!addressId) return res.status(400).json({ message: 'Endereço é obrigatório' });
 
-    // ✅ NOVO: Buscar service_catalog_id se não vier do frontend
+    // ==========================================
+    // VALIDAÇÃO 1: service_catalog_id
+    // ==========================================
     let finalServiceCatalogId = serviceCatalogId;
-    
+
     if (!finalServiceCatalogId && service) {
       console.log('🔍 Buscando service_catalog_id para:', service);
-      
-      const [serviceData] = await db.query(`
-        SELECT service_catalog_id 
-        FROM service_catalog 
+
+      const serviceData = await db.query(`
+        SELECT service_catalog_id
+        FROM service_catalog
         WHERE name = :serviceName
+          AND status = 'active'
         LIMIT 1
       `, {
         replacements: { serviceName: service },
         type: db.QueryTypes.SELECT
       });
-      
-      if (serviceData && serviceData.service_catalog_id) {
-        finalServiceCatalogId = serviceData.service_catalog_id;
-        console.log(' Service catalog ID encontrado:', finalServiceCatalogId);
-      } else {
-        console.log('⚠️  Serviço não encontrado no catálogo:', service);
+
+      if (serviceData && serviceData.length > 0) {
+        finalServiceCatalogId = serviceData[0].service_catalog_id;
+        console.log('✅ Service catalog ID encontrado:', finalServiceCatalogId);
       }
     }
 
-    // Mapeamento de prioridade
+    // Se ainda não tem service_catalog_id, retornar erro 400
+    if (!finalServiceCatalogId) {
+      console.log('❌ Serviço não encontrado no catálogo (ou inativo):', service);
+      return res.status(400).json({
+        message: 'Serviço não encontrado no catálogo'
+      });
+    }
+
+    // ==========================================
+    // VALIDAÇÃO 2: branch_id pertence à empresa
+    // ==========================================
+    const branchData = await db.query(`
+      SELECT branch_id
+      FROM client_branches
+      WHERE branch_id = :branchId
+        AND company_id = :companyId
+        AND is_active = 1
+      LIMIT 1
+    `, {
+      replacements: {
+        branchId: addressId,
+        companyId: clientId
+      },
+      type: db.QueryTypes.SELECT
+    });
+
+    if (!branchData || branchData.length === 0) {
+      console.log('❌ Filial inválida ou não pertence à empresa:', addressId);
+      return res.status(400).json({
+        message: 'Filial inválida para esta empresa'
+      });
+    }
+
+    console.log('✅ Filial validada:', addressId);
+
+    // ==========================================
+    // VALIDAÇÃO 3: priority_key válida
+    // ==========================================
     const priorityMap = {
       'urgente': 'urgent',
       'alta': 'high',
@@ -223,8 +263,48 @@ router.post('/requests', async (req, res) => {
       'baixa': 'low',
       'rotina': 'low'
     };
-    const mappedPriority = priorityMap[priority?.toLowerCase()] || 'medium';
+    let mappedPriority = priorityMap[priority?.toLowerCase()] || 'medium';
 
+    // Validar se priority_key existe na tabela priority_levels
+    const priorityData = await db.query(`
+      SELECT priority_key
+      FROM priority_levels
+      WHERE priority_key = :priorityKey
+      LIMIT 1
+    `, {
+      replacements: { priorityKey: mappedPriority },
+      type: db.QueryTypes.SELECT
+    });
+
+    if (!priorityData || priorityData.length === 0) {
+      console.log('⚠️ Priority inválida, usando default "medium":', mappedPriority);
+      mappedPriority = 'medium';
+    }
+
+    // ==========================================
+    // VALIDAÇÃO 4: status_key válida
+    // ==========================================
+    const statusKey = 'pending';
+    const statusData = await db.query(`
+      SELECT status_key
+      FROM service_statuses
+      WHERE status_key = :statusKey
+      LIMIT 1
+    `, {
+      replacements: { statusKey },
+      type: db.QueryTypes.SELECT
+    });
+
+    if (!statusData || statusData.length === 0) {
+      console.log('❌ Status "pending" não existe na tabela service_statuses');
+      return res.status(500).json({
+        message: 'Erro de configuração: status padrão não encontrado'
+      });
+    }
+
+    // ==========================================
+    // PREPARAR DADOS PARA INSERT
+    // ==========================================
     // Montar descrição
     let fullDescription = description;
     if (location) fullDescription += `\n\nLocal: ${location}`;
@@ -243,22 +323,23 @@ router.post('/requests', async (req, res) => {
     const requestNumber = `REQ-${new Date().getFullYear()}-${timestamp}-${randomSuffix}`;
 
     console.log("Número da solicitação:", requestNumber);
-    console.log("Service Catalog ID final:", finalServiceCatalogId);
 
-    // INSERT
-    const [result] = await db.query(`
+    // ==========================================
+    // INSERT (agora validado)
+    // ==========================================
+    const result = await db.query(`
       INSERT INTO service_requests (
-        client_id,
+        company_id,
         requester_user_id,
         requester_type,
         request_number,
-        address_id,
+        branch_id,
         service_catalog_id,
         title,
         description,
-        priority,
+        priority_key,
         desired_date,
-        status,
+        status_key,
         created_at
       ) VALUES (
         :clientId,
@@ -271,7 +352,7 @@ router.post('/requests', async (req, res) => {
         :description,
         :priority,
         :desiredDate,
-        'pending',
+        :statusKey,
         NOW()
       )
     `, {
@@ -280,19 +361,22 @@ router.post('/requests', async (req, res) => {
         userId,
         requestNumber,
         addressId,
-        serviceCatalogId: finalServiceCatalogId || null,  // ✅ Usa o ID encontrado
+        serviceCatalogId: finalServiceCatalogId,
         title: service,
         description: fullDescription,
         priority: mappedPriority,
-        desiredDate
+        desiredDate,
+        statusKey
       },
       type: db.QueryTypes.INSERT
     });
 
+    console.log('✅ Solicitação criada com sucesso:', result[0]);
+
     res.status(201).json({
-      service_request_id: result,
+      service_request_id: result[0],
       service: service,
-      service_catalog_id: finalServiceCatalogId,  // ✅ Retorna o ID também
+      service_catalog_id: finalServiceCatalogId,
       description: fullDescription,
       priority: priority,
       status: 'pendente',
@@ -303,9 +387,18 @@ router.post('/requests', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Erro ao criar solicitação:", error);
+    console.error("❌ Erro ao criar solicitação:", error);
+
+    // Tratamento de erros específicos de FK
+    if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+      return res.status(400).json({
+        message: "Dados inválidos: verifique o serviço e a filial selecionados",
+        error: error.message
+      });
+    }
+
     res.status(500).json({
-      message: "Erro ao criar solicitação",
+      message: "Erro interno ao criar solicitação",
       error: error.message
     });
   }
@@ -762,21 +855,24 @@ router.get('/scheduled-services', async (req, res) => {
     }
 
     const [services] = await db.query(`
-      SELECT 
+      SELECT
         ss.scheduled_service_id AS id,
         ss.scheduled_date,
         ss.start_time,
         ss.end_time,
-        ss.status,
+        ss.status_key AS status,
         ss.notes,
         sc.name AS service_name,
-        c.address
+        COALESCE(
+          CONCAT_WS(', ', cb.street, cb.city, cb.state),
+          'Endereço não informado'
+        ) AS address
       FROM scheduled_services ss
-      LEFT JOIN service_catalog sc 
+      LEFT JOIN service_catalog sc
         ON ss.service_catalog_id = sc.service_catalog_id
-      LEFT JOIN clients c 
-        ON ss.client_id = c.client_id
-      WHERE ss.client_id = ?
+      LEFT JOIN client_branches cb
+        ON ss.branch_id = cb.branch_id
+      WHERE ss.company_id = ?
       ORDER BY ss.scheduled_date ASC;
     `, [clientId]);
 
@@ -1097,12 +1193,12 @@ router.get('/ratings/pending', async (req, res) => {
     }
 
     const pendingServices = await db.query(`
-      SELECT 
+      SELECT
         ss.scheduled_service_id AS id,
         sc.name,
         DATE_FORMAT(ss.scheduled_date, '%d/%m/%Y') AS date,
-        CONCAT('Equipe ', 
-          CASE ss.status
+        CONCAT('Equipe ',
+          CASE ss.status_key
             WHEN 'completed' THEN 'Alpha'
             ELSE 'Beta'
           END
@@ -1113,12 +1209,12 @@ router.get('/ratings/pending', async (req, res) => {
         ) AS duration,
         'pending' AS status
       FROM scheduled_services ss
-      LEFT JOIN service_catalog sc 
+      LEFT JOIN service_catalog sc
         ON ss.service_catalog_id = sc.service_catalog_id
-      LEFT JOIN ratings r 
+      LEFT JOIN ratings r
         ON ss.scheduled_service_id = r.scheduled_service_id
-      WHERE ss.client_id = :clientId
-        AND ss.status = 'completed'
+      WHERE ss.company_id = :clientId
+        AND ss.status_key = 'completed'
         AND r.rating_id IS NULL
       ORDER BY ss.scheduled_date DESC
       LIMIT 20

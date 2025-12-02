@@ -1,57 +1,43 @@
-// Importa as ferramentas necessárias
-const sequelize = require('./connection');
-const User = require('../models/User');
+const { sequelize, models } = require('./db');
 const bcrypt = require('bcryptjs');
 
-// --- Defina seu primeiro usuário Admin aqui ---
-const adminUserData = {
-  full_name: 'Administrador do Sistema',
-  email: 'admin@hive.com',
-  password: 'admin123', // Vamos usar 'admin123' como senha
-  user_type: 'admin',
-  is_active: true
-};
-// ---------------------------------------------
-
-const seedAdminUser = async () => {
+async function createAdmin() {
   try {
-    // 1. Sincroniza o model User (apenas para garantir que a tabela existe)
-    await User.sync();
+    // 1. Conecta no banco
+    await sequelize.authenticate();
+    console.log('🔌 Conectado ao banco para criar usuário...');
 
-    // 2. Verifica se o usuário já existe
-    const existingUser = await User.findOne({ where: { email: adminUserData.email } });
+    // 2. Define os dados do Admin
+    const email = 'admin@hive.com';
+    const passwordRaw = '123456'; // A senha que você vai digitar no login
+    
+    // 3. Gera o Hash da senha (segurança)
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(passwordRaw, salt);
 
-    if (existingUser) {
-      console.log('✅ Usuário admin já existe. Nada a fazer.');
-      return;
+    // 4. Cria o usuário usando o Model novo
+    // Verifica se já existe para não duplicar
+    const existing = await models.users.findOne({ where: { email } });
+    
+    if (existing) {
+      console.log('⚠️ O usuário admin@hive.com já existe!');
+    } else {
+      const newUser = await models.users.create({
+        full_name: 'Admin Hive',
+        email: email,
+        password_hash: passwordHash,
+        role_key: 'admin', // Importante: deve bater com a tabela 'roles'
+        is_active: true
+      });
+      console.log(`✅ Usuário criado com sucesso! ID: ${newUser.user_id}`);
     }
 
-    // 3. CRIPTOGRAFA a senha
-    console.log('Criptografando senha...');
-    const salt = await bcrypt.genSalt(10);
-    const password_hash = await bcrypt.hash(adminUserData.password, salt);
-
-    // 4. Cria o usuário no banco
-    console.log('Criando usuário admin...');
-    await User.create({
-      full_name: adminUserData.full_name,
-      email: adminUserData.email,
-      password_hash: password_hash, // Salva a senha criptografada
-      user_type: adminUserData.user_type,
-      is_active: adminUserData.is_active
-    });
-
-    console.log('✅ SUCESSO! Usuário admin criado:');
-    console.log(`   E-mail: ${adminUserData.email}`);
-    console.log(`   Senha: ${adminUserData.password}`);
-
   } catch (error) {
-    console.error('❌ ERRO AO CRIAR ADMIN:', error);
+    console.error('❌ Erro ao criar usuário:', error);
   } finally {
-    // 5. Fecha a conexão com o banco
+    // 5. Fecha a conexão
     await sequelize.close();
   }
-};
+}
 
-// Executa a função
-seedAdminUser();
+createAdmin();

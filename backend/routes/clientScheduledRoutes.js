@@ -21,19 +21,19 @@ router.get('/scheduled-services', async (req, res) => {
           ss.scheduled_date,
           ss.start_time,
           ss.end_time,
-          ss.status,
+          ss.status_key AS status,
           ss.notes,
           sc.name AS service_name,
           COALESCE(
-            CONCAT_WS(', ', ca.street, ca.city, ca.state),
+            CONCAT_WS(', ', cb.street, cb.city, cb.state),
             'Endereço não informado'
           ) AS address
         FROM scheduled_services ss
-        LEFT JOIN service_catalog sc 
+        LEFT JOIN service_catalog sc
           ON ss.service_catalog_id = sc.service_catalog_id
-        LEFT JOIN client_addresses ca 
-          ON ss.area_id = ca.area_id
-        WHERE ss.client_id = :clientId
+        LEFT JOIN client_branches cb
+          ON ss.branch_id = cb.branch_id
+        WHERE ss.company_id = :clientId
         ORDER BY ss.scheduled_date ASC
       `, {
         replacements: { clientId },

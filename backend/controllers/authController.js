@@ -42,14 +42,17 @@ exports.login = async (req, res) => {
       return res.status(403).json({ message: "Esta conta está desativada." });
     }
 
-    // 4. Buscar client_user_id se o usuário for cliente
+    // 4. Buscar company_id se o usuário for cliente
+    // IMPORTANTE: convenção adotada no projeto:
+    // - client_id no token/API = company_id no banco de dados
+    // - Isso mantém compatibilidade com frontend e simplifica as rotas
     let client_id = null;
 
     if (user.role_key === "client") {
       const clientRecord = await ClientUser.findOne({
         where: { user_id: user.user_id }
       });
-      client_id = clientRecord ? clientRecord.client_user_id : null;
+      client_id = clientRecord ? clientRecord.company_id : null;
     }
 
     // 5. Gerar token JWT
