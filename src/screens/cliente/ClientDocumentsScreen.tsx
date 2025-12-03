@@ -53,7 +53,7 @@ export default function ClientDocumentsScreen({ onBack }: { onBack?: () => void 
         
         if (response.data && Array.isArray(response.data)) {
           setDocuments(response.data);
-          toast.success('📄 Documentos carregados do backend!');
+          toast.success(' Documentos carregados do backend!');
         } else {
           setDocuments(FALLBACK_DOCUMENTS);
           toast.info('Usando dados de exemplo');
@@ -145,7 +145,7 @@ export default function ClientDocumentsScreen({ onBack }: { onBack?: () => void 
       await api.delete(`/client-portal/documents/${documentToDelete.id}`);
       
       setDocuments(prev => prev.filter(d => d.id !== documentToDelete.id));
-      toast.success('🗑️ Documento excluído com sucesso!');
+      toast.success(' Documento excluído com sucesso!');
       setIsDeleteConfirmOpen(false);
       setDocumentToDelete(null);
     } catch (error) {

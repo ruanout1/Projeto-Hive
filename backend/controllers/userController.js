@@ -1,12 +1,6 @@
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
-const sequelize = require('../database/connection'); // Para transações
-const User = require('../models/User');
-const Team = require('../models/Team');
-const TeamMember = require('../models/TeamMember');
-const Collaborator = require('../models/Collaborator');
-const Client = require('../models/Client');
-const { handleDatabaseError } = require('../utils/errorHandling');
+const { sequelize, User, Team, TeamMember, Collaborator, ClientUser } = require('../database/db');
 
 // =====================================
 // FUNÇÕES DE CRUD (ADMIN)

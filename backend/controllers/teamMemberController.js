@@ -1,5 +1,4 @@
-const TeamMember = require('../models/TeamMember');
-const { handleDatabaseError } = require('../utils/errorHandling');
+const { TeamMember } = require('../database/db');
 
 // ==========================================================
 // FUNÇÕES - GERENCIAMENTO DE *UM* MEMBRO

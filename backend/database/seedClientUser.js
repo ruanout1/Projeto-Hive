@@ -41,7 +41,7 @@ const seedClientUser = async () => {
       is_active: clientUserData.is_active
     });
 
-    console.log('✅ SUCESSO! Usuário cliente criado:');
+    console.log(' SUCESSO! Usuário cliente criado:');
     console.log(`   E-mail: ${clientUserData.email}`);
     console.log(`   Senha: ${clientUserData.password}`);
 

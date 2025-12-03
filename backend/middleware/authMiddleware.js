@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const Client = require("../models/Client");
+const { User, ClientUser } = require("../database/db");
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
@@ -27,7 +26,7 @@ exports.protect = async (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
 
     // decoded contém:
-    // { id, user_type, client_id }
+    // { id, role_key, client_id }
 
     // 3. Busca o usuário no banco (garante active e dados atualizados)
     const user = await User.findByPk(decoded.id, {
@@ -36,7 +35,7 @@ exports.protect = async (req, res, next) => {
         "full_name",
         "email",
         "avatar_url",
-        "user_type",
+        "role_key",
         "is_active",
       ],
     });
@@ -51,14 +50,29 @@ exports.protect = async (req, res, next) => {
         .json({ message: "Usuário desativado. Contate o suporte." });
     }
 
-    // 4. Reconstrói req.user com dados atualizados do banco + token
+    // 4. Se for cliente, buscar o company_id automaticamente
+    // IMPORTANTE: client_id no token/API representa company_id no banco
+    let client_id = decoded.client_id || null;
+
+    if (user.role_key === 'client' && !client_id) {
+      const clientUser = await ClientUser.findOne({
+        where: { user_id: user.user_id },
+        attributes: ['company_id']
+      });
+
+      if (clientUser) {
+        client_id = clientUser.company_id;
+      }
+    }
+
+    // 5. Reconstrói req.user com dados completos
     req.user = {
       id: user.user_id,
       name: user.full_name,
       email: user.email,
       avatar_url: user.avatar_url || null,
-      user_type: user.user_type,
-      client_id: decoded.client_id || null, // usado nas rotas do cliente
+      role_key: user.role_key,
+      client_id: client_id, // Sempre terá valor para clientes
     };
 
     return next();

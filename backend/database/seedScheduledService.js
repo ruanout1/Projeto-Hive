@@ -34,7 +34,7 @@ const seedScheduledService = async () => {
         user_id: clientUser.user_id,
         main_company_name: 'Cliente Teste LTDA'
       });
-      console.log("✅ CLIENT criado:", client.client_id);
+      console.log(" CLIENT criado:", client.client_id);
     }
 
     // ============================
@@ -74,11 +74,11 @@ const seedScheduledService = async () => {
       notes: 'Primeira limpeza programada'
     });
 
-    console.log("✅ Serviço agendado criado com sucesso!");
+    console.log(" Serviço agendado criado com sucesso!");
     console.log(scheduled.toJSON());
 
   } catch (error) {
-    console.error("❌ Erro ao rodar seed:", error);
+    console.error(" Erro ao rodar seed:", error);
   } finally {
     await sequelize.close();
   }

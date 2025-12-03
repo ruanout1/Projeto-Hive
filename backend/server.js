@@ -30,10 +30,19 @@ const managerRoutes = require('./routes/managerRoutes');
 const communicationRoutes = require('./routes/communicationRoutes');
 
 // =============================================
-// 3. REGISTRAR ASSOCIAÇÕES DO BANCO DE DADOS
+// 3. INICIALIZAR DATABASE E MODELS
 // =============================================
-const { setupAssociations } = require('./database/associations');
-setupAssociations();
+const { sequelize, models } = require('./database/db');
+
+// Testa a conexão com o banco
+(async () => {
+  try {
+    await sequelize.authenticate();
+    console.log('✅ Conexão com o banco estabelecida!');
+  } catch (error) {
+    console.error('❌ Erro ao conectar no banco:', error.message);
+  }
+})();
 
 // =============================================
 // 4. CONFIGURAR APLICAÇÃO EXPRESS
@@ -153,7 +162,7 @@ app.listen(PORT, () => {
   console.log(`   • Usuários:         http://localhost:${PORT}/api/users`);
   console.log(`   • Gestores:         http://localhost:${PORT}/api/manager`);
   console.log(`   • Comunicação:      http://localhost:${PORT}/api/communication`);
-  console.log("\n✅ Arquitetura de rotas por Recurso está ATIVA");
+  console.log("\n Arquitetura de rotas por Recurso está ATIVA");
   console.log("====================================\n");
 });
 

@@ -52,9 +52,107 @@ router.get('/service-notes', (req, res) => {
   res.json(serviceNotesData);
 });
 
-// Alias para serviços (mantém compatibilidade)
-router.get('/services', (req, res) => {
-  res.json(serviceHistory);
+// GET /api/client-portal/services - Lista serviços do catálogo (ativos)
+router.get('/services', async (req, res) => {
+  try {
+    const services = await db.query(`
+      SELECT
+        sc.service_catalog_id AS id,
+        sc.name,
+        sc.description,
+        sc.price,
+        sc.duration_value,
+        sc.duration_type,
+        sc.status,
+        scat.category_id,
+        scat.name AS category,
+        scat.color AS category_color
+      FROM service_catalog sc
+      LEFT JOIN service_categories scat ON sc.category_id = scat.category_id
+      WHERE sc.status = 'active'
+      ORDER BY scat.name, sc.name
+    `, {
+      type: db.QueryTypes.SELECT
+    });
+
+    console.log(`✅ ${services.length} serviços ativos encontrados`);
+    res.json(services);
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar serviços:', error);
+    res.status(500).json({
+      message: 'Erro ao buscar serviços',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/client-portal/categories - Lista categorias de serviços
+router.get('/categories', async (req, res) => {
+  try {
+    const categories = await db.query(`
+      SELECT
+        category_id AS id,
+        name,
+        color,
+        description
+      FROM service_categories
+      ORDER BY name
+    `, {
+      type: db.QueryTypes.SELECT
+    });
+
+    console.log(`✅ ${categories.length} categorias encontradas`);
+    res.json(categories);
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar categorias:', error);
+    res.status(500).json({
+      message: 'Erro ao buscar categorias',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/client-portal/branches - Lista filiais do cliente logado
+router.get('/branches', async (req, res) => {
+  try {
+    const clientId = req.user.client_id;
+
+    if (!clientId) {
+      return res.status(400).json({ message: 'Cliente não encontrado no token' });
+    }
+
+    const branches = await db.query(`
+      SELECT
+        branch_id AS id,
+        nickname AS name,
+        CONCAT(street, ', ', number, COALESCE(CONCAT(' - ', complement), '')) AS address,
+        neighborhood,
+        city,
+        state,
+        zip_code,
+        area,
+        is_active
+      FROM client_branches
+      WHERE company_id = :clientId
+        AND is_active = 1
+      ORDER BY nickname
+    `, {
+      replacements: { clientId },
+      type: db.QueryTypes.SELECT
+    });
+
+    console.log(`✅ ${branches.length} filiais ativas encontradas para o cliente ${clientId}`);
+    res.json(branches);
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar filiais:', error);
+    res.status(500).json({
+      message: 'Erro ao buscar filiais',
+      error: error.message
+    });
+  }
 });
 
 // =====================
@@ -96,10 +194,79 @@ router.post('/ratings', (req, res) => {
 // =====================
 
 // Listar solicitações do cliente
-router.get('/requests', (req, res) => {
-  // TODO: Filtrar solicitações do cliente logado
-  console.log('📋 Enviando lista de solicitações');
-  res.json(serviceRequestsData);
+router.get('/requests', async (req, res) => {
+  try {
+    const clientId = req.user.client_id;
+
+    if (!clientId) {
+      return res.status(400).json({ message: 'Cliente não encontrado no token' });
+    }
+
+    console.log('📋 Buscando solicitações do cliente:', clientId);
+
+    const requests = await db.query(`
+      SELECT
+        sr.service_request_id,
+        sr.request_number,
+        sr.title,
+        sr.description,
+        sr.status_key AS status,
+        sr.priority_key AS priority,
+        DATE_FORMAT(sr.desired_date, '%d/%m/%Y') AS desired_date,
+        DATE_FORMAT(sr.created_at, '%d/%m/%Y %H:%i') AS created_at,
+        -- Cliente/Empresa
+        c.company_id AS client_id,
+        c.name AS company_name,
+        -- Tipo de serviço (do catálogo)
+        sc.service_catalog_id,
+        sc.name AS service_type,
+        sc.price AS service_price,
+        sc.description AS service_description,
+        -- Endereço/Unidade (filial) - com fallback para evitar NULL
+        cb.branch_id AS address_id,
+        COALESCE(cb.nickname, cb.name, 'Unidade não informada') AS unit_name,
+        COALESCE(
+          TRIM(CONCAT_WS(', ',
+            NULLIF(cb.street, ''),
+            NULLIF(cb.number, ''),
+            NULLIF(cb.neighborhood, ''),
+            NULLIF(cb.city, ''),
+            NULLIF(cb.state, '')
+          )),
+          'Endereço não informado'
+        ) AS full_address,
+        cb.complement,
+        cb.neighborhood,
+        cb.city,
+        cb.state,
+        cb.zip_code,
+        -- Área geográfica
+        a.area_id,
+        a.name AS area_name,
+        a.code AS area_code
+      FROM service_requests sr
+      INNER JOIN companies c ON sr.company_id = c.company_id
+      LEFT JOIN service_catalog sc ON sr.service_catalog_id = sc.service_catalog_id
+      LEFT JOIN client_branches cb ON sr.branch_id = cb.branch_id
+      LEFT JOIN areas a ON cb.area IS NOT NULL AND a.code = cb.area
+      WHERE sr.company_id = :clientId
+      ORDER BY sr.created_at DESC
+    `, {
+      replacements: { clientId },
+      type: db.QueryTypes.SELECT
+    });
+
+    console.log(` ${requests.length} solicitações encontradas`);
+
+    res.json(requests);
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar solicitações:', error);
+    res.status(500).json({
+      message: 'Erro ao buscar solicitações',
+      error: error.message
+    });
+  }
 });
 
 // Criar nova solicitação
@@ -108,30 +275,94 @@ router.post('/requests', async (req, res) => {
     const clientId = req.user.client_id;
     const userId = req.user.id;
 
-    // Campos enviados pelo frontend 
-    const { 
+    const {
       service,
       description,
       priority,
       date,
       location,
       area,
-      addressId,          // <-- OBRIGATÓRIO AGORA
-      serviceCatalogId    // <-- opcional, depende do front
+      addressId,
+      serviceCatalogId    // Pode vir ou não do frontend
     } = req.body;
 
     console.log("Nova solicitação recebida:", {
-      clientId, userId, service, description, priority, date, location, area, addressId
+      clientId, userId, service, description, priority, date, location, area, addressId, serviceCatalogId
     });
 
-    // Validações obrigatórias
+    // ==========================================
+    // VALIDAÇÕES BÁSICAS
+    // ==========================================
     if (!service) return res.status(400).json({ message: 'Tipo de serviço é obrigatório' });
     if (!description) return res.status(400).json({ message: 'Descrição é obrigatória' });
     if (!clientId) return res.status(400).json({ message: 'Cliente inválido' });
     if (!userId) return res.status(400).json({ message: 'Usuário inválido' });
     if (!addressId) return res.status(400).json({ message: 'Endereço é obrigatório' });
 
-    // Mapeamento de prioridade
+    // ==========================================
+    // VALIDAÇÃO 1: service_catalog_id
+    // ==========================================
+    let finalServiceCatalogId = serviceCatalogId;
+
+    if (!finalServiceCatalogId && service) {
+      console.log('🔍 Buscando service_catalog_id para:', service);
+
+      // Busca case-insensitive e ignora espaços extras
+      const serviceData = await db.query(`
+        SELECT service_catalog_id
+        FROM service_catalog
+        WHERE LOWER(TRIM(name)) = LOWER(TRIM(:serviceName))
+          AND status = 'active'
+        LIMIT 1
+      `, {
+        replacements: { serviceName: service },
+        type: db.QueryTypes.SELECT
+      });
+
+      if (serviceData && serviceData.length > 0) {
+        finalServiceCatalogId = serviceData[0].service_catalog_id;
+        console.log('✅ Service catalog ID encontrado:', finalServiceCatalogId);
+      }
+    }
+
+    // Se ainda não tem service_catalog_id, retornar erro 400
+    if (!finalServiceCatalogId) {
+      console.log('❌ Serviço não encontrado no catálogo (ou inativo):', service);
+      return res.status(400).json({
+        message: 'Serviço não encontrado no catálogo'
+      });
+    }
+
+    // ==========================================
+    // VALIDAÇÃO 2: branch_id pertence à empresa
+    // ==========================================
+    const branchData = await db.query(`
+      SELECT branch_id
+      FROM client_branches
+      WHERE branch_id = :branchId
+        AND company_id = :companyId
+        AND is_active = 1
+      LIMIT 1
+    `, {
+      replacements: {
+        branchId: addressId,
+        companyId: clientId
+      },
+      type: db.QueryTypes.SELECT
+    });
+
+    if (!branchData || branchData.length === 0) {
+      console.log('❌ Filial inválida ou não pertence à empresa:', addressId);
+      return res.status(400).json({
+        message: 'Filial inválida para esta empresa'
+      });
+    }
+
+    console.log('✅ Filial validada:', addressId);
+
+    // ==========================================
+    // VALIDAÇÃO 3: priority_key válida
+    // ==========================================
     const priorityMap = {
       'urgente': 'urgent',
       'alta': 'high',
@@ -140,8 +371,48 @@ router.post('/requests', async (req, res) => {
       'baixa': 'low',
       'rotina': 'low'
     };
-    const mappedPriority = priorityMap[priority?.toLowerCase()] || 'medium';
+    let mappedPriority = priorityMap[priority?.toLowerCase()] || 'medium';
 
+    // Validar se priority_key existe na tabela priority_levels
+    const priorityData = await db.query(`
+      SELECT priority_key
+      FROM priority_levels
+      WHERE priority_key = :priorityKey
+      LIMIT 1
+    `, {
+      replacements: { priorityKey: mappedPriority },
+      type: db.QueryTypes.SELECT
+    });
+
+    if (!priorityData || priorityData.length === 0) {
+      console.log('⚠️ Priority inválida, usando default "medium":', mappedPriority);
+      mappedPriority = 'medium';
+    }
+
+    // ==========================================
+    // VALIDAÇÃO 4: status_key válida
+    // ==========================================
+    const statusKey = 'pending';
+    const statusData = await db.query(`
+      SELECT status_key
+      FROM service_statuses
+      WHERE status_key = :statusKey
+      LIMIT 1
+    `, {
+      replacements: { statusKey },
+      type: db.QueryTypes.SELECT
+    });
+
+    if (!statusData || statusData.length === 0) {
+      console.log('❌ Status "pending" não existe na tabela service_statuses');
+      return res.status(500).json({
+        message: 'Erro de configuração: status padrão não encontrado'
+      });
+    }
+
+    // ==========================================
+    // PREPARAR DADOS PARA INSERT
+    // ==========================================
     // Montar descrição
     let fullDescription = description;
     if (location) fullDescription += `\n\nLocal: ${location}`;
@@ -161,20 +432,22 @@ router.post('/requests', async (req, res) => {
 
     console.log("Número da solicitação:", requestNumber);
 
-    // INSERT CORRIGIDO
-    const [result] = await db.query(`
+    // ==========================================
+    // INSERT (agora validado)
+    // ==========================================
+    const result = await db.query(`
       INSERT INTO service_requests (
-        client_id,
+        company_id,
         requester_user_id,
         requester_type,
         request_number,
-        address_id,
+        branch_id,
         service_catalog_id,
         title,
         description,
-        priority,
+        priority_key,
         desired_date,
-        status,
+        status_key,
         created_at
       ) VALUES (
         :clientId,
@@ -187,7 +460,7 @@ router.post('/requests', async (req, res) => {
         :description,
         :priority,
         :desiredDate,
-        'pending',
+        :statusKey,
         NOW()
       )
     `, {
@@ -196,31 +469,44 @@ router.post('/requests', async (req, res) => {
         userId,
         requestNumber,
         addressId,
-        serviceCatalogId: serviceCatalogId || null,
+        serviceCatalogId: finalServiceCatalogId,
         title: service,
         description: fullDescription,
         priority: mappedPriority,
-        desiredDate
+        desiredDate,
+        statusKey
       },
       type: db.QueryTypes.INSERT
     });
 
+    console.log('✅ Solicitação criada com sucesso:', result[0]);
+
     res.status(201).json({
-      service_request_id: result,
+      service_request_id: result[0],
       service: service,
+      service_catalog_id: finalServiceCatalogId,
       description: fullDescription,
-      priority: priority,               // ← mantém 'urgente' como veio do front
-      status: 'pendente',               // ← frontend usa 'pendente', não 'pending'
-      date: desiredDate,                // ← data desejada YYYY-MM-DD
+      priority: priority,
+      status: 'pendente',
+      date: desiredDate,
       requestedAt: new Date().toLocaleDateString('pt-BR'),
       location: location || null,
       area: area || null
     });
 
   } catch (error) {
-    console.error("Erro ao criar solicitação:", error);
+    console.error("❌ Erro ao criar solicitação:", error);
+
+    // Tratamento de erros específicos de FK
+    if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+      return res.status(400).json({
+        message: "Dados inválidos: verifique o serviço e a filial selecionados",
+        error: error.message
+      });
+    }
+
     res.status(500).json({
-      message: "Erro ao criar solicitação",
+      message: "Erro interno ao criar solicitação",
       error: error.message
     });
   }
@@ -270,7 +556,7 @@ let clientDocuments = [
 // Listar documentos do cliente
 router.get('/documents', (req, res) => {
   // TODO: Filtrar documentos do cliente logado
-  console.log('📄 Enviando documentos do cliente');
+  console.log(' Enviando documentos do cliente');
   res.json(clientDocuments);
 });
 
@@ -293,7 +579,7 @@ router.post('/documents', (req, res) => {
   newDoc.fileSize = newDoc.fileSize || '--- KB';
   
   clientDocuments.unshift(newDoc);
-  console.log('📎 Novo documento adicionado:', newDoc);
+  console.log(' Novo documento adicionado:', newDoc);
   
   res.status(201).json({
     message: 'Documento enviado com sucesso!',
@@ -315,7 +601,7 @@ router.delete('/documents/:id', (req, res) => {
   }
 
   const deletedDoc = clientDocuments.splice(index, 1);
-  console.log('🗑️ Documento removido:', deletedDoc[0].name);
+  console.log(' Documento removido:', deletedDoc[0].name);
   
   res.json({ 
     message: 'Documento removido com sucesso!' 
@@ -408,10 +694,10 @@ const invoices = [
 router.get('/invoices', (req, res) => {
   try {
     // TODO: Filtrar faturas do cliente logado (req.user.client_id)
-    console.log('💰 Enviando lista de faturas');
+    console.log(' Enviando lista de faturas');
     res.json(invoices);
   } catch (error) {
-    console.error('❌ Erro ao buscar faturas:', error);
+    console.error(' Erro ao buscar faturas:', error);
     res.status(500).json({ message: 'Erro ao buscar faturas' });
   }
 });
@@ -445,7 +731,7 @@ router.get('/expenses/summary', (req, res) => {
     console.log('📊 Resumo financeiro calculado:', summary);
     res.json(summary);
   } catch (error) {
-    console.error('❌ Erro ao calcular resumo:', error);
+    console.error(' Erro ao calcular resumo:', error);
     res.status(500).json({ message: 'Erro ao calcular resumo financeiro' });
   }
 });
@@ -488,10 +774,10 @@ router.get('/expenses/trends', (req, res) => {
       a.month.localeCompare(b.month)
     );
     
-    console.log('📈 Tendências calculadas:', trends.length, 'meses');
+    console.log(' Tendências calculadas:', trends.length, 'meses');
     res.json(trends);
   } catch (error) {
-    console.error('❌ Erro ao calcular tendências:', error);
+    console.error(' Erro ao calcular tendências:', error);
     res.status(500).json({ message: 'Erro ao calcular tendências' });
   }
 });
@@ -655,10 +941,10 @@ router.get('/invoices/:id/pdf', (req, res) => {
     // Finaliza o PDF
     doc.end();
     
-    console.log(`📄 PDF gerado: ${invoice.number}`);
+    console.log(` PDF gerado: ${invoice.number}`);
     
   } catch (error) {
-    console.error('❌ Erro ao gerar PDF:', error);
+    console.error(' Erro ao gerar PDF:', error);
     res.status(500).json({ message: 'Erro ao gerar PDF' });
   }
 });
@@ -677,21 +963,24 @@ router.get('/scheduled-services', async (req, res) => {
     }
 
     const [services] = await db.query(`
-      SELECT 
+      SELECT
         ss.scheduled_service_id AS id,
         ss.scheduled_date,
         ss.start_time,
         ss.end_time,
-        ss.status,
+        ss.status_key AS status,
         ss.notes,
         sc.name AS service_name,
-        c.address
+        COALESCE(
+          CONCAT_WS(', ', cb.street, cb.city, cb.state),
+          'Endereço não informado'
+        ) AS address
       FROM scheduled_services ss
-      LEFT JOIN service_catalog sc 
+      LEFT JOIN service_catalog sc
         ON ss.service_catalog_id = sc.service_catalog_id
-      LEFT JOIN clients c 
-        ON ss.client_id = c.client_id
-      WHERE ss.client_id = ?
+      LEFT JOIN client_branches cb
+        ON ss.branch_id = cb.branch_id
+      WHERE ss.company_id = ?
       ORDER BY ss.scheduled_date ASC;
     `, [clientId]);
 
@@ -750,7 +1039,7 @@ router.get('/communications', async (req, res) => {
     res.json(conversations);
 
   } catch (error) {
-    console.error('❌ Erro ao buscar conversas:', error);
+    console.error(' Erro ao buscar conversas:', error);
     res.status(500).json({ 
       message: 'Erro ao buscar conversas',
       error: error.message 
@@ -800,7 +1089,7 @@ router.get('/communications/:conversationId/messages', async (req, res) => {
     res.json(messages);
 
   } catch (error) {
-    console.error('❌ Erro ao buscar mensagens:', error);
+    console.error(' Erro ao buscar mensagens:', error);
     res.status(500).json({ 
       message: 'Erro ao buscar mensagens',
       error: error.message 
@@ -876,14 +1165,14 @@ router.post('/communications/message', async (req, res) => {
       WHERE message_id = ?
     `, [result.insertId]);
 
-    console.log(`✉️ Mensagem enviada na conversa ${conversationId} pelo cliente ${clientId}`);
+    console.log(` Mensagem enviada na conversa ${conversationId} pelo cliente ${clientId}`);
     res.status(201).json({
       message: 'Mensagem enviada com sucesso!',
       data: newMessage[0]
     });
 
   } catch (error) {
-    console.error('❌ Erro ao enviar mensagem:', error);
+    console.error(' Erro ao enviar mensagem:', error);
     res.status(500).json({ 
       message: 'Erro ao enviar mensagem',
       error: error.message 
@@ -921,11 +1210,11 @@ router.patch('/communications/:conversationId/read', async (req, res) => {
         AND is_read = FALSE
     `, [conversationId]);
 
-    console.log(`✅ Mensagens marcadas como lidas na conversa ${conversationId}`);
+    console.log(` Mensagens marcadas como lidas na conversa ${conversationId}`);
     res.json({ message: 'Mensagens marcadas como lidas' });
 
   } catch (error) {
-    console.error('❌ Erro ao marcar como lida:', error);
+    console.error(' Erro ao marcar como lida:', error);
     res.status(500).json({ 
       message: 'Erro ao marcar como lida',
       error: error.message 
@@ -986,14 +1275,14 @@ router.post('/communications', async (req, res) => {
       WHERE conversation_id = ?
     `, [initialMessage, conversationId]);
 
-    console.log(`🆕 Nova conversa criada: ${conversationId} - ${subject}`);
+    console.log(` Nova conversa criada: ${conversationId} - ${subject}`);
     res.status(201).json({
       message: 'Conversa criada com sucesso!',
       data: newConversation[0]
     });
 
   } catch (error) {
-    console.error('❌ Erro ao criar conversa:', error);
+    console.error(' Erro ao criar conversa:', error);
     res.status(500).json({ 
       message: 'Erro ao criar conversa',
       error: error.message 
@@ -1012,12 +1301,12 @@ router.get('/ratings/pending', async (req, res) => {
     }
 
     const pendingServices = await db.query(`
-      SELECT 
+      SELECT
         ss.scheduled_service_id AS id,
         sc.name,
         DATE_FORMAT(ss.scheduled_date, '%d/%m/%Y') AS date,
-        CONCAT('Equipe ', 
-          CASE ss.status
+        CONCAT('Equipe ',
+          CASE ss.status_key
             WHEN 'completed' THEN 'Alpha'
             ELSE 'Beta'
           END
@@ -1028,12 +1317,12 @@ router.get('/ratings/pending', async (req, res) => {
         ) AS duration,
         'pending' AS status
       FROM scheduled_services ss
-      LEFT JOIN service_catalog sc 
+      LEFT JOIN service_catalog sc
         ON ss.service_catalog_id = sc.service_catalog_id
-      LEFT JOIN ratings r 
+      LEFT JOIN ratings r
         ON ss.scheduled_service_id = r.scheduled_service_id
-      WHERE ss.client_id = :clientId
-        AND ss.status = 'completed'
+      WHERE ss.company_id = :clientId
+        AND ss.status_key = 'completed'
         AND r.rating_id IS NULL
       ORDER BY ss.scheduled_date DESC
       LIMIT 20
@@ -1046,7 +1335,7 @@ router.get('/ratings/pending', async (req, res) => {
     res.json(pendingServices);
 
   } catch (error) {
-    console.error('❌ Erro:', error);
+    console.error(' Erro:', error);
     res.status(500).json({ 
       message: 'Erro ao buscar serviços pendentes',
       error: error.message 

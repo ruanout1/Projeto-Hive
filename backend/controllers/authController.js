@@ -1,5 +1,4 @@
-const User = require('../models/User');
-const Client = require('../models/Client');
+const { User, ClientUser } = require('../database/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -43,20 +42,23 @@ exports.login = async (req, res) => {
       return res.status(403).json({ message: "Esta conta está desativada." });
     }
 
-    // 4. Buscar client_id se o usuário for cliente
+    // 4. Buscar company_id se o usuário for cliente
+    // IMPORTANTE: convenção adotada no projeto:
+    // - client_id no token/API = company_id no banco de dados
+    // - Isso mantém compatibilidade com frontend e simplifica as rotas
     let client_id = null;
 
-    if (user.user_type === "client") {
-      const clientRecord = await Client.findOne({
+    if (user.role_key === "client") {
+      const clientRecord = await ClientUser.findOne({
         where: { user_id: user.user_id }
       });
-      client_id = clientRecord ? clientRecord.client_id : null;
+      client_id = clientRecord ? clientRecord.company_id : null;
     }
 
     // 5. Gerar token JWT
     const token = generateToken({
       id: user.user_id,
-      user_type: user.user_type,
+      role_key: user.role_key,
       client_id: client_id
     });
 
@@ -68,7 +70,7 @@ exports.login = async (req, res) => {
         client_id: client_id,
         name: user.full_name,
         email: user.email,
-        type: user.user_type,
+        type: user.role_key, // Mantém 'type' no response para compatibilidade com frontend
         avatar_url: user.avatar_url || null,
       }
     });
