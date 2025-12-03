@@ -222,10 +222,19 @@ router.get('/requests', async (req, res) => {
         sc.name AS service_type,
         sc.price AS service_price,
         sc.description AS service_description,
-        -- Endereço/Unidade (filial)
+        -- Endereço/Unidade (filial) - com fallback para evitar NULL
         cb.branch_id AS address_id,
-        cb.nickname AS unit_name,
-        CONCAT(cb.street, ', ', cb.number) AS full_address,
+        COALESCE(cb.nickname, cb.name, 'Unidade não informada') AS unit_name,
+        COALESCE(
+          TRIM(CONCAT_WS(', ',
+            NULLIF(cb.street, ''),
+            NULLIF(cb.number, ''),
+            NULLIF(cb.neighborhood, ''),
+            NULLIF(cb.city, ''),
+            NULLIF(cb.state, '')
+          )),
+          'Endereço não informado'
+        ) AS full_address,
         cb.complement,
         cb.neighborhood,
         cb.city,

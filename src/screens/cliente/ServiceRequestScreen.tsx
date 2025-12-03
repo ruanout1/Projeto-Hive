@@ -70,6 +70,62 @@ interface Branch {
   area?: string;
 }
 
+// ✅ Função auxiliar para normalizar dados do backend (extraída para fora do componente)
+const normalizeRequest = (r: any): ServiceRequest => {
+  // Mapear status_key do backend para valores da UI
+  const statusMap: Record<string, string> = {
+    'pending': 'pendente',
+    'in_progress': 'em-analise',
+    'scheduled': 'agendado',
+    'completed': 'aprovado',
+    'cancelled': 'rejeitado',
+    'rescheduled': 'agendado'
+  };
+
+  // Mapear priority_key do backend para valores da UI
+  const priorityMap: Record<string, string> = {
+    'urgent': 'urgente',
+    'high': 'urgente',
+    'medium': 'rotina',
+    'low': 'rotina'
+  };
+
+  // Montar location com fallback hierárquico
+  const location =
+    r.unit_name ||
+    r.full_address ||
+    [r.city, r.state].filter(Boolean).join(' / ') ||
+    'Unidade não informada';
+
+  // Normalizar data (pode vir em ISO 2024-12-03 ou dd/mm/yyyy)
+  const normalizeDate = (dateStr: string | undefined): string => {
+    if (!dateStr) return '';
+
+    // Se já está em formato dd/mm/yyyy, retorna direto
+    if (dateStr.includes('/')) return dateStr;
+
+    // Se está em ISO (yyyy-mm-dd), converte para dd/mm/yyyy
+    try {
+      const [year, month, day] = dateStr.split('T')[0].split('-');
+      return `${day}/${month}/${year}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  return {
+    service_request_id: String(r.service_request_id ?? ''),
+    service: r.service_type || r.title || r.service || 'Serviço',
+    description: r.description || '',
+    date: normalizeDate(r.desired_date || r.date),
+    requestedAt: normalizeDate(r.created_at || r.requestedAt),
+    status: statusMap[r.status] || statusMap[r.status_key] || 'pendente',
+    priority: priorityMap[r.priority] || priorityMap[r.priority_key] || 'rotina',
+    location,
+    area: r.area_name || r.area || '',
+  };
+};
+
 export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequestScreenProps) {
   // Estados do formulário
   const [selectedService, setSelectedService] = useState('');
@@ -91,11 +147,8 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingConfirmations, setPendingConfirmations] = useState<PendingConfirmation[]>([]);
-
-  
-
   // ✅ CORRIGIDO: useEffect com URL correta
-  useEffect(() => {
+useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -107,7 +160,12 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
           api.get('/client-portal/branches')
         ]);
 
-        setAllRequests(Array.isArray(requestsRes.data) ? requestsRes.data : []);
+        // Normalizar requests antes de salvar no estado
+        const normalizedRequests = Array.isArray(requestsRes.data)
+          ? requestsRes.data.map(normalizeRequest)
+          : [];
+
+        setAllRequests(normalizedRequests);
         setServiceOptions(Array.isArray(servicesRes.data) ? servicesRes.data : []);
         setBranches(Array.isArray(branchesRes.data) ? branchesRes.data : []);
 
@@ -213,7 +271,8 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
 
     try {
       const response = await api.post('/client-portal/requests', payload);
-      setAllRequests(prev => [response.data, ...prev]);
+      const normalized = normalizeRequest(response.data);
+      setAllRequests(prev => [normalized, ...prev]);
 
       toast.success('Solicitação enviada com sucesso!', {
         description: priority === 'urgente'
@@ -781,10 +840,22 @@ export default function ServiceRequestScreen({ onBack, initialTab }: ServiceRequ
                           <span className="text-gray-600">ID: {request.service_request_id || request.id}</span>
                           {getPriorityBadge(request.priority)}
                         </div>
-                        
+
                         <div className="text-xs text-gray-600">
                           <p>Data solicitada: {request.date}</p>
                           <p>Solicitado em: {request.requestedAt}</p>
+                          {request.location && (
+                            <div className="mt-2 flex items-center gap-2 text-xs text-gray-600">
+                              <MapPin className="h-4 w-4" />
+                              <span>{request.location}</span>
+                            </div>
+                          )}
+
+                          {request.area && (
+                            <div className="mt-1 text-xs text-gray-500">
+                              Área: {request.area}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
