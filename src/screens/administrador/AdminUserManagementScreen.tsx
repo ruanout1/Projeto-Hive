@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, Plus, Edit, Power, Search, Filter, Mail, Phone, Calendar, Check, X, Trash2, UserCheck } from 'lucide-react';
 import ScreenHeader from '../public/ScreenHeader';
 import { Button } from '../../components/ui/button';
@@ -13,128 +13,49 @@ import { HighlightText } from '../../components/ui/search-highlight';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../components/ui/alert-dialog';
 import { toast } from 'sonner';
 
+// ==========================================
+// CONFIGURAÇÃO DA API
+// ==========================================
+const API_URL = 'http://localhost:3000/api';
+
+// Função para obter o token de autenticação
+const getAuthToken = (): string | null => {
+  return localStorage.getItem('authToken');
+};
+
+// Função helper para criar headers com autenticação
+const getAuthHeaders = () => {
+  const token = getAuthToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+};
+
 interface User {
   id: string;
   name: string;
   email: string;
   phone: string;
   role: 'gestor' | 'colaborador';
-  position?: string; // Cargo obrigatório para colaboradores
+  position?: string;
   team?: string;
-  areas?: ('norte' | 'sul' | 'leste' | 'oeste' | 'centro')[]; // Áreas de responsabilidade (apenas para gestores)
+  areas?: ('norte' | 'sul' | 'leste' | 'oeste' | 'centro')[];
   status: 'active' | 'inactive';
   createdAt: string;
   lastAccess?: string;
 }
 
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'Ana Paula Rodrigues',
-    email: 'ana.rodrigues@hive.com',
-    phone: '(11) 98765-4321',
-    role: 'gestor',
-    team: 'Equipe Alpha',
-    areas: ['norte', 'centro'],
-    status: 'active',
-    createdAt: '15/01/2025',
-    lastAccess: 'Hoje às 14:30'
-  },
-  {
-    id: '2',
-    name: 'Carlos Mendes',
-    email: 'carlos.mendes@hive.com',
-    phone: '(11) 97654-3210',
-    role: 'colaborador',
-    position: 'Faxineiro(a)',
-    team: 'Equipe Alpha',
-    status: 'active',
-    createdAt: '20/01/2025',
-    lastAccess: 'Hoje às 15:45'
-  },
-  {
-    id: '3',
-    name: 'Fernanda Lima',
-    email: 'fernanda.lima@hive.com',
-    phone: '(11) 96543-2109',
-    role: 'gestor',
-    team: 'Equipe Beta',
-    areas: ['sul', 'oeste'],
-    status: 'active',
-    createdAt: '10/01/2025',
-    lastAccess: 'Ontem às 18:20'
-  },
-  {
-    id: '4',
-    name: 'Roberto Silva',
-    email: 'roberto.silva@hive.com',
-    phone: '(11) 95432-1098',
-    role: 'colaborador',
-    position: 'Porteiro',
-    team: 'Equipe Beta',
-    status: 'active',
-    createdAt: '25/01/2025',
-    lastAccess: 'Hoje às 09:15'
-  },
-  {
-    id: '5',
-    name: 'Juliana Santos',
-    email: 'juliana.santos@hive.com',
-    phone: '(11) 94321-0987',
-    role: 'colaborador',
-    position: 'Recepcionista',
-    team: 'Equipe Gamma',
-    status: 'inactive',
-    createdAt: '05/01/2025',
-    lastAccess: '15/09/2025'
-  },
-  {
-    id: '6',
-    name: 'Pedro Costa',
-    email: 'pedro.costa@hive.com',
-    phone: '(11) 93210-9876',
-    role: 'gestor',
-    team: 'Equipe Gamma',
-    areas: ['leste'],
-    status: 'active',
-    createdAt: '08/01/2025',
-    lastAccess: 'Hoje às 11:00'
-  },
-  {
-    id: '7',
-    name: 'Marina Oliveira',
-    email: 'marina.oliveira@hive.com',
-    phone: '(11) 92109-8765',
-    role: 'colaborador',
-    position: 'Serviços Gerais',
-    team: 'Equipe Alpha',
-    status: 'active',
-    createdAt: '18/01/2025',
-    lastAccess: 'Hoje às 16:30'
-  },
-  {
-    id: '8',
-    name: 'Lucas Ferreira',
-    email: 'lucas.ferreira@hive.com',
-    phone: '(11) 91098-7654',
-    role: 'colaborador',
-    position: 'Zelador',
-    team: 'Equipe Beta',
-    status: 'inactive',
-    createdAt: '12/01/2025',
-    lastAccess: '20/09/2025'
-  }
-];
-
 const teams = ['Equipe Alpha', 'Equipe Beta', 'Equipe Gamma', 'Equipe Delta'];
 const positions = ['Faxineiro(a)', 'Serviços Gerais', 'Porteiro', 'Recepcionista', 'Zelador', 'Segurança Armada', 'Vigia'];
 
-interface UserManagementScreenProps {
+interface AdminUserManagementScreenProps {
   onBack?: () => void;
 }
 
-export default function UserManagementScreen({ onBack }: UserManagementScreenProps) {
-  const [users, setUsers] = useState<User[]>(mockUsers);
+export default function AdminUserManagementScreen({ onBack }: AdminUserManagementScreenProps) {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('todos');
@@ -142,7 +63,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null);
   
-  // Form states
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -155,6 +75,196 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
   });
   
   const [originalFormData, setOriginalFormData] = useState(formData);
+
+  // ==========================================
+  // FUNÇÕES DA API
+  // ==========================================
+
+  // Buscar usuários do backend
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}/users`, {
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+      
+      if (response.status === 401) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        return;
+      }
+      
+      if (data.success) {
+        setUsers(data.data);
+      } else {
+        toast.error('Erro ao carregar usuários');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar usuários:', error);
+      toast.error('Erro ao conectar com o servidor');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carregar usuários ao montar o componente
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // ==========================================
+  // HANDLERS
+  // ==========================================
+
+  const handleSaveUser = async () => {
+    // Validações
+    if (!formData.name || !formData.email || !formData.phone) {
+      toast.error('Preencha todos os campos obrigatórios!');
+      return;
+    }
+
+    if (formData.role === 'colaborador' && !formData.position) {
+      toast.error('Selecione um cargo para o colaborador!');
+      return;
+    }
+
+    if (formData.role === 'gestor' && formData.areas.length === 0) {
+      toast.error('Selecione pelo menos uma área de responsabilidade para o gestor!');
+      return;
+    }
+
+    const userData = {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      role: formData.role,
+      position: formData.position || undefined,
+      team: formData.team || undefined,
+      areas: formData.role === 'gestor' ? formData.areas : undefined,
+      status: formData.status
+    };
+    
+    try {
+      if (editingUser) {
+        // EDITAR USUÁRIO
+        const response = await fetch(`${API_URL}/users/${editingUser.id}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(userData),
+        });
+        
+        const data = await response.json();
+        
+        if (response.status === 401) {
+          toast.error('Sessão expirada. Faça login novamente.');
+          return;
+        }
+        
+        if (data.success) {
+          await fetchUsers();
+          toast.success('Usuário atualizado com sucesso!', {
+            description: `As informações de "${formData.name}" foram atualizadas.`
+          });
+        } else {
+          toast.error(data.message || 'Erro ao atualizar usuário');
+        }
+      } else {
+        // CRIAR NOVO USUÁRIO
+        const response = await fetch(`${API_URL}/users`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(userData),
+        });
+        
+        const data = await response.json();
+        
+        if (response.status === 401) {
+          toast.error('Sessão expirada. Faça login novamente.');
+          return;
+        }
+        
+        if (data.success) {
+          await fetchUsers();
+          toast.success('Usuário criado com sucesso!', {
+            description: `O usuário "${formData.name}" foi adicionado. Senha padrão: ${data.data.defaultPassword}`
+          });
+        } else {
+          toast.error(data.message || 'Erro ao criar usuário');
+        }
+      }
+      
+      handleCloseDialog();
+      
+    } catch (error) {
+      console.error('Erro ao salvar usuário:', error);
+      toast.error('Erro ao conectar com o servidor');
+    }
+  };
+
+  const handleToggleStatus = async (userId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/users/${userId}/toggle-status`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+      });
+      
+      const data = await response.json();
+      
+      if (response.status === 401) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        return;
+      }
+      
+      if (data.success) {
+        await fetchUsers();
+        
+        const user = users.find(u => u.id === userId);
+        const newStatus = data.data.status === 'active' ? 'ativado' : 'desativado';
+        
+        toast.success(`Usuário ${newStatus} com sucesso!`, {
+          description: `O usuário "${user?.name}" foi ${newStatus}.`
+        });
+      } else {
+        toast.error(data.message || 'Erro ao alterar status');
+      }
+    } catch (error) {
+      console.error('Erro ao alterar status:', error);
+      toast.error('Erro ao conectar com o servidor');
+    }
+  };
+
+  const confirmDeleteUser = async () => {
+    if (deleteConfirmUser) {
+      try {
+        const response = await fetch(`${API_URL}/users/${deleteConfirmUser.id}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        });
+        
+        const data = await response.json();
+        
+        if (response.status === 401) {
+          toast.error('Sessão expirada. Faça login novamente.');
+          setDeleteConfirmUser(null);
+          return;
+        }
+        
+        if (data.success) {
+          await fetchUsers();
+          toast.success('Usuário excluído com sucesso!', {
+            description: `O usuário "${deleteConfirmUser.name}" foi removido do sistema.`
+          });
+        } else {
+          toast.error(data.message || 'Erro ao excluir usuário');
+        }
+        
+        setDeleteConfirmUser(null);
+      } catch (error) {
+        console.error('Erro ao deletar usuário:', error);
+        toast.error('Erro ao conectar com o servidor');
+      }
+    }
+  };
 
   const activeCount = users.filter(u => u.status === 'active').length;
   const inactiveCount = users.filter(u => u.status === 'inactive').length;
@@ -210,93 +320,29 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
   };
 
   const hasUserChanges = () => {
-    if (!editingUser) return true; // Se está criando, sempre habilita
+    if (!editingUser) return true;
     return JSON.stringify(formData) !== JSON.stringify(originalFormData);
-  };
-
-  const handleSaveUser = () => {
-    // Validações
-    if (!formData.name || !formData.email || !formData.phone) {
-      toast.error('Preencha todos os campos obrigatórios!');
-      return;
-    }
-
-    if (formData.role === 'colaborador' && !formData.position) {
-      toast.error('Selecione um cargo para o colaborador!');
-      return;
-    }
-
-    if (formData.role === 'gestor' && formData.areas.length === 0) {
-      toast.error('Selecione pelo menos uma área de responsabilidade para o gestor!');
-      return;
-    }
-
-    const userData = {
-      ...formData,
-      position: formData.position || undefined,
-      team: formData.team || undefined,
-      areas: formData.role === 'gestor' ? formData.areas : undefined
-    };
-    
-    if (editingUser) {
-      // Editar usuário existente
-      setUsers(users.map(u => 
-        u.id === editingUser.id 
-          ? { ...u, ...userData }
-          : u
-      ));
-      toast.success('Usuário atualizado com sucesso!', {
-        description: `As informações de "${formData.name}" foram atualizadas.`
-      });
-    } else {
-      // Criar novo usuário
-      const newUser: User = {
-        id: (users.length + 1).toString(),
-        ...userData,
-        createdAt: new Date().toLocaleDateString('pt-BR'),
-        lastAccess: 'Nunca acessou'
-      };
-      setUsers([...users, newUser]);
-      toast.success('Usuário criado com sucesso!', {
-        description: `O usuário "${formData.name}" foi adicionado ao sistema.`
-      });
-    }
-    handleCloseDialog();
-  };
-
-  const handleToggleStatus = (userId: string) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
-    
-    const newStatus = user.status === 'active' ? 'inactive' : 'active';
-    setUsers(users.map(u => 
-      u.id === userId 
-        ? { ...u, status: newStatus }
-        : u
-    ));
-    toast.success(
-      `Usuário ${newStatus === 'active' ? 'ativado' : 'desativado'} com sucesso!`,
-      { description: `O usuário "${user.name}" foi ${newStatus === 'active' ? 'ativado' : 'desativado'}.` }
-    );
   };
 
   const handleDeleteUser = (user: User) => {
     setDeleteConfirmUser(user);
   };
 
-  const confirmDeleteUser = () => {
-    if (deleteConfirmUser) {
-      setUsers(users.filter(u => u.id !== deleteConfirmUser.id));
-      toast.success('Usuário excluído com sucesso!', {
-        description: `O usuário "${deleteConfirmUser.name}" foi removido do sistema.`
-      });
-      setDeleteConfirmUser(null);
-    }
-  };
-
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
+
+  // TELA DE LOADING
+  if (loading) {
+    return (
+      <div className="h-full bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Users className="h-12 w-12 mx-auto mb-4 animate-pulse" style={{ color: '#6400A4' }} />
+          <p className="text-gray-600">Carregando usuários...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full bg-gray-50">
@@ -371,7 +417,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -382,7 +427,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
               />
             </div>
 
-            {/* Role Filter */}
             <Tabs value={filterRole} onValueChange={setFilterRole} className="w-auto">
               <TabsList>
                 <TabsTrigger value="todos">Todos</TabsTrigger>
@@ -391,7 +435,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
               </TabsList>
             </Tabs>
 
-            {/* Status Filter */}
             <Tabs value={filterStatus} onValueChange={setFilterStatus} className="w-auto">
               <TabsList>
                 <TabsTrigger value="todos">Todos Status</TabsTrigger>
@@ -418,7 +461,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
                 className="bg-white rounded-2xl p-5 hover:shadow-md transition-all border-2 border-transparent hover:border-gray-100"
               >
                 <div className="flex items-center justify-between">
-                  {/* User Info */}
                   <div className="flex items-center space-x-4 flex-1">
                     <Avatar className="h-12 w-12" style={{ backgroundColor: user.status === 'active' ? '#6400A4' : '#9CA3AF' }}>
                       <AvatarFallback style={{ backgroundColor: user.status === 'active' ? '#6400A4' : '#9CA3AF', color: 'white' }}>
@@ -485,7 +527,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex items-center space-x-2">
                     <Button
                       variant="outline"
@@ -527,7 +568,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
           )}
         </div>
 
-        {/* Summary */}
         {filteredUsers.length > 0 && (
           <div className="mt-6 p-4 bg-white rounded-xl text-center">
             <p className="text-sm text-gray-600">
@@ -538,7 +578,7 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
         )}
       </div>
 
-      {/* Create/Edit User Dialog */}
+      {/* Dialog de Criação/Edição */}
       <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -551,7 +591,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Name */}
             <div>
               <Label htmlFor="name" style={{ color: '#6400A4' }}>Nome Completo *</Label>
               <Input
@@ -563,7 +602,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
               />
             </div>
 
-            {/* Email */}
             <div>
               <Label htmlFor="email" style={{ color: '#6400A4' }}>Email *</Label>
               <Input
@@ -576,7 +614,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
               />
             </div>
 
-            {/* Phone */}
             <div>
               <Label htmlFor="phone" style={{ color: '#6400A4' }}>Telefone *</Label>
               <Input
@@ -588,7 +625,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
               />
             </div>
 
-            {/* Role and Team */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="role" style={{ color: '#6400A4' }}>Tipo de Usuário *</Label>
@@ -619,7 +655,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
               </div>
             </div>
 
-            {/* Áreas de responsabilidade (apenas para gestores) */}
             {formData.role === 'gestor' && (
               <div>
                 <Label style={{ color: '#6400A4' }}>Áreas de Responsabilidade *</Label>
@@ -655,7 +690,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
               </div>
             )}
 
-            {/* Position (obrigatório apenas para colaboradores) */}
             {formData.role === 'colaborador' && (
               <div>
                 <Label htmlFor="position" style={{ color: '#35BAE6' }}>Cargo *</Label>
@@ -676,7 +710,6 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
               </div>
             )}
 
-            {/* Status (only for editing) */}
             {editingUser && (
               <div>
                 <Label htmlFor="status" style={{ color: '#6400A4' }}>Status</Label>
@@ -710,6 +743,7 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
                 !formData.phone || 
                 !formData.role || 
                 (formData.role === 'colaborador' && !formData.position) ||
+                (formData.role === 'gestor' && formData.areas.length === 0) ||
                 !hasUserChanges()
               }
             >
@@ -720,7 +754,7 @@ export default function UserManagementScreen({ onBack }: UserManagementScreenPro
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Dialog de Confirmação de Exclusão */}
       <AlertDialog open={!!deleteConfirmUser} onOpenChange={() => setDeleteConfirmUser(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

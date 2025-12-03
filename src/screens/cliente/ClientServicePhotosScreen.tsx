@@ -3,19 +3,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../../components/ui/dialog';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import api from '../../lib/api'; // ✅ ADICIONADO para integração futura
+import { toast } from 'sonner'; // ✅ ADICIONADO
 
 interface ClientServicePhotosScreenProps {
   onBack: () => void;
   serviceId?: string;
 }
 
+// ✅ NOTA: Este componente ainda NÃO tem backend implementado
+// As fotos são MOCK (Unsplash URLs)
+// Quando o backend estiver pronto, usar: api.get('/client-portal/services/${serviceId}/photos')
+
 export default function ClientServicePhotosScreen({ onBack, serviceId = "OS-2024-089" }: ClientServicePhotosScreenProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'before' | 'after' | 'progress'>('all');
+  const [loading, setLoading] = useState(false); // ✅ ADICIONADO para futuro
+  const [photos, setPhotos] = useState<any[]>([]); // ✅ ADICIONADO para futuro
 
-  // Mock data - em produção viria da API
-  const serviceInfo = {
+  // ✅ DADOS MOCK (FALLBACK) - Usado enquanto backend não existe
+  const MOCK_SERVICE_INFO = {
     id: serviceId,
     title: "Limpeza Geral - Escritório Corporate",
     date: "23/09/2024",
@@ -25,7 +33,7 @@ export default function ClientServicePhotosScreen({ onBack, serviceId = "OS-2024
     status: "Concluído"
   };
 
-  const photos = [
+  const MOCK_PHOTOS = [
     {
       id: 1,
       url: "https://images.unsplash.com/photo-1591609168360-45982552b94a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvZmZpY2UlMjBjbGVhbmluZyUyMGJlZm9yZXxlbnwxfHx8fDE3NjA2NTY2MDF8MA&ixlib=rb-4.1.0&q=80&w=1080",
@@ -92,6 +100,51 @@ export default function ClientServicePhotosScreen({ onBack, serviceId = "OS-2024
     }
   ];
 
+  const [serviceInfo, setServiceInfo] = useState(MOCK_SERVICE_INFO);
+
+  // ✅ PREPARADO PARA FUTURO: useEffect para buscar fotos do backend
+  useEffect(() => {
+    const fetchPhotos = async () => {
+      /* 
+      ⚠️ BACKEND NÃO IMPLEMENTADO AINDA
+      
+      Quando implementar, descomentar este código:
+      
+      try {
+        setLoading(true);
+        
+        // Buscar informações do serviço
+        const serviceResponse = await api.get(`/client-portal/services/${serviceId}`);
+        setServiceInfo(serviceResponse.data);
+        
+        // Buscar fotos do serviço
+        const photosResponse = await api.get(`/client-portal/services/${serviceId}/photos`);
+        
+        if (Array.isArray(photosResponse.data) && photosResponse.data.length > 0) {
+          setPhotos(photosResponse.data);
+          toast.success('Fotos carregadas do backend!');
+        } else {
+          setPhotos(MOCK_PHOTOS);
+          toast.info('Usando fotos de exemplo');
+        }
+        
+      } catch (error) {
+        console.error('Erro ao buscar fotos:', error);
+        toast.error('Erro ao carregar fotos');
+        setPhotos(MOCK_PHOTOS);
+      } finally {
+        setLoading(false);
+      }
+      */
+      
+      // Por enquanto, usar MOCK
+      setPhotos(MOCK_PHOTOS);
+      setServiceInfo(MOCK_SERVICE_INFO);
+    };
+
+    fetchPhotos();
+  }, [serviceId]);
+
   const filteredPhotos = selectedCategory === 'all' 
     ? photos 
     : photos.filter(photo => photo.category === selectedCategory);
@@ -116,6 +169,47 @@ export default function ClientServicePhotosScreen({ onBack, serviceId = "OS-2024
     }
   };
 
+  // ✅ PREPARADO PARA FUTURO: Download de fotos do backend
+  const handleDownloadPhoto = async (photo: any) => {
+    /* 
+    ⚠️ BACKEND NÃO IMPLEMENTADO AINDA
+    
+    Quando implementar, descomentar este código:
+    
+    try {
+      const response = await api.get(`/client-portal/services/${serviceId}/photos/${photo.id}/download`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${photo.description}.jpg`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      toast.success('Download iniciado!');
+    } catch (error) {
+      console.error('Erro no download:', error);
+      toast.error('Erro ao baixar foto');
+    }
+    */
+    
+    // Por enquanto, abrir em nova aba
+    window.open(photo.url, '_blank');
+    toast.info('Abrindo foto em nova aba (download do backend não implementado ainda)');
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 text-center text-gray-500">
+        <Camera className="h-8 w-8 mx-auto mb-2 animate-spin text-purple-600" />
+        <p className="text-gray-600">Carregando fotos...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -137,6 +231,12 @@ export default function ClientServicePhotosScreen({ onBack, serviceId = "OS-2024
             <p className="text-sm text-gray-600">{serviceInfo.title}</p>
           </div>
         </div>
+        <Badge 
+          className="border-none"
+          style={{ backgroundColor: 'rgba(53, 186, 230, 0.1)', color: '#35BAE6' }}
+        >
+          {serviceInfo.status}
+        </Badge>
       </div>
 
       {/* Service Info Card */}
@@ -307,8 +407,8 @@ export default function ClientServicePhotosScreen({ onBack, serviceId = "OS-2024
                   className="absolute bottom-4 right-4 gap-2"
                   style={{ backgroundColor: '#6400A4' }}
                   onClick={() => {
-                    // Implementar download
-                    console.log('Download foto:', selectedPhoto);
+                    const photo = photos.find(p => p.url === selectedPhoto);
+                    if (photo) handleDownloadPhoto(photo);
                   }}
                 >
                   <Download className="h-4 w-4" />
@@ -319,6 +419,15 @@ export default function ClientServicePhotosScreen({ onBack, serviceId = "OS-2024
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ⚠️ AVISO para Desenvolvedores */}
+      <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
+        <p className="text-sm text-yellow-800">
+          <strong>⚠️ NOTA TÉCNICA:</strong> Este componente ainda não está integrado com o backend. 
+          As fotos mostradas são de exemplo (Unsplash). Quando o backend for implementado, 
+          descomentar o código no useEffect para usar <code>api.get('/client-portal/services/{'{serviceId}'}/photos')</code>.
+        </p>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const administratorController = require('../controllers/administratorController');
-const { Servico } = require('../models/Servico');
+// const { Servico } = require('../database/db'); // Remover se não for usado
 
 // =====================
 // ROTAS DO CATÁLOGO DE SERVIÇOS
