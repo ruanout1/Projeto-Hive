@@ -1,10 +1,21 @@
 const { Op, Sequelize } = require('sequelize');
-const Client = require('../models/Client');
-const User = require('../models/User');
-const ServiceRequest = require('../models/ServiceRequest');
-const ClientAddress = require('../models/ClientAddress');
-const Area = require('../models/Area');
-const { handleDatabaseError } = require('../utils/errorHandling');
+const {
+  Company,
+  User,
+  ServiceRequest,
+  ClientBranch,
+  Area,
+  ClientUser
+} = require('../database/db');
+
+// Helper para erros de banco (se não existir, vamos criar inline)
+const handleDatabaseError = (res, error, action) => {
+  console.error(`Erro ao ${action}:`, error);
+  return res.status(500).json({
+    message: `Erro ao ${action}`,
+    error: error.message
+  });
+};
 
 // =====================================
 // FUNÇÕES DE CLIENTES (PARA GESTOR E ADMIN)
@@ -17,25 +28,25 @@ exports.getClientsStats = async (req, res) => {
     const clientWhere = {};
     const revenueWhere = { status: 'completed' };
 
-    // Se for gestor, filtra por clientes da sua área (via ClientAddress)
-    if (loggedInUser.user_type === 'manager') {
+    // Se for gestor, filtra por clientes da sua área (via ClientBranch)
+    if (loggedInUser.role_key === 'manager') {
       const managerAreaId = req.user.area_id; // Vem do middleware 'protect'
-      clientWhere.area_id = managerAreaId; // Assumindo que a área está em ClientAddress
-      revenueWhere['$client.addresses.area_id$'] = managerAreaId;
+      clientWhere.area_id = managerAreaId; // Assumindo que a área está em ClientBranch
+      revenueWhere['$company.client_branches.area_id$'] = managerAreaId;
     }
 
-    const counts = await Client.findAll({
+    const counts = await Company.findAll({
       attributes: [
         'is_active',
-        [Sequelize.fn('COUNT', Sequelize.col('client.client_id')), 'count'],
+        [Sequelize.fn('COUNT', Sequelize.col('companies.company_id')), 'count'],
       ],
       include: [{
-        model: ClientAddress,
-        as: 'addresses',
+        model: ClientBranch,
+        as: 'client_branches',
         attributes: [],
         where: clientWhere, // Aplica o filtro de área aqui
       }],
-      group: ['client.is_active'],
+      group: ['companies.is_active'],
     });
 
     const stats = counts.reduce((acc, item) => {
@@ -48,12 +59,12 @@ exports.getClientsStats = async (req, res) => {
       where: revenueWhere,
       include: [
         {
-          model: Client,
-          as: 'client',
+          model: Company,
+          as: 'company',
           attributes: [],
           include: [{
-            model: ClientAddress,
-            as: 'addresses',
+            model: ClientBranch,
+            as: 'client_branches',
             attributes: [],
           }]
         },
@@ -82,8 +93,8 @@ exports.getClients = async (req, res) => {
     const whereCondition = {};
     const includeWhere = {};
 
-    // Se for gestor, filtra por área via ClientAddress
-    if (loggedInUser.user_type === 'manager') {
+    // Se for gestor, filtra por área via ClientBranch
+    if (loggedInUser.role_key === 'manager') {
       includeWhere.area_id = loggedInUser.area_id;
     }
 
@@ -95,48 +106,53 @@ exports.getClients = async (req, res) => {
     // Filtro por busca
     if (search) {
       whereCondition[Op.or] = [
-        { main_company_name: { [Op.like]: `%${search}%` } },
-        { main_cnpj: { [Op.like]: `%${search}%` } },
-        { '$user.full_name$': { [Op.like]: `%${search}%` } },
-        { '$user.email$': { [Op.like]: `%${search}%` } }
+        { name: { [Op.like]: `%${search}%` } },
+        { cnpj: { [Op.like]: `%${search}%` } },
+        { '$client_users.user.full_name$': { [Op.like]: `%${search}%` } },
+        { '$client_users.user.email$': { [Op.like]: `%${search}%` } }
       ];
     }
 
     const offset = (page - 1) * limit;
 
-    const { count, rows: clients } = await Client.findAndCountAll({
+    const { count, rows: clients } = await Company.findAndCountAll({
       where: whereCondition,
       include: [
         {
-          model: User,
-          as: 'user',
-          attributes: ['full_name', 'email', 'phone']
+          model: ClientUser,
+          as: 'client_users',
+          include: [{
+            model: User,
+            as: 'user',
+            attributes: ['full_name', 'email', 'phone']
+          }]
         },
         {
-          model: ClientAddress,
-          as: 'addresses',
+          model: ClientBranch,
+          as: 'client_branches',
           where: includeWhere, // Filtra pela área do gestor
-          required: (loggedInUser.user_type === 'manager'), // Garante que só venham clientes da área
+          required: (loggedInUser.role_key === 'manager'), // Garante que só venham clientes da área
           include: [{ model: Area, as: 'area', attributes: ['name'] }]
         }
         // TODO: Adicionar include para ServiceRequest para estatísticas
       ],
-      order: [['main_company_name', 'ASC']],
+      order: [['name', 'ASC']],
       limit: parseInt(limit),
       offset: offset,
-      distinct: true, 
+      distinct: true,
       subQuery: false // Necessário para 'search' em 'include' funcionar
     });
 
     const clientsWithStats = clients.map((client) => {
+      const primaryUser = client.client_users?.find(cu => cu.is_primary_contact) || client.client_users?.[0];
       // TODO: Lógica de stats (activeServices, etc.) precisa de include de ServiceRequest
       return {
-        id: client.client_id,
-        name: client.main_company_name,
-        cnpj: client.main_cnpj,
-        email: client.user?.email,
-        phone: client.user?.phone,
-        area: client.addresses?.[0]?.area?.name || 'Sem área',
+        id: client.company_id,
+        name: client.name,
+        cnpj: client.cnpj,
+        email: primaryUser?.user?.email,
+        phone: primaryUser?.user?.phone,
+        area: client.client_branches?.[0]?.area?.name || 'Sem área',
         status: client.is_active ? 'active' : 'inactive',
         // ... stats mockados por enquanto
         servicesActive: 0,
@@ -145,7 +161,7 @@ exports.getClients = async (req, res) => {
         rating: 0,
         totalValue: 'R$ 0,00',
         notes: client.notes,
-        createdAt: client.created_at.toLocaleDateString('pt-BR'),
+        createdAt: client.createdAt ? new Date(client.createdAt).toLocaleDateString('pt-BR') : '-',
       };
     });
 
@@ -166,23 +182,31 @@ exports.getClientById = async (req, res) => {
     const { id } = req.params;
     const loggedInUser = req.user;
 
-    const whereCondition = { client_id: id };
+    const whereCondition = { company_id: id };
     const includeWhere = {};
-    
+
     // Se for gestor, só pode ver cliente da sua área
-    if (loggedInUser.user_type === 'manager') {
+    if (loggedInUser.role_key === 'manager') {
       includeWhere.area_id = loggedInUser.area_id;
     }
 
-    const client = await Client.findOne({
+    const client = await Company.findOne({
       where: whereCondition,
       include: [
-        { model: User, as: 'user' },
         {
-          model: ClientAddress,
-          as: 'addresses',
+          model: ClientUser,
+          as: 'client_users',
+          include: [{
+            model: User,
+            as: 'user',
+            attributes: ['full_name', 'email', 'phone']
+          }]
+        },
+        {
+          model: ClientBranch,
+          as: 'client_branches',
           where: includeWhere,
-          required: (loggedInUser.user_type === 'manager'),
+          required: (loggedInUser.role_key === 'manager'),
           include: [{ model: Area, as: 'area' }]
         }
         // TODO: Adicionar include para ServiceRequest
@@ -195,13 +219,20 @@ exports.getClientById = async (req, res) => {
       });
     }
 
-    // ... Lógica de formatação (sem stats por enquanto) ...
+    const primaryUser = client.client_users?.find(cu => cu.is_primary_contact) || client.client_users?.[0];
+
     const formattedClient = {
-      id: client.client_id,
-      name: client.main_company_name,
-      // ... (resto dos campos)
+      id: client.company_id,
+      name: client.name,
+      legal_name: client.legal_name,
+      cnpj: client.cnpj,
+      email: primaryUser?.user?.email,
+      phone: primaryUser?.user?.phone,
+      branches: client.client_branches,
+      notes: client.notes,
+      is_active: client.is_active
     };
-    
+
     res.status(200).json(formattedClient);
   } catch (error) {
     handleDatabaseError(res, error, 'buscar cliente por ID');
@@ -210,13 +241,13 @@ exports.getClientById = async (req, res) => {
 
 // Criar novo cliente
 exports.createClient = async (req, res) => {
-  // TODO: Esta lógica precisa ser revista. O admin/gestor cria o *usuário* // e o *cliente* ao mesmo tempo?
+  // TODO: Esta lógica precisa ser revista. O admin/gestor cria o *usuário* e o *cliente* ao mesmo tempo?
   try {
     const loggedInUser = req.user;
     const { name, cnpj, email} = req.body; // Supondo que o formulário envia tudo
 
     let clientAreaId;
-    if (loggedInUser.user_type === 'manager') {
+    if (loggedInUser.role_key === 'manager') {
       clientAreaId = loggedInUser.area_id; // Gestor SÓ pode criar na sua área
     } else {
       clientAreaId = req.body.area_id; // Admin DEVE especificar a área
@@ -226,7 +257,7 @@ exports.createClient = async (req, res) => {
         });
       }
     }
-    // ... (Lógica de criar User e Client em uma transação) ...
+    // ... (Lógica de criar User, Company e ClientUser em uma transação) ...
     res.status(201).json({ message: 'Cliente criado com sucesso' });
   } catch (error) {
     handleDatabaseError(res, error, 'criar cliente');
@@ -251,41 +282,39 @@ exports.toggleClientStatus = async (req, res) => {
 exports.getManagerClientsList = async (req, res) => {
   try {
     const managerAreaId = req.user.area_id; // Vem do middleware 'protect'
-    
+
     if (!managerAreaId) {
       return res.status(400).json({ message: 'Gestor não tem área associada.' });
     }
 
-    const clients = await Client.findAll({
-  attributes: ['client_id', 'main_company_name'],
-  include: [
-    {
-      model: ClientAddress,
-      as: 'addresses',
-      attributes: [],
-      where: { area_id: managerAreaId },
-      required: true,
+    const clients = await Company.findAll({
+      attributes: ['company_id', 'name'],
       include: [
         {
-          model: Area,
-          as: 'area',
-          attributes: ['name']
+          model: ClientBranch,
+          as: 'client_branches',
+          attributes: [],
+          where: { area_id: managerAreaId },
+          required: true,
+          include: [
+            {
+              model: Area,
+              as: 'area',
+              attributes: ['name']
+            }
+          ]
         }
-      ]
-    }
-  ],
-  where: { is_active: true },
-  order: [['main_company_name', 'ASC']],
-  group: ['Client.client_id']
-});
+      ],
+      where: { is_active: true },
+      order: [['name', 'ASC']],
+      group: ['companies.company_id']
+    });
 
-    
-    // CORREÇÃO: Acessar a área através do endereço
     const formattedClients = clients.map(client => {
-      const areaName = client.addresses?.[0]?.area?.name || `Área ID ${managerAreaId}`;
+      const areaName = client.client_branches?.[0]?.area?.name || `Área ID ${managerAreaId}`;
       return {
-        id: client.client_id,
-        name: client.main_company_name,
+        id: client.company_id,
+        name: client.name,
         area: areaName
       };
     });
@@ -302,20 +331,20 @@ exports.getManagerClientsList = async (req, res) => {
 
 // POST /api/clients/:id/locations
 exports.addClientLocation = async (req, res) => {
-  const { id } = req.params; // client_id
+  const { id } = req.params; // company_id
   const loggedInUser = req.user;
-  const { nickname, street, area_id, number, complement, neighborhood, city, state, zip_code } = req.body; // Pega os dados da nova localização
+  const { nickname, street, area_id, number, complement, neighborhood, city, state, zip_code } = req.body;
 
   try {
-    const findWhere = { client_id: id };
-    if (loggedInUser.user_type === 'manager') {
+    const findWhere = { company_id: id };
+    if (loggedInUser.role_key === 'manager') {
       // Um gestor SÓ pode adicionar localizações a clientes da sua área.
       // Esta é uma checagem de segurança extra.
-      const client = await Client.findOne({ 
+      const client = await Company.findOne({
         where: findWhere,
         include: [{
-          model: ClientAddress,
-          as: 'addresses',
+          model: ClientBranch,
+          as: 'client_branches',
           where: { area_id: loggedInUser.area_id },
           required: true
         }]
@@ -324,17 +353,24 @@ exports.addClientLocation = async (req, res) => {
         return res.status(404).json({ message: 'Cliente não encontrado na sua área.' });
       }
     }
-    
-    // Cria o novo endereço
-    const newAddress = await ClientAddress.create({
-      client_id: id,
+
+    // Cria a nova filial/unidade
+    const newBranch = await ClientBranch.create({
+      company_id: id,
+      name: nickname || street, // name é obrigatório
       nickname: nickname,
       street: street,
+      number: number,
+      complement: complement,
+      neighborhood: neighborhood,
+      city: city,
+      state: state,
+      zip_code: zip_code,
       area_id: area_id || loggedInUser.area_id, // Usa a área do form, ou a área do gestor
-      // ... (outros campos de endereço: number, city, etc.)
+      is_active: true
     });
 
-    res.status(201).json(newAddress);
+    res.status(201).json(newBranch);
   } catch (error) {
     handleDatabaseError(res, error, 'adicionar localização');
   }
@@ -342,34 +378,34 @@ exports.addClientLocation = async (req, res) => {
 
 // PUT /api/clients/:id/locations/:locationId
 exports.updateClientLocation = async (req, res) => {
-  const { id, locationId } = req.params; // client_id, address_id
+  const { id, locationId } = req.params; // company_id, branch_id
   const loggedInUser = req.user;
   const updateData = req.body;
 
   try {
-    // Acha o endereço
-    const address = await ClientAddress.findOne({
+    // Acha a filial/unidade
+    const branch = await ClientBranch.findOne({
       where: {
-        address_id: locationId,
-        client_id: id
+        branch_id: locationId,
+        company_id: id
       }
     });
 
-    if (!address) {
+    if (!branch) {
       return res.status(404).json({ message: 'Localização não encontrada.' });
     }
 
-    // Se for gestor, checa se tem permissão (se o endereço é da sua área)
-    if (loggedInUser.user_type === 'manager') {
-      if (address.area_id !== loggedInUser.area_id) {
+    // Se for gestor, checa se tem permissão (se a filial é da sua área)
+    if (loggedInUser.role_key === 'manager') {
+      if (branch.area_id !== loggedInUser.area_id) {
          return res.status(403).json({ message: 'Você não tem permissão para editar esta localização.' });
       }
       // Garante que o gestor não possa mover a localização para OUTRA área
       updateData.area_id = loggedInUser.area_id;
     }
 
-    await address.update(updateData);
-    res.status(200).json(address);
+    await branch.update(updateData);
+    res.status(200).json(branch);
 
   } catch (error) {
     handleDatabaseError(res, error, 'atualizar localização');
@@ -378,31 +414,31 @@ exports.updateClientLocation = async (req, res) => {
 
 // DELETE /api/clients/:id/locations/:locationId
 exports.removeClientLocation = async (req, res) => {
-  const { id, locationId } = req.params; // client_id, address_id
+  const { id, locationId } = req.params; // company_id, branch_id
   const loggedInUser = req.user;
 
   try {
-    const address = await ClientAddress.findOne({
+    const branch = await ClientBranch.findOne({
       where: {
-        address_id: locationId,
-        client_id: id
+        branch_id: locationId,
+        company_id: id
       }
     });
 
-    if (!address) {
+    if (!branch) {
       return res.status(404).json({ message: 'Localização não encontrada.' });
     }
 
     // Se for gestor, checa se tem permissão
-    if (loggedInUser.user_type === 'manager') {
-      if (address.area_id !== loggedInUser.area_id) {
+    if (loggedInUser.role_key === 'manager') {
+      if (branch.area_id !== loggedInUser.area_id) {
          return res.status(403).json({ message: 'Você não tem permissão para excluir esta localização.' });
       }
     }
 
     // TODO: Checar se a localização está em uso em 'service_requests' antes de deletar
-    
-    await address.destroy();
+
+    await branch.destroy();
     res.status(200).json({ message: 'Localização removida com sucesso.' });
 
   } catch (error) {

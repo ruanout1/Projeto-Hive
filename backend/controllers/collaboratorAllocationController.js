@@ -1,10 +1,5 @@
 const { Op, Sequelize } = require('sequelize');
-const CollaboratorAllocation = require('../models/CollaboratorAllocation');
-const Client = require('../models/Client');
-const User = require('../models/User'); // Para o colaborador
-const Team = require('../models/Team');
-const TeamMember = require('../models/TeamMember');
-const { handleDatabaseError } = require('../utils/errorHandling');
+const { CollaboratorAllocation, Company, User, Team, TeamMember } = require('../database/db');
 
 // =====================================
 // HELPER: Gerar Condição de Permissão

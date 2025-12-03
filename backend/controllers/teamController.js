@@ -1,9 +1,5 @@
 const { Sequelize, Op } = require('sequelize');
-const sequelize = require('../database/connection'); // Para transações
-const Team = require('../models/Team');
-const User = require('../models/User');
-const TeamMember = require('../models/TeamMember');
-const { handleDatabaseError } = require('../utils/errorHandling');
+const { sequelize, Team, User, TeamMember } = require('../database/db');
 
 // ==========================================================
 // FUNÇÕES - GERENCIAMENTO DE EQUIPES (ADMIN E GESTOR)

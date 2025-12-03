@@ -3,27 +3,33 @@ import { Button } from './ui/button';
 
 interface ScreenHeaderProps {
   title: string;
+  subtitle?: string;
   description?: string;
   onBack?: () => void;
 }
 
-export default function ScreenHeader({ title, description, onBack }: ScreenHeaderProps) {
+export default function ScreenHeader({ title, subtitle, description, onBack }: ScreenHeaderProps) {
   return (
     <div className="mb-6">
-      <div className="flex items-center gap-3 mb-2">
-        <Button
-          size="sm"
-          variant="ghost"
+      {onBack && (
+        <button
           onClick={onBack}
-          style={{ color: '#6400A4' }}
-          className="hover:bg-purple-50 -ml-2"
+          className="text-gray-500 hover:text-gray-700 mb-2 flex items-center gap-1"
         >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="hive-screen-title m-0">{title}</h1>
-      </div>
+          ← Voltar
+        </button>
+      )}
+
+      <h1 className="text-2xl font-bold text-[#6400A4]">{title}</h1>
+
+      {subtitle && (
+        <p className="text-gray-600 text-sm mt-1">
+          {subtitle}
+        </p>
+      )}
+
       {description && (
-        <p className="text-black ml-11">
+        <p className="text-gray-500 text-sm mt-1">
           {description}
         </p>
       )}

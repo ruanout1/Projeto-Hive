@@ -1,123 +1,118 @@
-const User = require('../models/User');
+const { User, ClientUser } = require('../database/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto'); // Para o token de "esqueci a senha"
+const crypto = require('crypto');
 
-// Função auxiliar para gerar o token (o "crachá")
-const generateToken = (id, user_type) => {
-  // Puxa o segredo do seu arquivo .env
-  // Se não encontrar, usa um segredo temporário (NÃO FAÇA ISSO EM PRODUÇÃO)
-  const secret = process.env.JWT_SECRET || 'um-salvador-puro-eterno-glorioso-sempre-reinara-&&&@!@!@***§§§';
-  
-  return jwt.sign(
-    { id, user_type }, // O que vai dentro do "crachá"
-    secret,
-    { expiresIn: '1d' } // Validade do "crachá"
-  );
-};
+const JWT_SECRET = process.env.JWT_SECRET || "dev-secret"; // 'um-salvador-puro-eterno-glorioso-sempre-reinara-&&&@!@!@***§§§';//
 
-// ===================================
+
+// =======================================
+// Função para gerar token JWT
+// =======================================
+function generateToken(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+}
+
+// =======================================
 // POST /api/auth/login
-// ===================================
+// =======================================
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // 1. Achar o usuário
     if (!email || !password) {
-      return res.status(400).json({ message: 'Por favor, forneça e-mail e senha' });
+      return res.status(400).json({ message: "Por favor, forneça e-mail e senha." });
     }
-    // Procura o usuário no banco pelo e-mail
+
+    // 1. Buscar usuário pelo email
     const user = await User.findOne({ where: { email } });
 
     if (!user) {
-      // Nota: Mesma mensagem de erro para não vazar informação
-      return res.status(401).json({ message: 'E-mail ou senha inválidos' });
+      return res.status(401).json({ message: "E-mail ou senha inválidos." });
     }
 
-    // 2. Checar a senha
-    // Compara a senha digitada (password) com a hash salva no banco (user.password_hash)
+    // 2. Comparar senha com bcrypt
     const isMatch = await bcrypt.compare(password, user.password_hash);
-
     if (!isMatch) {
-      return res.status(401).json({ message: 'E-mail ou senha inválidos' });
+      return res.status(401).json({ message: "E-mail ou senha inválidos." });
     }
-    
-    // 3. Checar se o usuário está ativo
+
+    // 3. Verificar se o usuário está ativo
     if (!user.is_active) {
-      return res.status(403).json({ message: 'Esta conta está desativada.' });
+      return res.status(403).json({ message: "Esta conta está desativada." });
     }
 
-    // 4. Gerar o token
-    const token = generateToken(user.user_id, user.user_type);
+    // 4. Buscar company_id se o usuário for cliente
+    // IMPORTANTE: convenção adotada no projeto:
+    // - client_id no token/API = company_id no banco de dados
+    // - Isso mantém compatibilidade com frontend e simplifica as rotas
+    let client_id = null;
 
-    // 5. Enviar o token e dados do usuário de volta
-    res.status(200).json({
+    if (user.role_key === "client") {
+      const clientRecord = await ClientUser.findOne({
+        where: { user_id: user.user_id }
+      });
+      client_id = clientRecord ? clientRecord.company_id : null;
+    }
+
+    // 5. Gerar token JWT
+    const token = generateToken({
+      id: user.user_id,
+      role_key: user.role_key,
+      client_id: client_id
+    });
+
+    // 6. Resposta
+    return res.status(200).json({
       token,
       user: {
         id: user.user_id,
+        client_id: client_id,
         name: user.full_name,
         email: user.email,
-        type: user.user_type,
-        avatar_url: user.avatar_url, // Se você tiver este campo
-      },
+        type: user.role_key, // Mantém 'type' no response para compatibilidade com frontend
+        avatar_url: user.avatar_url || null,
+      }
     });
 
-  } catch (error) {
-    console.error('Erro no login:', error);
-    res.status(500).json({ message: 'Erro interno do servidor' });
+  } catch (err) {
+    console.error("erro no login:", err);
+    return res.status(500).json({ message: "Erro interno do servidor" });
   }
 };
 
-// ===================================
+// =======================================
 // POST /api/auth/forgot-password
-// ===================================
+// =======================================
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
 
   try {
     const user = await User.findOne({ where: { email } });
 
-    // IMPORTANTE: Prática de Segurança
-    // Nós NUNCA dizemos ao frontend se o e-mail foi encontrado ou não.
-    // Se o usuário existir, nós "simulamos" o trabalho.
+    // nunca revelar se o email existe ou não
     if (user) {
-      // 1. Gerar um token de redefinição (simples, só para o log)
-      const resetToken = crypto.randomBytes(20).toString('hex');
-      
-      // TODO (Futuro): Salvar o HASH do token e a expiração no usuário
-      // await user.update({ 
-      //   reset_token_hash: crypto.createHash('sha256').update(resetToken).digest('hex'),
-      //   reset_token_expires: Date.now() + 3600000 // 1 hora
-      // });
+      const resetToken = crypto.randomBytes(20).toString("hex");
 
-      // 3. Simular o envio do e-mail (para o console do backend)
-      //    Em um app real, aqui você usaria o Nodemailer
-      console.log('====================================');
-      console.log('📧 SIMULANDO ENVIO DE E-MAIL 📧');
-      console.log(`Para: ${user.email}`);
-      console.log(`Link de reset (simulado): /reset-password?token=${resetToken}`);
-      console.log('====================================');
+      console.log("=== RESET PASSWORD SIMULADO ===");
+      console.log(`Usuário: ${email}`);
+      console.log(`Token (simulado): ${resetToken}`);
+      console.log("===============================");
     }
-    
-    // 4. Sempre retorne sucesso!
-    res.status(200).json({ 
-      message: 'Se este e-mail estiver em nosso sistema, um link de redefinição foi enviado.' 
+
+    return res.status(200).json({
+      message: "Se este e-mail estiver cadastrado, você receberá instruções."
     });
 
-  } catch (error) {
-    console.error('Erro no forgotPassword:', error);
-    res.status(500).json({ message: 'Erro interno do servidor' });
+  } catch (err) {
+    console.error("Erro em forgot-password:", err);
+    return res.status(500).json({ message: "Erro interno do servidor" });
   }
 };
 
-// ===================================
+// =======================================
 // GET /api/auth/me
-// ===================================
+// =======================================
 exports.getMe = async (req, res) => {
-  // O middleware 'protect' (que está em authMiddleware.js)
-  // já fez o trabalho de verificar o token e buscar o usuário.
-  // Ele colocou o usuário em 'req.user'.
-  // Nós apenas retornamos os dados do usuário que o 'protect' encontrou.
-  res.status(200).json(req.user);
+  return res.status(200).json(req.user);
 };

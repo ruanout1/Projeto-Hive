@@ -1,11 +1,6 @@
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
-const sequelize = require('../database/connection');
-const User = require('../models/User');
-const Collaborator = require('../models/Collaborator');
-const ManagerArea = require('../models/ManagerArea');
-const Area = require('../models/Area');
-const { handleDatabaseError } = require('../utils/errorHandling');
+const { sequelize, User, Team, TeamMember, Collaborator, ClientUser } = require('../database/db');
 
 // ==========================================
 // OBTER TODOS OS USUÁRIOS (Gestores e Colaboradores)

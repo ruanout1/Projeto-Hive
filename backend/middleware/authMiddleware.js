@@ -1,67 +1,83 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User'); // Importe seu model User
-// const ManagerArea = require('../models/ManagerArea'); // Descomente se tiver um model separado para areas
-// const db = require('../db/connection'); // Ou use a conexão direta
+const jwt = require("jsonwebtoken");
+const { User, ClientUser } = require("../database/db");
 
-/*
- * Middleware 'protect'
- * 1. Verifica se o token JWT existe e é válido.
- * 2. Busca o usuário no banco.
- * 3. Anexa o usuário ao 'req.user' para ser usado nas próximas rotas.
- */
-const protect = async (req, res, next) => {
+const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
+
+// ======================================================
+// 🔐 Middleware de proteção
+// ======================================================
+exports.protect = async (req, res, next) => {
   let token;
 
+  // 1. Check Bearer Token
   if (
     req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
+    req.headers.authorization.startsWith("Bearer")
   ) {
-    try {
-      // 1. Pega o token do header
-      token = req.headers.authorization.split(' ')[1];
-
-      // 2. Verifica o token
-      // Lembre-se de criar uma JWT_SECRET no seu .env
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'um-salvador-puro-eterno-glorioso-sempre-reinara-&&&@!@!@***§§§');
-
-      // 3. Busca o usuário no banco
-      // IMPORTANTE: Inclua os campos que você usa para permissão
-      const user = await User.findByPk(decoded.id, {
-        attributes: [
-          'user_id',
-          'user_type',
-          'full_name',
-          'is_active',
-          // 'area' // Tente adicionar 'area' se estiver no seu model User
-        ],
-        // Se 'area' não estiver no User, você precisa buscá-la. Ex:
-        // include: [{ model: ManagerArea, attributes: ['area_id'] }]
-      });
-      
-      if (!user || !user.is_active) {
-         return res.status(401).json({ message: 'Usuário não encontrado ou inativo.' });
-      }
-
-      // 4. Anexa o usuário ao req
-      // TODO: Simples hack para 'area'. Ajuste com sua lógica real.
-      // Se 'area' vem de outra tabela, você precisa buscá-la.
-      // Por enquanto, vamos mockar se não vier.
-      req.user = user.toJSON();
-      if (req.user.user_type === 'manager' && !req.user.area) {
-        req.user.area = 'area_gestor_mock'; // Substitua isso pela busca real
-      }
-      
-      next();
-
-    } catch (error) {
-      console.error('Erro de autenticação:', error.message);
-      res.status(401).json({ message: 'Não autorizado, token falhou.' });
-    }
+    token = req.headers.authorization.split(" ")[1];
   }
 
   if (!token) {
-    res.status(401).json({ message: 'Não autorizado, sem token.' });
+    return res.status(401).json({ message: "Não autorizado. Token ausente." });
+  }
+
+  try {
+    // 2. Decodifica o token
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    // decoded contém:
+    // { id, role_key, client_id }
+
+    // 3. Busca o usuário no banco (garante active e dados atualizados)
+    const user = await User.findByPk(decoded.id, {
+      attributes: [
+        "user_id",
+        "full_name",
+        "email",
+        "avatar_url",
+        "role_key",
+        "is_active",
+      ],
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: "Usuário não encontrado." });
+    }
+
+    if (!user.is_active) {
+      return res
+        .status(403)
+        .json({ message: "Usuário desativado. Contate o suporte." });
+    }
+
+    // 4. Se for cliente, buscar o company_id automaticamente
+    // IMPORTANTE: client_id no token/API representa company_id no banco
+    let client_id = decoded.client_id || null;
+
+    if (user.role_key === 'client' && !client_id) {
+      const clientUser = await ClientUser.findOne({
+        where: { user_id: user.user_id },
+        attributes: ['company_id']
+      });
+
+      if (clientUser) {
+        client_id = clientUser.company_id;
+      }
+    }
+
+    // 5. Reconstrói req.user com dados completos
+    req.user = {
+      id: user.user_id,
+      name: user.full_name,
+      email: user.email,
+      avatar_url: user.avatar_url || null,
+      role_key: user.role_key,
+      client_id: client_id, // Sempre terá valor para clientes
+    };
+
+    return next();
+  } catch (error) {
+    console.error("Erro de autenticação:", error);
+    return res.status(401).json({ message: "Token inválido ou expirado." });
   }
 };
-
-module.exports = { protect };

@@ -1,7 +1,5 @@
 const { Sequelize, Op } = require('sequelize');
-const ServiceCategory = require('../models/ServiceCategory');
-const ServiceCatalog = require('../models/ServiceCatalog');
-const { handleDatabaseError } = require('../utils/errorHandling');
+const { ServiceCategory, ServiceCatalog } = require('../database/db');
 
 // =====================================
 // FUNÇÕES DO CATÁLOGO DE SERVIÇOS (Apenas Admin)
