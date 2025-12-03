@@ -1,5 +1,5 @@
 import { CheckCircle, Clock, Calendar, AlertCircle } from 'lucide-react';
-import { DashboardStats } from './types';
+import { DashboardStats } from '../types';
 
 interface StatsCardsProps {
   stats: DashboardStats | null;

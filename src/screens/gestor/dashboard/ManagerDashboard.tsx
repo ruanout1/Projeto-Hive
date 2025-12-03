@@ -1,13 +1,22 @@
+import { useState } from 'react';
 import { useDashboardApi } from './hooks/useDashboardApi';
-import { LoadingSkeleton } from './LoadingSkeleton';
-import { ErrorDisplay } from './ErrorDisplay';
-import { DashboardHeader } from './DashboardHeader';
-import { StatsCards } from './StatsCards';
-import { OperationalMap } from './OperationalMap';
-import { ActiveServicesTable } from './ActiveServicesTable';
+import { LoadingSkeleton } from './components/LoadingSkeleton';
+import { ErrorDisplay } from './components/ErrorDisplay';
+import { DashboardHeader } from './components/DashboardHeader';
+import { StatsCards } from './components/StatsCards';
+import { OperationalMap } from './components/OperationalMap';
+import { ActiveServicesTable } from './components/ActiveServicesTable';
+import AIAssistant from '../../public/AIAssistant'; // ADICIONAR IMPORT
+import { Bot } from 'lucide-react'; // ADICIONAR IMPORT
+import { Button } from '../../../components/ui/button'; // ADICIONAR IMPORT
 
-const ManagerDashboard = () => {
-  // 1. Obter o estado 'teams' do nosso hook atualizado
+interface ManagerDashboardProps {
+  onSectionChange?: (section: string) => void;
+}
+
+const ManagerDashboard = ({ onSectionChange }: ManagerDashboardProps) => {
+  const [isAIOpen, setIsAIOpen] = useState(false); // NOVO ESTADO
+  
   const { stats, services, teams, loading, error, actionLoading, handleRefresh } = useDashboardApi();
 
   if (loading) {
@@ -19,14 +28,21 @@ const ManagerDashboard = () => {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-gray-50/30">
-      <DashboardHeader onRefresh={handleRefresh} isRefreshing={actionLoading} />
-      <main>
-        <StatsCards stats={stats} />
-        {/* 2. Passar os dados reais das equipes para o componente do mapa */}
-        <OperationalMap teams={teams} />
-        <ActiveServicesTable services={services} />
-      </main>
+    <div className="p-6 overflow-hidden relative">
+      {/* BOTÃO DE IA FIXO NO CANTO - FALTANDO */}
+      <div className="absolute top-6 right-6 z-10">
+
+      </div>
+
+      <DashboardHeader 
+        onRefresh={handleRefresh} 
+        isRefreshing={actionLoading}
+        onOpenAIAssistant={() => setIsAIOpen(true)} // PASSAR FUNÇÃO
+      />
+      
+      <StatsCards stats={stats} />
+      <OperationalMap teams={teams} />
+      <ActiveServicesTable services={services} />
     </div>
   );
 };

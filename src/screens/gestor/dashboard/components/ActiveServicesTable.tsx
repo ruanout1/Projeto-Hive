@@ -1,8 +1,8 @@
 import { Calendar, CheckCircle, Clock, AlertCircle, XCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
-import { Badge } from '../../../components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
-import { Service } from './types';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
+import { Badge } from '../../../../components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../../components/ui/table';
+import { Service } from '../types';
 
 interface ActiveServicesTableProps {
   services: Service[];

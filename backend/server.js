@@ -25,6 +25,10 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/schedule', require('./routes/scheduleRoutes')); 
 app.use('/api/clients', require('./routes/clientRoutes'));
 app.use('/api/service-catalog', require('./routes/serviceCatalogRoutes'));
+app.use('/api/service-requests', require('./routes/serviceRequestRoutes'));
+app.use('/api/teams', require('./routes/teamRoutes'));
+app.use('/api/team-members', require('./routes/teamMemberRoutes'));
+app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 // app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 // ... adicione as outras conforme necessário
 

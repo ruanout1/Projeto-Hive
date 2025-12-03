@@ -21,6 +21,7 @@ export interface Team {
   name: string;
   zone: string;
   members: number;
+  active?: boolean;
   position?: { // Adicionando a propriedade position como opcional
       top?: string;
       left?: string;

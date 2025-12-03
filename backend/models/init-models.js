@@ -82,6 +82,7 @@ function initModels(sequelize) {
   var users = _users(sequelize, DataTypes);
   var vw_user_agenda = _vw_user_agenda(sequelize, DataTypes);
 
+  // --- ASSOCIAÇÕES DE ÁREAS ---
   collaborator_allocations.belongsTo(areas, { as: "area", foreignKey: "area_id"});
   areas.hasMany(collaborator_allocations, { as: "collaborator_allocations", foreignKey: "area_id"});
   manager_areas.belongsTo(areas, { as: "area", foreignKey: "area_id"});
@@ -90,12 +91,18 @@ function initModels(sequelize) {
   areas.hasMany(scheduled_services, { as: "scheduled_services", foreignKey: "area_id"});
   teams.belongsTo(areas, { as: "area", foreignKey: "area_id"});
   areas.hasMany(teams, { as: "teams", foreignKey: "area_id"});
+
+  // --- ASSOCIAÇÕES DE STATUS E TIPOS ---
   collaborator_allocations.belongsTo(assignment_statuses, { as: "status_key_assignment_status", foreignKey: "status_key"});
   assignment_statuses.hasMany(collaborator_allocations, { as: "collaborator_allocations", foreignKey: "status_key"});
   collaborator_assignments.belongsTo(assignment_statuses, { as: "collaborator_status_key_assignment_status", foreignKey: "collaborator_status_key"});
   assignment_statuses.hasMany(collaborator_assignments, { as: "collaborator_assignments", foreignKey: "collaborator_status_key"});
+
+  // --- ASSOCIAÇÕES DE AGENDA E EVENTOS ---
   event_participants.belongsTo(calendar_events, { as: "event", foreignKey: "event_id"});
   calendar_events.hasMany(event_participants, { as: "event_participants", foreignKey: "event_id"});
+
+  // --- ASSOCIAÇÕES DE CLIENTES E FILIAIS ---
   client_users.belongsTo(client_branches, { as: "branch", foreignKey: "branch_id"});
   client_branches.hasMany(client_users, { as: "client_users", foreignKey: "branch_id"});
   scheduled_services.belongsTo(client_branches, { as: "branch", foreignKey: "branch_id"});
@@ -104,8 +111,8 @@ function initModels(sequelize) {
   client_branches.hasMany(service_order_photos, { as: "service_order_photos", foreignKey: "branch_id"});
   service_requests.belongsTo(client_branches, { as: "branch", foreignKey: "branch_id"});
   client_branches.hasMany(service_requests, { as: "service_requests", foreignKey: "branch_id"});
-  allocation_work_days.belongsTo(collaborator_allocations, { as: "allocation", foreignKey: "allocation_id"});
-  collaborator_allocations.hasMany(allocation_work_days, { as: "allocation_work_days", foreignKey: "allocation_id"});
+
+  // --- ASSOCIAÇÕES DE EMPRESAS (CLIENTES PRINCIPAIS) ---
   client_branches.belongsTo(companies, { as: "company", foreignKey: "company_id"});
   companies.hasMany(client_branches, { as: "client_branches", foreignKey: "company_id"});
   client_users.belongsTo(companies, { as: "company", foreignKey: "company_id"});
@@ -126,22 +133,42 @@ function initModels(sequelize) {
   companies.hasMany(service_orders, { as: "service_orders", foreignKey: "company_id"});
   service_requests.belongsTo(companies, { as: "company", foreignKey: "company_id"});
   companies.hasMany(service_requests, { as: "service_requests", foreignKey: "company_id"});
+
+  // --- ALOCAÇÕES ---
+  allocation_work_days.belongsTo(collaborator_allocations, { as: "allocation", foreignKey: "allocation_id"});
+  collaborator_allocations.hasMany(allocation_work_days, { as: "allocation_work_days", foreignKey: "allocation_id"});
+
+  // --- DOCUMENTOS ---
   documents.belongsTo(document_types, { as: "document_type", foreignKey: "document_type_id"});
   document_types.hasMany(documents, { as: "documents", foreignKey: "document_type_id"});
+
+  // --- MENSAGENS ---
   message_recipients.belongsTo(messages, { as: "message", foreignKey: "message_id"});
   messages.hasMany(message_recipients, { as: "message_recipients", foreignKey: "message_id"});
   messages.belongsTo(messages, { as: "parent_message", foreignKey: "parent_message_id"});
   messages.hasMany(messages, { as: "messages", foreignKey: "parent_message_id"});
+
+  // --- PAGAMENTOS ---
   expenses.belongsTo(payment_methods, { as: "payment_method_key_payment_method", foreignKey: "payment_method_key"});
   payment_methods.hasMany(expenses, { as: "expenses", foreignKey: "payment_method_key"});
+
+  // --- RELATÓRIOS DE PERFORMANCE ---
   performance_report_feedback.belongsTo(performance_reports, { as: "performance_report", foreignKey: "performance_report_id"});
   performance_reports.hasMany(performance_report_feedback, { as: "performance_report_feedbacks", foreignKey: "performance_report_id"});
+
+  // --- FOTOS ---
   service_order_photos.belongsTo(photo_review_status, { as: "review_status_key_photo_review_status", foreignKey: "review_status_key"});
   photo_review_status.hasMany(service_order_photos, { as: "service_order_photos", foreignKey: "review_status_key"});
+
+  // --- PRIORIDADE ---
   service_requests.belongsTo(priority_levels, { as: "priority_key_priority_level", foreignKey: "priority_key"});
   priority_levels.hasMany(service_requests, { as: "service_requests", foreignKey: "priority_key"});
+
+  // --- ROLES (PAPEIS) ---
   users.belongsTo(roles, { as: "role_key_role", foreignKey: "role_key"});
   roles.hasMany(users, { as: "users", foreignKey: "role_key"});
+
+  // --- SERVIÇOS AGENDADOS E ORDENS DE SERVIÇO ---
   collaborator_assignments.belongsTo(scheduled_services, { as: "scheduled_service", foreignKey: "scheduled_service_id"});
   scheduled_services.hasMany(collaborator_assignments, { as: "collaborator_assignments", foreignKey: "scheduled_service_id"});
   ratings.belongsTo(scheduled_services, { as: "scheduled_service", foreignKey: "scheduled_service_id"});
@@ -150,6 +177,8 @@ function initModels(sequelize) {
   scheduled_services.hasMany(service_order_photos, { as: "service_order_photos", foreignKey: "scheduled_service_id"});
   service_status_history.belongsTo(scheduled_services, { as: "scheduled_service", foreignKey: "scheduled_service_id"});
   scheduled_services.hasMany(service_status_history, { as: "service_status_histories", foreignKey: "scheduled_service_id"});
+
+  // --- CATÁLOGO DE SERVIÇOS ---
   collaborator_allocations.belongsTo(service_catalog, { as: "service_catalog", foreignKey: "service_catalog_id"});
   service_catalog.hasMany(collaborator_allocations, { as: "collaborator_allocations", foreignKey: "service_catalog_id"});
   scheduled_services.belongsTo(service_catalog, { as: "service_catalog", foreignKey: "service_catalog_id"});
@@ -158,6 +187,8 @@ function initModels(sequelize) {
   service_catalog.hasMany(service_requests, { as: "service_requests", foreignKey: "service_catalog_id"});
   service_catalog.belongsTo(service_categories, { as: "category", foreignKey: "category_id"});
   service_categories.hasMany(service_catalog, { as: "service_catalogs", foreignKey: "category_id"});
+
+  // --- ORDENS DE SERVIÇO VINCULADAS ---
   documents.belongsTo(service_orders, { as: "service_order", foreignKey: "service_order_id"});
   service_orders.hasMany(documents, { as: "documents", foreignKey: "service_order_id"});
   expenses.belongsTo(service_orders, { as: "service_order", foreignKey: "service_order_id"});
@@ -170,6 +201,8 @@ function initModels(sequelize) {
   service_orders.hasMany(service_order_photos, { as: "service_order_photos", foreignKey: "service_order_id"});
   service_orders.belongsTo(service_requests, { as: "service_request", foreignKey: "service_request_id"});
   service_requests.hasMany(service_orders, { as: "service_orders", foreignKey: "service_request_id"});
+
+  // --- STATUS DE SERVIÇO ---
   scheduled_services.belongsTo(service_statuses, { as: "status_key_service_status", foreignKey: "status_key"});
   service_statuses.hasMany(scheduled_services, { as: "scheduled_services", foreignKey: "status_key"});
   service_requests.belongsTo(service_statuses, { as: "status_key_service_status", foreignKey: "status_key"});
@@ -178,68 +211,101 @@ function initModels(sequelize) {
   service_statuses.hasMany(service_status_history, { as: "service_status_histories", foreignKey: "new_status_key"});
   service_status_history.belongsTo(service_statuses, { as: "old_status_key_service_status", foreignKey: "old_status_key"});
   service_statuses.hasMany(service_status_history, { as: "old_status_key_service_status_histories", foreignKey: "old_status_key"});
+
+  // --- EQUIPES ---
   collaborator_assignments.belongsTo(teams, { as: "team", foreignKey: "team_id"});
   teams.hasMany(collaborator_assignments, { as: "collaborator_assignments", foreignKey: "team_id"});
   scheduled_services.belongsTo(teams, { as: "team", foreignKey: "team_id"});
   teams.hasMany(scheduled_services, { as: "scheduled_services", foreignKey: "team_id"});
   team_members.belongsTo(teams, { as: "team", foreignKey: "team_id"});
   teams.hasMany(team_members, { as: "team_members", foreignKey: "team_id"});
+
+  // --- ASSOCIAÇÕES DE USUÁRIOS (A MAIS IMPORTANTE) ---
   audit_log.belongsTo(users, { as: "user", foreignKey: "user_id"});
   users.hasMany(audit_log, { as: "audit_logs", foreignKey: "user_id"});
+  
   calendar_events.belongsTo(users, { as: "created_by_user", foreignKey: "created_by_user_id"});
   users.hasMany(calendar_events, { as: "calendar_events", foreignKey: "created_by_user_id"});
+  
   client_users.belongsTo(users, { as: "user", foreignKey: "user_id"});
   users.hasMany(client_users, { as: "client_users", foreignKey: "user_id"});
+  
   collaborator_allocations.belongsTo(users, { as: "collaborator_user", foreignKey: "collaborator_user_id"});
   users.hasMany(collaborator_allocations, { as: "collaborator_allocations", foreignKey: "collaborator_user_id"});
+  
   collaborator_assignments.belongsTo(users, { as: "collaborator_user", foreignKey: "collaborator_user_id"});
   users.hasMany(collaborator_assignments, { as: "collaborator_assignments", foreignKey: "collaborator_user_id"});
+  
   collaborators.belongsTo(users, { as: "user", foreignKey: "user_id"});
   users.hasOne(collaborators, { as: "collaborator", foreignKey: "user_id"});
+  
   documents.belongsTo(users, { as: "uploaded_by_user", foreignKey: "uploaded_by_user_id"});
   users.hasMany(documents, { as: "documents", foreignKey: "uploaded_by_user_id"});
+  
   event_participants.belongsTo(users, { as: "user", foreignKey: "user_id"});
   users.hasMany(event_participants, { as: "event_participants", foreignKey: "user_id"});
+  
   expenses.belongsTo(users, { as: "approved_by_user", foreignKey: "approved_by_user_id"});
   users.hasMany(expenses, { as: "expenses", foreignKey: "approved_by_user_id"});
+  
   expenses.belongsTo(users, { as: "created_by_user", foreignKey: "created_by_user_id"});
   users.hasMany(expenses, { as: "created_by_user_expenses", foreignKey: "created_by_user_id"});
+  
   manager_areas.belongsTo(users, { as: "manager_user", foreignKey: "manager_user_id"});
   users.hasMany(manager_areas, { as: "manager_areas", foreignKey: "manager_user_id"});
+  
   message_recipients.belongsTo(users, { as: "recipient_user", foreignKey: "recipient_user_id"});
   users.hasMany(message_recipients, { as: "message_recipients", foreignKey: "recipient_user_id"});
+  
   messages.belongsTo(users, { as: "sender_user", foreignKey: "sender_user_id"});
   users.hasMany(messages, { as: "messages", foreignKey: "sender_user_id"});
+  
   notifications.belongsTo(users, { as: "user", foreignKey: "user_id"});
   users.hasMany(notifications, { as: "notifications", foreignKey: "user_id"});
+  
   performance_report_feedback.belongsTo(users, { as: "recipient_user", foreignKey: "recipient_user_id"});
   users.hasMany(performance_report_feedback, { as: "performance_report_feedbacks", foreignKey: "recipient_user_id"});
+  
   performance_report_feedback.belongsTo(users, { as: "sender_user", foreignKey: "sender_user_id"});
   users.hasMany(performance_report_feedback, { as: "sender_user_performance_report_feedbacks", foreignKey: "sender_user_id"});
+  
   performance_reports.belongsTo(users, { as: "admin_user", foreignKey: "admin_user_id"});
   users.hasMany(performance_reports, { as: "performance_reports", foreignKey: "admin_user_id"});
+  
   performance_reports.belongsTo(users, { as: "generated_by_user", foreignKey: "generated_by_user_id"});
   users.hasMany(performance_reports, { as: "generated_by_user_performance_reports", foreignKey: "generated_by_user_id"});
+  
   ratings.belongsTo(users, { as: "collaborator_user", foreignKey: "collaborator_user_id"});
   users.hasMany(ratings, { as: "ratings", foreignKey: "collaborator_user_id"});
+  
   scheduled_services.belongsTo(users, { as: "collaborator_user", foreignKey: "collaborator_user_id"});
   users.hasMany(scheduled_services, { as: "scheduled_services", foreignKey: "collaborator_user_id"});
+  
   service_order_photos.belongsTo(users, { as: "collaborator_user", foreignKey: "collaborator_user_id"});
   users.hasMany(service_order_photos, { as: "service_order_photos", foreignKey: "collaborator_user_id"});
+  
   service_orders.belongsTo(users, { as: "created_by_user", foreignKey: "created_by_user_id"});
   users.hasMany(service_orders, { as: "service_orders", foreignKey: "created_by_user_id"});
-  service_requests.belongsTo(users, { as: "requester_user", foreignKey: "requester_user_id"});
+  
+  // SOLICITAÇÕES: CUIDADO COM O NOME DA CHAVE
+  service_requests.belongsTo(users, { as: "requester_user", foreignKey: "requester_user_id"}); // ou requester_id
   users.hasMany(service_requests, { as: "service_requests", foreignKey: "requester_user_id"});
+  
   service_status_history.belongsTo(users, { as: "changed_by_user", foreignKey: "changed_by_user_id"});
   users.hasMany(service_status_history, { as: "service_status_histories", foreignKey: "changed_by_user_id"});
+  
   system_settings.belongsTo(users, { as: "updated_by_user", foreignKey: "updated_by_user_id"});
   users.hasMany(system_settings, { as: "system_settings", foreignKey: "updated_by_user_id"});
+  
   team_members.belongsTo(users, { as: "user", foreignKey: "user_id"});
   users.hasMany(team_members, { as: "team_members", foreignKey: "user_id"});
-  teams.belongsTo(users, { as: "manager_user", foreignKey: "manager_user_id"});
+  
+  teams.belongsTo(users, { as: "supervisor", foreignKey: "manager_user_id"}); // ou supervisor_user_id
   users.hasMany(teams, { as: "teams", foreignKey: "manager_user_id"});
+  
   time_clock_entries.belongsTo(users, { as: "approved_by_user", foreignKey: "approved_by_user_id"});
   users.hasMany(time_clock_entries, { as: "time_clock_entries", foreignKey: "approved_by_user_id"});
+  
   time_clock_entries.belongsTo(users, { as: "collaborator_user", foreignKey: "collaborator_user_id"});
   users.hasMany(time_clock_entries, { as: "collaborator_user_time_clock_entries", foreignKey: "collaborator_user_id"});
 
@@ -286,6 +352,7 @@ function initModels(sequelize) {
     vw_user_agenda,
   };
 }
+
 module.exports = initModels;
 module.exports.initModels = initModels;
 module.exports.default = initModels;

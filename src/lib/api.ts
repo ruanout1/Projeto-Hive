@@ -1,12 +1,16 @@
 import axios from "axios";
 import { toast } from 'sonner';
 
-// ... (código existente: interceptors, etc.) ...
+// --- CORREÇÃO DO ERRO "PROCESS IS NOT DEFINED" ---
+// Em vez de process.env, usamos a URL direta ou import.meta.env (padrão Vite)
+const BASE_URL = 'http://localhost:5000/api'; 
+
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: BASE_URL,
   withCredentials: true
 });
 
+// Interceptor de Requisição (Envia o Token)
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
@@ -18,23 +22,32 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Interceptor de Resposta (Trata Erros 401/Sessão)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const requestUrl = error.config?.url || "";
+    // Evita loop de redirecionamento se o erro for no próprio login
     if (requestUrl.includes('/auth/login')) {
       return Promise.reject(error);
     }
+    
     if (error.response?.status === 401) {
-      toast.error('Sessão expirada', { description: 'Faça login novamente.' });
-      localStorage.removeItem('authToken');
-      window.location.href = '/login';
+      // Só exibe toast se não estivermos já na tela de login
+      if (window.location.pathname !== '/login') {
+          toast.error('Sessão expirada', { description: 'Faça login novamente.' });
+          localStorage.removeItem('authToken');
+          // Redirecionamento seguro
+          setTimeout(() => {
+              window.location.href = '/login';
+          }, 1000);
+      }
     }
     return Promise.reject(error);
   }
 );
 
-// ... (funções de ponto existentes) ...
+// --- FUNÇÕES DE PONTO (TIME CLOCK) ---
 export const clockIn = async (location: { latitude: number; longitude: number; address: string }) => {
   const response = await api.post('/collaborator-time-clock/clock-in', location);
   return response.data;
@@ -60,11 +73,7 @@ export const getTimeClockHistory = async () => {
   return response.data;
 };
 
-
-// ========================================================
-// 5. FUNÇÕES DA API DE EXECUÇÃO DE SERVIÇOS
-// ========================================================
-
+// --- FUNÇÕES DE EXECUÇÃO DE SERVIÇOS ---
 export const getMySchedule = async () => {
   const response = await api.get('/service-execution/my-services'); 
   return response.data;
@@ -82,7 +91,6 @@ export const updateServiceStatus = async (serviceId: string | number, payload: U
 
 export const uploadServicePhotos = async (serviceId: string | number, photoType: 'before' | 'after', photos: File[]) => {
   const formData = new FormData();
-  
   formData.append('photo_type', photoType);
   
   photos.forEach(photo => {
@@ -90,25 +98,16 @@ export const uploadServicePhotos = async (serviceId: string | number, photoType:
   });
 
   const response = await api.post(`/service-execution/${serviceId}/photos`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
 
   return response.data;
 };
 
-// ========================================================
-// 6. FUNÇÕES DA API DO DASHBOARD
-// ========================================================
-
-/**
- * NOVO: Busca os dados consolidados para o dashboard do colaborador.
- */
+// --- FUNÇÕES DO DASHBOARD ---
 export const getCollaboratorDashboard = async () => {
   const response = await api.get('/dashboard/collaborator');
   return response.data;
 };
-
 
 export default api;

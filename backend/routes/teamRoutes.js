@@ -1,20 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const teamController = require('../controllers/teamController');
+const TeamController = require('../controllers/TeamController');
 const { protect } = require('../middleware/authMiddleware');
-const { checkRole } = require('../middleware/authorizationMiddleware');
+const TeamMemberController = require('../controllers/teamMemberController');
 
-// =====================
-// ROTAS DE EQUIPES
-// =====================
+router.use(protect);
 
-// GET /api/teams (Admin vê todas, Gestor vê as suas)
-router.get('/', protect, checkRole(['admin', 'manager']), teamController.getAllTeams);
-
-// CRUD de Equipes (Apenas Admin)
-router.post('/', protect, checkRole(['admin']), teamController.createTeam);
-router.put('/:id', protect, checkRole(['admin']), teamController.updateTeam);
-router.put('/:id/status', protect, checkRole(['admin']), teamController.updateTeamStatus);
-router.delete('/:id', protect, checkRole(['admin']), teamController.deleteTeam);
+router.get('/', TeamController.listTeams);
+router.post('/', TeamController.createTeam);
+router.put('/:id', TeamController.updateTeam);
+router.put('/:id/status', TeamController.updateTeamStatus);
+router.delete('/:id', TeamController.deleteTeam);
+router.get('/:teamId/members', TeamMemberController.getMembers);
+router.post('/:teamId/members', TeamMemberController.addMember);
 
 module.exports = router;
