@@ -1,118 +1,56 @@
-const { User, ClientUser } = require('../database/db');
+const { models } = require('../database/connection'); // Aponta para o seu arquivo central
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret"; // 'um-salvador-puro-eterno-glorioso-sempre-reinara-&&&@!@!@***§§§';//
+const generateToken = (id, role_key) => {
+  return jwt.sign({ id, role_key }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });
+};
 
-
-// =======================================
-// Função para gerar token JWT
-// =======================================
-function generateToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
-}
-
-// =======================================
-// POST /api/auth/login
-// =======================================
+// Note o 'exports.login =' (é isso que o routes procura)
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    if (!email || !password) {
-      return res.status(400).json({ message: "Por favor, forneça e-mail e senha." });
+    if (!email || !password) return res.status(400).json({ message: 'Dados incompletos' });
+
+    const user = await models.users.findOne({ where: { email } });
+
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+        return res.status(401).json({ message: 'Credenciais inválidas' });
     }
 
-    // 1. Buscar usuário pelo email
-    const user = await User.findOne({ where: { email } });
+    if (!user.is_active) return res.status(403).json({ message: 'Conta inativa' });
 
-    if (!user) {
-      return res.status(401).json({ message: "E-mail ou senha inválidos." });
-    }
+    // Atualiza login
+    await user.update({ last_login: new Date() });
 
-    // 2. Comparar senha com bcrypt
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ message: "E-mail ou senha inválidos." });
-    }
+    const token = generateToken(user.user_id, user.role_key);
 
-    // 3. Verificar se o usuário está ativo
-    if (!user.is_active) {
-      return res.status(403).json({ message: "Esta conta está desativada." });
-    }
-
-    // 4. Buscar company_id se o usuário for cliente
-    // IMPORTANTE: convenção adotada no projeto:
-    // - client_id no token/API = company_id no banco de dados
-    // - Isso mantém compatibilidade com frontend e simplifica as rotas
-    let client_id = null;
-
-    if (user.role_key === "client") {
-      const clientRecord = await ClientUser.findOne({
-        where: { user_id: user.user_id }
-      });
-      client_id = clientRecord ? clientRecord.company_id : null;
-    }
-
-    // 5. Gerar token JWT
-    const token = generateToken({
-      id: user.user_id,
-      role_key: user.role_key,
-      client_id: client_id
-    });
-
-    // 6. Resposta
-    return res.status(200).json({
+    res.json({
       token,
       user: {
         id: user.user_id,
-        client_id: client_id,
         name: user.full_name,
         email: user.email,
-        type: user.role_key, // Mantém 'type' no response para compatibilidade com frontend
-        avatar_url: user.avatar_url || null,
+        role: user.role_key,
+        avatar: user.avatar_url
       }
     });
 
-  } catch (err) {
-    console.error("erro no login:", err);
-    return res.status(500).json({ message: "Erro interno do servidor" });
+  } catch (error) {
+    console.error('Login Error:', error);
+    res.status(500).json({ message: 'Erro no servidor' });
   }
 };
 
-// =======================================
-// POST /api/auth/forgot-password
-// =======================================
-exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
-
-  try {
-    const user = await User.findOne({ where: { email } });
-
-    // nunca revelar se o email existe ou não
-    if (user) {
-      const resetToken = crypto.randomBytes(20).toString("hex");
-
-      console.log("=== RESET PASSWORD SIMULADO ===");
-      console.log(`Usuário: ${email}`);
-      console.log(`Token (simulado): ${resetToken}`);
-      console.log("===============================");
-    }
-
-    return res.status(200).json({
-      message: "Se este e-mail estiver cadastrado, você receberá instruções."
-    });
-
-  } catch (err) {
-    console.error("Erro em forgot-password:", err);
-    return res.status(500).json({ message: "Erro interno do servidor" });
-  }
-};
-
-// =======================================
-// GET /api/auth/me
-// =======================================
+// Note o 'exports.getMe ='
 exports.getMe = async (req, res) => {
-  return res.status(200).json(req.user);
+  try {
+      if(!req.user) return res.status(401).json({message: 'Não autenticado'});
+      const user = await models.users.findByPk(req.user.id);
+      if (!user) return res.status(404).json({ message: 'Usuário não encontrado' });
+      res.json(user);
+  } catch (error) {
+      res.status(500).json({ message: 'Erro ao buscar perfil' });
+  }
 };

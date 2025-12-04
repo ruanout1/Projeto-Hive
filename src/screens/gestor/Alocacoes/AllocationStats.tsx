@@ -1,13 +1,17 @@
-import { Users, Building2, Clock, CheckCircle, Calendar } from 'lucide-react';
+import { Users, CheckCircle, Calendar, Clock } from 'lucide-react';
 import { Card, CardContent } from '../../../components/ui/card';
-import type { AllocationStats } from './types';
 
 interface AllocationStatsProps {
-  stats: AllocationStats;
-  setFilterStatus: (status: string) => void;
+  stats: {
+    total: number;
+    active: number;
+    upcoming: number;
+    completed: number;
+  };
+  onFilterChange: (status: string) => void;
 }
 
-export function AllocationStats({ stats, setFilterStatus }: AllocationStatsProps) {
+export default function AllocationStats({ stats, onFilterChange }: AllocationStatsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
       <Card>
@@ -24,7 +28,7 @@ export function AllocationStats({ stats, setFilterStatus }: AllocationStatsProps
         </CardContent>
       </Card>
 
-      <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterStatus('active')}>
+      <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onFilterChange('active')}>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -38,7 +42,7 @@ export function AllocationStats({ stats, setFilterStatus }: AllocationStatsProps
         </CardContent>
       </Card>
 
-      <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterStatus('upcoming')}>
+      <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onFilterChange('upcoming')}>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -52,7 +56,7 @@ export function AllocationStats({ stats, setFilterStatus }: AllocationStatsProps
         </CardContent>
       </Card>
 
-      <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterStatus('completed')}>
+      <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onFilterChange('completed')}>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>

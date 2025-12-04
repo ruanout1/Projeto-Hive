@@ -4,7 +4,7 @@ import {
   ChevronLeft, ChevronRight, AlertTriangle, X, PlayCircle, Scissors, Coffee, MessageSquare, User,
   Activity
 } from 'lucide-react';
-import ScreenHeader from '../../components/ScreenHeader';
+import ScreenHeader from '../public/ScreenHeader';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';

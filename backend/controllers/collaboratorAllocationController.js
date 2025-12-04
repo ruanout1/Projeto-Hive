@@ -1,273 +1,217 @@
-const { Op, Sequelize } = require('sequelize');
-const { CollaboratorAllocation, Company, User, Team, TeamMember } = require('../database/db');
+const { models, sequelize } = require('../database/connection');
+const { Op } = require('sequelize');
+const { handleDatabaseError } = require('../utils/errorHandling');
 
-// =====================================
-// HELPER: Gerar Condição de Permissão
-// =====================================
-const buildAllocationsWhere = async (user) => {
-  if (user.user_type === 'admin') {
-    return {}; // Admin vê tudo
-  }
+module.exports = {
+  // ========================================================================
+  // 1. LISTAR ALOCAÇÕES (GET /api/allocations)
+  // ========================================================================
+  async listAllocations(req, res) {
+    try {
+      const { start_date, end_date, area_id } = req.query;
+      const whereClause = {};
 
-  // Gestor vê alocações da sua área
-  // NOTA: O schema 'collaborator_allocations' TEM 'area_id'.
-  // Vamos assumir que 'user.area' contém o 'area_id' do gestor.
-  if (!user.area) {
-     console.error(`Gestor ${user.id} sem 'area' definida no token.`);
-     throw new Error('Usuário gestor não tem área definida.');
-  }
-  return { area_id: user.area };
-};
+      if (start_date && end_date) {
+        whereClause.start_date = { [Op.gte]: start_date };
+        whereClause.end_date = { [Op.lte]: end_date };
+      }
 
-// =====================================
-// HELPER: Validar Permissão de Criação/Edição
-// =====================================
-const validateAllocationPermissions = async (user, clientId, collaboratorUserId) => {
-  if (user.user_type === 'admin') {
-    return true; // Admin pode tudo
-  }
+      if (area_id) whereClause.area_id = area_id;
 
-  // 1. Gestor: Checar se o Cliente pertence à sua área
-  //    (Assumindo que a 'area' está no model Client)
-  const client = await Client.findOne({ 
-    where: { 
-      id: clientId, 
-      area: user.area 
-    } 
-  });
-  if (!client) {
-    throw new Error('Cliente inválido ou não pertence à sua área.');
-  }
+      const allocations = await models.collaborator_allocations.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: models.users,
+            as: 'collaborator_user',
+            attributes: ['user_id', 'full_name', 'avatar_url', 'email']
+          },
+          {
+            model: models.companies,
+            as: 'company',
+            attributes: ['company_id', 'name']
+          },
+          {
+            model: models.areas,
+            as: 'area',
+            attributes: ['area_id', 'name']
+          },
+          // IMPORTANTE: Incluir os dias de trabalho para o frontend exibir
+          {
+            model: models.allocation_work_days,
+            as: 'allocation_work_days'
+          }
+        ],
+        order: [['start_date', 'ASC']]
+      });
 
-  // 2. Gestor: Checar se o Colaborador pertence a uma de suas equipes
-  const managerTeams = await Team.findAll({ 
-    where: { manager_user_id: user.id }, 
-    attributes: ['team_id'] 
-  });
-  const teamIds = managerTeams.map(t => t.team_id);
+      return res.json(allocations);
 
-  const teamMember = await TeamMember.findOne({
-    where: {
-      team_id: { [Op.in]: teamIds },
-      user_id: collaboratorUserId // Assumindo que 'user_id' é a FK em TeamMember
+    } catch (error) {
+      handleDatabaseError(res, error, 'listar alocações');
     }
-  });
+  },
 
-  if (!teamMember) {
-    throw new Error('Colaborador inválido ou não pertence às suas equipes.');
-  }
-};
+  // ========================================================================
+  // 2. CRIAR ALOCAÇÃO (POST /api/allocations)
+  // ========================================================================
+  async createAllocation(req, res) {
+    const t = await sequelize.transaction();
+    try {
+      const { 
+        collaborator_user_id, 
+        company_id, 
+        area_id, 
+        start_date, 
+        end_date, 
+        shift_start, 
+        shift_end,
+        work_days // Array de strings: ['monday', 'tuesday']
+      } = req.body;
 
-// =====================================
-// FUNÇÕES DE ALOCAÇÃO (CRUD)
-// =====================================
-
-// GET /api/allocations/stats
-exports.getAllocationStats = async (req, res) => {
-  try {
-    const where = await buildAllocationsWhere(req.user);
-    
-    const counts = await CollaboratorAllocation.findAll({
-      attributes: [
-        'status',
-        [Sequelize.fn('COUNT', Sequelize.col('status')), 'count'],
-      ],
-      where: where,
-      group: ['status'],
-    });
-
-    const stats = counts.reduce((acc, item) => {
-      acc[item.status] = Number(item.get('count'));
-      return acc;
-    }, {});
-
-    const result = {
-      total: (stats.active || 0) + (stats.upcoming || 0) + (stats.completed || 0) + (stats.cancelled || 0),
-      active: stats.active || 0,
-      upcoming: stats.upcoming || 0,
-      completed: stats.completed || 0
-    };
-
-    res.status(200).json(result);
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar estatísticas de alocações');
-  }
-};
-
-// GET /api/allocations
-exports.getAllocations = async (req, res) => {
-  try {
-    const { status } = req.query;
-    const where = await buildAllocationsWhere(req.user);
-
-    if (status && status !== 'all') {
-      where.status = status;
-    }
-
-    const allocations = await CollaboratorAllocation.findAll({
-      where: where,
-      include: [
-        {
-          model: User,
-          as: 'collaborator', // Verifique seu alias de associação
-          attributes: ['full_name', 'user_id']
-          // TODO: Incluir 'position' da tabela 'collaborators'
+      // 1. Validação de Conflito (Opcional mas recomendada)
+      const conflict = await models.collaborator_allocations.findOne({
+        where: {
+          collaborator_user_id,
+          status_key: 'active',
+          [Op.or]: [
+            { start_date: { [Op.between]: [start_date, end_date] } },
+            { end_date: { [Op.between]: [start_date, end_date] } }
+          ]
         },
-        {
-          model: Client,
-          as: 'client', // Verifique seu alias de associação
-          attributes: ['main_company_name', 'client_id', 'area'] // Assumindo 'area' no Client
-        }
-      ],
-      order: [['start_date', 'DESC']]
-    });
+        transaction: t
+      });
 
-    // Formatar dados (o frontend espera 'collaboratorName', etc.)
-    const formatted = allocations.map(a => ({
-      id: a.allocation_id,
-      collaboratorId: a.collaborator_user_id,
-      collaboratorName: a.collaborator?.full_name || 'Não encontrado',
-      collaboratorPosition: 'Cargo', // TODO: Buscar da tabela 'collaborators'
-      clientId: a.client_id,
-      clientName: a.client?.main_company_name || 'Não encontrado',
-      clientArea: a.client?.area || a.area_id, // Pega a área do cliente ou da alocação
-      startDate: a.start_date,
-      endDate: a.end_date,
-      workDays: a.shift, // TODO: O front espera 'workDays' (array), o banco tem 'shift' (enum)
-      startTime: '08:00', // TODO: Adicionar 'start_time' e 'end_time' no schema
-      endTime: '17:00',
-      status: a.status,
-      createdAt: a.created_at
-    }));
+      if (conflict) {
+        await t.rollback();
+        return res.status(409).json({ message: 'Colaborador já possui alocação neste período.' });
+      }
 
-    res.status(200).json(formatted);
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar alocações');
-  }
-};
+      // 2. Criar a Alocação Pai
+      const newAllocation = await models.collaborator_allocations.create({
+        collaborator_user_id,
+        company_id,
+        area_id, // Pode vir do body ou ser inferido do cliente
+        start_date,
+        end_date,
+        shift_start_time: shift_start,
+        shift_end_time: shift_end,
+        status_key: 'active',
+        created_by_user_id: req.user.id
+      }, { transaction: t });
 
-// POST /api/allocations
-exports.createAllocation = async (req, res) => {
-  const {
-    collaboratorId,
-    clientId,
-    startDate,
-    endDate,
-    workDays, // Array
-    startTime,
-    endTime,
-  } = req.body;
+      // 3. Criar os Dias de Trabalho (Filhos)
+      if (work_days && Array.isArray(work_days) && work_days.length > 0) {
+          const workDaysData = work_days.map(day => ({
+              allocation_id: newAllocation.allocation_id,
+              day_of_week: day,
+              start_time: shift_start, // Replica o horário do turno
+              end_time: shift_end
+          }));
 
-  try {
-    // 1. Validar permissões
-    await validateAllocationPermissions(req.user, clientId, collaboratorId);
+          await models.allocation_work_days.bulkCreate(workDaysData, { transaction: t });
+      }
 
-    // 2. Encontrar a área (do cliente ou do gestor)
-    const client = await Client.findByPk(clientId, { attributes: ['area_id'] }); // Assumindo 'area_id' no client
-    const area_id = client?.area_id || req.user.area;
+      await t.commit();
+      res.status(201).json(newAllocation);
 
-    // 3. Calcular status
-    const today = new Date();
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    let status = 'upcoming';
-    if (today >= start && today <= end) status = 'active';
-    else if (today > end) status = 'completed';
-
-    // 4. Criar
-    const newAllocation = await CollaboratorAllocation.create({
-      allocation_number: `ALLOC-${Date.now()}`,
-      collaborator_user_id: collaboratorId,
-      client_id: clientId,
-      area_id: area_id,
-      start_date: startDate,
-      end_date: endDate,
-      // TODO: O banco espera 'shift' (enum), o front envia 'workDays' (array)
-      // Você precisa converter. Ex: JSON.stringify(workDays) se o campo for TEXT
-      // ou mapear para um ENUM.
-      shift: 'full_day', // Placeholder
-      status: status,
-      created_by_user_id: req.user.id
-    });
-
-    res.status(201).json(newAllocation);
-
-  } catch (error) {
-    handleDatabaseError(res, error, 'criar alocação');
-  }
-};
-
-// PUT /api/allocations/:id
-exports.updateAllocation = async (req, res) => {
-  const { id } = req.params;
-  const {
-    collaboratorId,
-    clientId,
-    startDate,
-    endDate,
-    workDays,
-    startTime,
-    endTime,
-  } = req.body;
-
-  try {
-    // 1. Encontrar alocação (e checar permissão de acesso)
-    const where = await buildAllocationsWhere(req.user);
-    where.allocation_id = id;
-    const allocation = await CollaboratorAllocation.findOne({ where });
-
-    if (!allocation) {
-      return res.status(404).json({ message: 'Alocação não encontrada ou inacessível.' });
+    } catch (error) {
+      await t.rollback();
+      handleDatabaseError(res, error, 'criar alocação');
     }
+  },
 
-    // 2. Validar permissões (se os IDs mudaram)
-    if (Number(clientId) !== allocation.client_id || Number(collaboratorId) !== allocation.collaborator_user_id) {
-       await validateAllocationPermissions(req.user, clientId, collaboratorId);
+  // ========================================================================
+  // 3. ATUALIZAR ALOCAÇÃO (PUT /api/allocations/:id)
+  // ========================================================================
+  async updateAllocation(req, res) {
+    const t = await sequelize.transaction();
+    try {
+      const { id } = req.params;
+      const { 
+        collaborator_user_id, 
+        company_id, 
+        area_id,
+        start_date, 
+        end_date, 
+        shift_start, 
+        shift_end,
+        work_days 
+      } = req.body;
+
+      // 1. Atualiza dados principais
+      const [updated] = await models.collaborator_allocations.update({
+        collaborator_user_id,
+        company_id,
+        area_id,
+        start_date,
+        end_date,
+        shift_start_time: shift_start,
+        shift_end_time: shift_end
+      }, { 
+        where: { allocation_id: id },
+        transaction: t
+      });
+
+      if (updated === 0) {
+        await t.rollback();
+        return res.status(404).json({ message: 'Alocação não encontrada.' });
+      }
+
+      // 2. Atualiza dias de trabalho (Estratégia: Apagar tudo e recriar)
+      if (work_days && Array.isArray(work_days)) {
+          // Remove dias antigos
+          await models.allocation_work_days.destroy({ 
+              where: { allocation_id: id },
+              transaction: t 
+          });
+
+          // Insere novos dias
+          if (work_days.length > 0) {
+              const workDaysData = work_days.map(day => ({
+                  allocation_id: id,
+                  day_of_week: day,
+                  start_time: shift_start,
+                  end_time: shift_end
+              }));
+              await models.allocation_work_days.bulkCreate(workDaysData, { transaction: t });
+          }
+      }
+
+      await t.commit();
+      res.json({ message: 'Alocação atualizada com sucesso.' });
+
+    } catch (error) {
+      await t.rollback();
+      handleDatabaseError(res, error, 'atualizar alocação');
     }
-    
-    // 3. Calcular status
-    const today = new Date();
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    let status = 'upcoming';
-    if (today >= start && today <= end) status = 'active';
-    else if (today > end) status = 'completed';
+  },
 
-    // 4. Atualizar
-    await allocation.update({
-      collaborator_user_id: collaboratorId,
-      client_id: clientId,
-      start_date: startDate,
-      end_date: endDate,
-      shift: 'full_day', // Placeholder para 'workDays'
-      status: status,
-    });
-    
-    res.status(200).json(allocation);
+  // ========================================================================
+  // 4. REMOVER ALOCAÇÃO (DELETE /api/allocations/:id)
+  // ========================================================================
+  async deleteAllocation(req, res) {
+    const t = await sequelize.transaction();
+    try {
+      const { id } = req.params;
+      
+      // Remove dias primeiro (cascade manual se o banco não tiver)
+      await models.allocation_work_days.destroy({ where: { allocation_id: id }, transaction: t });
+      
+      // Remove alocação
+      const deleted = await models.collaborator_allocations.destroy({ where: { allocation_id: id }, transaction: t });
 
-  } catch (error) {
-    handleDatabaseError(res, error, 'atualizar alocação');
-  }
-};
+      if (!deleted) {
+          await t.rollback();
+          return res.status(404).json({ message: 'Alocação não encontrada' });
+      }
 
-// PUT /api/allocations/:id/cancel
-exports.cancelAllocation = async (req, res) => {
-  const { id } = req.params;
-  try {
-    // 1. Encontrar alocação (e checar permissão de acesso)
-    const where = await buildAllocationsWhere(req.user);
-    where.allocation_id = id;
-    const allocation = await CollaboratorAllocation.findOne({ where });
+      await t.commit();
+      res.json({ message: 'Alocação removida.' });
 
-    if (!allocation) {
-      return res.status(404).json({ message: 'Alocação não encontrada ou inacessível.' });
+    } catch (error) {
+      await t.rollback();
+      handleDatabaseError(res, error, 'remover alocação');
     }
-
-    // 2. Atualizar status
-    await allocation.update({ status: 'cancelled' });
-
-    res.status(200).json({ message: 'Alocação cancelada com sucesso.' });
-  } catch (error) {
-    handleDatabaseError(res, error, 'cancelar alocação');
   }
 };

@@ -105,6 +105,7 @@ module.exports = function(sequelize, DataTypes) {
   }, {
     sequelize,
     tableName: 'service_requests',
+    hasTrigger: true,
     timestamps: true,
     indexes: [
       {

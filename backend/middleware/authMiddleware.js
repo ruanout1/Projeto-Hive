@@ -1,83 +1,51 @@
-const jwt = require("jsonwebtoken");
-const { User, ClientUser } = require("../database/db");
+const jwt = require('jsonwebtoken');
+// Importa do seu arquivo central de conexão
+const { models } = require('../database/connection'); 
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
-
-// ======================================================
-// 🔐 Middleware de proteção
-// ======================================================
 exports.protect = async (req, res, next) => {
   let token;
 
-  // 1. Check Bearer Token
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    token = req.headers.authorization.split(" ")[1];
-  }
+  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+    try {
+      token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
 
-  if (!token) {
-    return res.status(401).json({ message: "Não autorizado. Token ausente." });
-  }
-
-  try {
-    // 2. Decodifica o token
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    // decoded contém:
-    // { id, role_key, client_id }
-
-    // 3. Busca o usuário no banco (garante active e dados atualizados)
-    const user = await User.findByPk(decoded.id, {
-      attributes: [
-        "user_id",
-        "full_name",
-        "email",
-        "avatar_url",
-        "role_key",
-        "is_active",
-      ],
-    });
-
-    if (!user) {
-      return res.status(401).json({ message: "Usuário não encontrado." });
-    }
-
-    if (!user.is_active) {
-      return res
-        .status(403)
-        .json({ message: "Usuário desativado. Contate o suporte." });
-    }
-
-    // 4. Se for cliente, buscar o company_id automaticamente
-    // IMPORTANTE: client_id no token/API representa company_id no banco
-    let client_id = decoded.client_id || null;
-
-    if (user.role_key === 'client' && !client_id) {
-      const clientUser = await ClientUser.findOne({
-        where: { user_id: user.user_id },
-        attributes: ['company_id']
+      const user = await models.users.findByPk(decoded.id, {
+        attributes: ['user_id', 'full_name', 'email', 'role_key', 'is_active']
       });
 
-      if (clientUser) {
-        client_id = clientUser.company_id;
+      if (!user || !user.is_active) {
+        return res.status(401).json({ message: 'Não autorizado ou usuário inativo' });
       }
+
+      req.user = {
+        id: user.user_id,
+        name: user.full_name,
+        email: user.email,
+        role_key: user.role_key,
+        role: user.role_key // Alias
+      };
+
+      next();
+    } catch (error) {
+      return res.status(401).json({ message: 'Token inválido' });
     }
-
-    // 5. Reconstrói req.user com dados completos
-    req.user = {
-      id: user.user_id,
-      name: user.full_name,
-      email: user.email,
-      avatar_url: user.avatar_url || null,
-      role_key: user.role_key,
-      client_id: client_id, // Sempre terá valor para clientes
-    };
-
-    return next();
-  } catch (error) {
-    console.error("Erro de autenticação:", error);
-    return res.status(401).json({ message: "Token inválido ou expirado." });
+  } else {
+    return res.status(401).json({ message: 'Token não fornecido' });
   }
+};
+
+// A FUNÇÃO QUE FALTAVA
+exports.authorize = (...roles) => {
+  return (req, res, next) => {
+    const userRole = (req.user.role_key || '').toLowerCase();
+    const allowedRoles = roles.map(r => r.toLowerCase());
+
+    if (!allowedRoles.includes(userRole)) {
+      return res.status(403).json({ 
+        message: `Acesso negado. Perfil '${userRole}' não tem permissão.` 
+      });
+    }
+    next();
+  };
 };

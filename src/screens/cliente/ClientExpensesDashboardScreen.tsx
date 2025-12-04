@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Input } from '../../components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import ScreenHeader from '../../components/ScreenHeader';
+import ScreenHeader from '../public/ScreenHeader';
 import api from '../../lib/api'; // ✅ USANDO API.TS COM JWT
 import { toast } from 'sonner';
 

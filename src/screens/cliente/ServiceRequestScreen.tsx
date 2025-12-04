@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { toast } from 'sonner';
 import { Toaster } from '../../components/ui/sonner'; 
 import RequestsViewScreen from './RequestsViewScreen';
-import ScreenHeader from '../../components/ScreenHeader';
+import ScreenHeader from '../public/ScreenHeader';
 import api from '../../lib/api';
 
 interface ServiceRequestScreenProps {

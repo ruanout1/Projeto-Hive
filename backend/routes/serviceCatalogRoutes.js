@@ -1,36 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const catalogController = require('../controllers/serviceCatalogController');
+const ServiceCatalogController = require('../controllers/serviceCatalogController');
 const { protect } = require('../middleware/authMiddleware');
-const { checkRole } = require('../middleware/authorizationMiddleware');
+// const { checkRole } = require('../middleware/authorizationMiddleware'); // Use se quiser restringir a Admin
 
-// =====================
-// ROTAS DO CATÁLOGO DE SERVIÇOS
-// =====================
+// Proteção Global
+router.use(protect);
 
-// Proteger TODAS as rotas. Apenas Admins podem mexer no catálogo.
-router.use(protect, checkRole(['admin']));
+// --- CATEGORIAS ---
+router.get('/categories', ServiceCatalogController.getAllCategories);
+router.post('/categories', ServiceCatalogController.createCategory);
+router.put('/categories/:id', ServiceCatalogController.updateCategory);
+router.delete('/categories/:id', ServiceCatalogController.deleteCategory);
 
-// --- Categorias ---
-// (GET /api/service-catalog/categories)
-router.get('/categories', catalogController.getAllCategories);
-// (POST /api/service-catalog/categories)
-router.post('/categories', catalogController.createCategory);
-// (PUT /api/service-catalog/categories/:id)
-router.put('/categories/:id', catalogController.updateCategory);
-// (DELETE /api/service-catalog/categories/:id)
-router.delete('/categories/:id', catalogController.deleteCategory);
-
-// --- Serviços do Catálogo ---
-// (GET /api/service-catalog)
-router.get('/', catalogController.getAllCatalogServices);
-// (POST /api/service-catalog)
-router.post('/', catalogController.createCatalogService);
-// (PUT /api/service-catalog/:id)
-router.put('/:id', catalogController.updateCatalogService);
-// (PUT /api/service-catalog/:id/status)
-router.put('/:id/status', catalogController.updateCatalogServiceStatus);
-// (DELETE /api/service-catalog/:id)
-router.delete('/:id', catalogController.deleteCatalogService);
+// --- SERVIÇOS ---
+router.get('/', ServiceCatalogController.getAllCatalogServices);
+router.post('/', ServiceCatalogController.createCatalogService);
+router.put('/:id', ServiceCatalogController.updateCatalogService);
+router.put('/:id/status', ServiceCatalogController.updateCatalogServiceStatus);
+router.delete('/:id', ServiceCatalogController.deleteCatalogService);
 
 module.exports = router;

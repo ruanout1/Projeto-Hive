@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FileText, Upload, Download, Eye, Edit, Trash2, Plus, Search, Filter, File, FileCheck, EyeOff, X } from 'lucide-react';
-import ScreenHeader from '../../components/ScreenHeader';
+import ScreenHeader from '../public/ScreenHeader';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';

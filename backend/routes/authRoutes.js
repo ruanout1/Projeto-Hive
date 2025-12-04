@@ -3,22 +3,30 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
-// =====================
+// ===================================
 // ROTAS DE AUTENTICAÇÃO
-// =====================
+// ===================================
 
-// (POST /api/auth/login)
-// Rota pública para o usuário enviar e-mail/senha e receber o token.
-router.post('/login', authController.login);
+// Rota de Login (Pública)
+// Verifica se authController.login existe antes de passar
+if (authController.login) {
+    router.post('/login', authController.login);
+} else {
+    console.error("❌ ERRO: Função 'login' não encontrada no authController");
+}
 
-// (POST /api/auth/forgot-password)
-// Rota pública para solicitar a redefinição de senha.
-router.post('/forgot-password', authController.forgotPassword);
+// Rota de Esqueci a Senha (Pública)
+// Se você manteve a função forgotPassword no controller, descomente abaixo:
+if (authController.forgotPassword) {
+    router.post('/forgot-password', authController.forgotPassword);
+}
 
-// (GET /api/auth/me)
-// Rota privada. O frontend usa isso para verificar se o token
-// salvo no localStorage ainda é válido (ex: ao recarregar a página).
-// O 'protect' é o "segurança" que verifica o crachá (token).
-router.get('/me', protect, authController.getMe);
+// Rota "Quem sou eu" (Protegida)
+// Retorna os dados do usuário logado baseado no token
+if (authController.getMe) {
+    router.get('/me', protect, authController.getMe);
+} else {
+    console.error("❌ ERRO: Função 'getMe' não encontrada no authController");
+}
 
 module.exports = router;

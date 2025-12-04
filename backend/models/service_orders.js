@@ -69,6 +69,7 @@ module.exports = function(sequelize, DataTypes) {
   }, {
     sequelize,
     tableName: 'service_orders',
+    hasTrigger: true,
     timestamps: true,
     indexes: [
       {

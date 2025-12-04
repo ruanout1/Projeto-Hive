@@ -3,7 +3,7 @@ import {
   MessageSquare, Send, Phone, Mail, Calendar, Clock, User, Bot, CheckCircle, 
   MoreVertical, Paperclip, Image as ImageIcon, File, X, Search
 } from 'lucide-react';
-import ScreenHeader from '../../components/ScreenHeader';
+import ScreenHeader from '../public/ScreenHeader';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';

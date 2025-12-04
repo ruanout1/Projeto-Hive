@@ -1,5 +1,3 @@
-// Define todas as estruturas de dados usadas na funcionalidade de Alocações
-
 export interface Allocation {
   id: number;
   collaboratorId: number;
@@ -32,14 +30,16 @@ export interface Client {
   active: boolean;
 }
 
-export interface WorkDayOption {
-  id: string;
-  label: string;
+export interface AllocationsScreenProps {
+  onBack?: () => void;
 }
 
-export interface AllocationStats {
-  total: number;
-  active: number;
-  upcoming: number;
-  completed: number;
-}
+export const workDaysOptions = [
+  { id: 'monday', label: 'Segunda' },
+  { id: 'tuesday', label: 'Terça' },
+  { id: 'wednesday', label: 'Quarta' },
+  { id: 'thursday', label: 'Quinta' },
+  { id: 'friday', label: 'Sexta' },
+  { id: 'saturday', label: 'Sábado' },
+  { id: 'sunday', label: 'Domingo' },
+];

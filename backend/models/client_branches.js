@@ -51,6 +51,10 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.STRING(20),
       allowNull: true
     },
+    area: {
+      type: DataTypes.STRING(50),
+      allowNull: true
+    },
     latitude: {
       type: DataTypes.DECIMAL(10,8),
       allowNull: true

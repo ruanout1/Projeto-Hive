@@ -1,44 +1,54 @@
 import { useState } from 'react';
+
+// --- IMPORTS DAS TELAS PÚBLICAS ---
 import LoginScreen from './screens/public/LoginScreen';
-import Navigation from './components/Navigation';
-import Sidebar from './components/Sidebar';
-import DashboardScreen from './screens/administrador/AdminDashboardarrumar';
-import UserProfilesScreen from './components/UserProfilesScreen';
-import PhotoUploadSection from './screens/colaborador/CollaboratorPhotoUploadSection';
-import CommunicationScreen from './screens/chat/CommunicationScreen';
-import ClientsScreen from './screens/gestor/ManagerClientsScreen';
-import ClientRatingsScreen from './screens/cliente/ClientRatingsScreen';
-import ServiceRequestScreen from './screens/cliente/ServiceRequestScreen';
-import RequestsViewScreen from './screens/cliente/RequestsViewScreen';
-import ProfileSettingsScreen from './components/ProfileSettingsScreen';
-import NotificationsScreen from './components/NotificationsScreen';
+import Sidebar from './screens/public/Sidebar';
+import UserProfilesScreen from './screens/public/UserProfilesScreen';
+import ProfileSettingsScreen from './screens/public/NewPasswordScreen';
+import NotificationsScreen from './screens/public/NotificationsScreen';
+import TeamReportsScreen from './screens/public/TeamReportsScreen';
+import AIAssistant from './screens/public/AIAssistant';
+
+// --- IMPORTS DAS TELAS COMPARTILHADAS (SHARED) ---
+import ClientsScreen from './screens/shared/clients/ClientsScreen';
+import MyPersonalScheduleScreen from './screens/shared/mySchedule/MyPersonalScheduleScreen';
+import ManagerServiceRequests from './screens/shared/serviceRequests/ManagerServiceRequests';
+
+// --- IMPORTS DAS TELAS DO ADMINISTRADOR ---
+import DashboardScreen from './screens/administrador/AdminDashboardScreen'; // Dashboard do Admin
 import UserManagementScreen from './screens/administrador/AdminUserManagementScreen';
 import TeamManagementScreen from './screens/administrador/AdminTeamManagementScreen';
-import TeamReportsScreen from './components/TeamReportsScreen';
-import ServiceCatalogScreen from './screens/administrador/AdminServiceCatalogScreen';
 import AdminRatingsScreen from './screens/administrador/AdminRatingsScreen';
 import AdminTimeClockScreen from './screens/administrador/AdminEmployeeControlScreen';
-import ManagerEmployeeControlScreen from './screens/gestor/ManagerEmployeeControlScreen';
-import CollaboratorTimeClockScreen from './screens/colaborador/CollaboratorTimeClockScreen';
-import ManagerPersonalScheduleScreen from './screens/gestor/ManagerPersonalScheduleScreen';
-console.log('📍 ManagerPersonalScheduleScreen importado:', ManagerPersonalScheduleScreen);
-import ManagerServiceRequests from './screens/gestor/ManagerServiceRequests';
-import ClientDocumentsScreen from './screens/cliente/ClientDocumentsScreen';
-import DocumentsScreen from './screens/administrador/AdminDocumentsScreen';
-import MyPersonalScheduleScreen from './screens/administrador/AdminPersonalScheduleScreen';
-import ServiceScheduleScreen from './screens/gestor/ManagerServiceScheduleScreen';
-import ClientScheduledServicesScreen from './screens/cliente/ClientScheduledServicesScreen';
-import ClientExpensesDashboardScreen from './screens/cliente/ClientExpensesDashboardScreen';
-import ManagerPerformanceReportsScreen from './screens/gestor/ManagerPerformanceReportsScreen';
+import ServiceCatalogScreen from './screens/administrador/catalog/AdminServiceCatalogScreen';
 import AdminPerformanceReportsScreen from './screens/administrador/AdminPerformanceReportsScreen';
-import ClientServicePhotosScreen from './screens/cliente/ClientServicePhotosScreen';
-import CollaboratorAllocationsScreen from './screens/gestor/ManagerAllocationsScreen';
-import ManagerPhotoReviewScreen from './screens/gestor/ManagerPhotoReviewScreen';
 import AdminPhotoHistoryScreen from './screens/administrador/AdminPhotoHistoryScreen';
 import ServiceOrdersScreen from './screens/administrador/AdminServiceOrdersScreen';
-import AIAssistant from './components/AIAssistant';
-import { Toaster } from './components/ui/sonner';
-import AdminServiceRequests from './screens/administrador/AdminServiceRequests';
+import DocumentsScreen from './screens/administrador/AdminDocumentsScreen';
+
+// --- IMPORTS DAS TELAS DO GESTOR ---
+import ManagerDashboard from './screens/gestor/dashboard/ManagerDashboard'; // <--- NOVO IMPORT (Ajuste o caminho se precisar)
+import ManagerEmployeeControlScreen from './screens/gestor/ManagerEmployeeControlScreen';
+import ServiceScheduleScreen from './screens/gestor/ManagerServiceScheduleScreen';
+import ManagerPerformanceReportsScreen from './screens/gestor/ManagerPerformanceReportsScreen';
+import CollaboratorAllocationsScreen from './screens/gestor/Alocacoes/ManagerAllocationsScreen';
+import ManagerPhotoReviewScreen from './screens/gestor/ManagerPhotoReviewScreen';
+
+// --- IMPORTS DAS TELAS DO COLABORADOR ---
+import PhotoUploadSection from './screens/colaborador/CollaboratorPhotoUploadSection';
+import CollaboratorTimeClockScreen from './screens/colaborador/CollaboratorTimeClockScreen';
+
+// --- IMPORTS DAS TELAS DO CLIENTE ---
+import Navigation from './screens/cliente/Navigation';
+import ClientRatingsScreen from './screens/cliente/ClientRatingsScreen';
+import ServiceRequestScreen from './screens/cliente/ServiceRequestScreen';
+import ClientDocumentsScreen from './screens/cliente/ClientDocumentsScreen';
+import ClientScheduledServicesScreen from './screens/cliente/ClientScheduledServicesScreen';
+import ClientExpensesDashboardScreen from './screens/cliente/ClientExpensesDashboardScreen';
+import ClientServicePhotosScreen from './screens/cliente/ClientServicePhotosScreen';
+
+// --- IMPORTS DAS TELAS DE COMUNICAÇÃO ---
+import CommunicationScreen from './screens/chat/CommunicationScreen';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -49,188 +59,121 @@ export default function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [serviceRequestTab, setServiceRequestTab] = useState<string | undefined>(undefined);
 
-  const handleLogin = () => {
-    setIsLoggedIn(true);
+  // Simulando dados do usuário logado
+  const getCurrentManager = () => {
+    if (currentUser === 'administrador') {
+      return { id: '1', name: 'Administrador Sistema', areas: ['norte', 'sul', 'leste', 'oeste', 'centro'] };
+    }
+    if (currentUser === 'gestor') {
+      return { id: '2', name: 'Ana Paula Rodrigues', areas: ['norte', 'centro'] };
+    }
+    return { id: '0', name: 'Usuário', areas: [] };
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setActiveTab('dashboard');
-    setActiveSection('dashboards');
-  };
-
-  const handleUserTypeChange = (userType: string) => {
-    setCurrentUser(userType);
-    setActiveSection('dashboards');
-  };
-
-  const handleProfileSettings = () => {
-    setActiveSection('profile-settings');
-  };
-
-  const handleOpenAIAssistant = () => {
-    setIsAIAssistantOpen(true);
-  };
-
-  const handleCloseAIAssistant = () => {
-    setIsAIAssistantOpen(false);
-  };
-
+  const handleLogin = () => { setIsLoggedIn(true); };
+  const handleLogout = () => { setIsLoggedIn(false); setActiveTab('dashboard'); setActiveSection('dashboards'); };
+  const handleUserTypeChange = (userType: string) => { setCurrentUser(userType); setActiveSection('dashboards'); };
+  const handleProfileSettings = () => { setActiveSection('profile-settings'); };
+  const handleOpenAIAssistant = () => { setIsAIAssistantOpen(true); };
+  const handleCloseAIAssistant = () => { setIsAIAssistantOpen(false); };
+  
   const handleSectionChange = (section: string, params?: any) => {
     setActiveSection(section);
-    setIsMobileSidebarOpen(false); // Fecha o sidebar mobile quando navega
-    
-    // Se for para solicitar serviços, definir qual aba abrir
-    if (section === 'solicitar-servicos' && params?.tab) {
-      setServiceRequestTab(params.tab);
-    } else {
-      setServiceRequestTab(undefined);
-    }
+    setIsMobileSidebarOpen(false);
+    if (section === 'solicitar-servicos' && params?.tab) { setServiceRequestTab(params.tab); } else { setServiceRequestTab(undefined); }
   };
 
   const renderContent = () => {
-    if (activeSection === 'perfis-usuario') {
-      return <UserProfilesScreen />;
-    }
-    if (activeSection === 'fotos-servicos') {
-      return (
-        <div className="p-6">
-          <PhotoUploadSection onBack={() => handleSectionChange('dashboards')} />
-        </div>
-      );
-    }
-    if (activeSection === 'comunicacao') {
-      return <CommunicationScreen userType={currentUser} onBack={() => handleSectionChange('dashboards')} />;
-    }
-    if (activeSection === 'clientes') {
-      // Mock das permissões - em produção viriam do backend/contexto global
-      const mockManagerPermissions = {
-        canEditClients: true,
-        canToggleClientStatus: true
-      };
-      return <ClientsScreen 
-        onBack={() => handleSectionChange('dashboards')} 
-        userType={currentUser === 'administrador' ? 'Administrador' : 'Gestor'}
-        managerPermissions={mockManagerPermissions}
-      />;
-    }
-    if (activeSection === 'avaliacoes') {
-      // Cliente vê suas avaliações
-      if (currentUser === 'cliente') {
-        return <ClientRatingsScreen onBack={() => handleSectionChange('dashboards')} />;
-      }
-      // Admin vê dashboard de avaliações
-      return <AdminRatingsScreen onBack={() => handleSectionChange('dashboards')} />;
-    }
-    if (activeSection === 'solicitar-servicos') {
-      return <ServiceRequestScreen onBack={() => handleSectionChange('dashboards')} initialTab={serviceRequestTab} />;
-    }
-    if (activeSection === 'profile-settings') {
-      return <ProfileSettingsScreen userType={currentUser} onBack={() => handleSectionChange('dashboards')} />;
-    }
-    if (activeSection === 'notificacoes') {
-      return <NotificationsScreen onBack={() => handleSectionChange('dashboards')} />;
-    }
-    if (activeSection === 'gerenciar-usuarios') {
-      return <UserManagementScreen onBack={() => handleSectionChange('dashboards')} />;
-    }
-    if (activeSection === 'gerenciar-equipes') {
-      return <TeamManagementScreen onBack={() => setActiveSection('dashboards')} />;
-    }
-    if (activeSection === 'relatorios-equipes') {
-      if (currentUser === 'administrador') {
-        return <AdminPerformanceReportsScreen onBack={() => setActiveSection('dashboards')} />;
-      }
-      if (currentUser === 'gestor') {
-        return <ManagerPerformanceReportsScreen onBack={() => setActiveSection('dashboards')} />;
-      }
-      return <TeamReportsScreen onBack={() => setActiveSection('dashboards')} />;
-    }
-    if (activeSection === 'catalogo-servicos') {
-      return <ServiceCatalogScreen onBack={() => setActiveSection('dashboards')} />;
-    }
-    if (activeSection === 'controle-ponto') {
-      if (currentUser === 'administrador') {
-        return <AdminTimeClockScreen onBack={() => setActiveSection('dashboards')} />;
-      }
-      if (currentUser === 'gestor') {
-        return <ManagerEmployeeControlScreen onBack={() => setActiveSection('dashboards')} />;
-      }
-    }
-    if (activeSection === 'meu-ponto') {
-      return <CollaboratorTimeClockScreen onBack={() => setActiveSection('dashboards')} />;
-    }
-    if (activeSection === 'minha-agenda') {
-      return <ManagerPersonalScheduleScreen onBack={() => setActiveSection('dashboards')} />;
-}
-    if (activeSection === 'gerenciar-solicitacoes') {
-      if (currentUser === 'administrador') {
-        return <AdminServiceRequests />;
-      }
-      if (currentUser === 'gestor') {
-        return <ManagerServiceRequests />;
-      }
-    }
-    if (activeSection === 'documentos-cliente') {
-      return <ClientDocumentsScreen onBack={() => setActiveSection('dashboards')} />;
-    }
-    if (activeSection === 'documentos') {
-      return <DocumentsScreen onBack={() => setActiveSection('dashboards')} />;
-    }
-    // Nova: Minha Agenda Pessoal (Admin e Gestor)
-    if (activeSection === 'agenda-pessoal') {
-      if (currentUser === 'administrador') {
-        return <MyPersonalScheduleScreen userRole="admin" />;
-      }
-      if (currentUser === 'gestor') {
-        return <MyPersonalScheduleScreen userRole="manager" />;
-      }
-    }
-    // Nova: Agenda de Serviços (Admin e Gestor)
-    if (activeSection === 'agenda-servicos') {
-      if (currentUser === 'administrador') {
-        return <ServiceScheduleScreen userRole="admin" />;
-      }
-      if (currentUser === 'gestor') {
-        return <ServiceScheduleScreen userRole="manager" managerArea="norte" />;
-      }
-    }
-    // Nova: Serviços Agendados (Cliente)
-    if (activeSection === 'servicos-agendados') {
-      return <ClientScheduledServicesScreen onBack={() => setActiveSection('dashboards')} />;
+    // 1. TELAS GERAIS/PÚBLICAS
+    if (activeSection === 'perfis-usuario') return <UserProfilesScreen />;
+    if (activeSection === 'fotos-servicos') return <div className="p-6"><PhotoUploadSection onBack={() => handleSectionChange('dashboards')} /></div>;
+    if (activeSection === 'comunicacao') return <CommunicationScreen userType={currentUser} onBack={() => handleSectionChange('dashboards')} />;
+    if (activeSection === 'profile-settings') return <ProfileSettingsScreen userType={currentUser} onBack={() => handleSectionChange('dashboards')} />;
+    if (activeSection === 'notificacoes') return <NotificationsScreen onBack={() => handleSectionChange('dashboards')} />;
+
+    // 2. DASHBOARDS (HOME) - AQUI ESTAVA O ERRO!
+    // Agora direcionamos cada usuário para o seu Dashboard específico
+    if (activeSection === 'dashboards') {
+        if (currentUser === 'administrador') {
+            return <DashboardScreen onSectionChange={handleSectionChange} />;
+        }
+        if (currentUser === 'gestor') {
+            // Importamos o ManagerDashboard lá em cima
+            return <ManagerDashboard onSectionChange={handleSectionChange} />;
+        }
+        if (currentUser === 'colaborador') {
+            // Colaborador geralmente cai no Ponto ou Relatórios (ou crie um Dashboard próprio)
+            return <TeamReportsScreen onBack={() => {}} />; 
+        }
+        if (currentUser === 'cliente') {
+            // Cliente cai no Dashboard de Gastos
+            return <ClientExpensesDashboardScreen onBack={() => {}} />;
+        }
     }
 
-    // Nova: Dashboard de Gastos (Cliente)
-    if (activeSection === 'dashboard-gastos') {
-      return <ClientExpensesDashboardScreen onBack={() => setActiveSection('dashboards')} />;
+    // 3. TELAS COMPARTILHADAS
+    if (activeSection === 'clientes') {
+      const role = currentUser === 'administrador' ? 'admin' : 'manager';
+      return <ClientsScreen userRole={role} onBack={() => handleSectionChange('dashboards')} />;
     }
-    // Nova: Fotos do Serviço (Cliente)
-    if (activeSection.startsWith('service-photos-')) {
-      const serviceId = activeSection.replace('service-photos-', '');
-      return (
-        <ClientServicePhotosScreen 
-          serviceId={serviceId}
-          onBack={() => setActiveSection('dashboards')}
-        />
-      );
+
+    if (activeSection === 'agenda-pessoal' || activeSection === 'minha-agenda') {
+      const role = currentUser === 'administrador' ? 'admin' : 'manager';
+      return <MyPersonalScheduleScreen userRole={role} onBack={() => handleSectionChange('dashboards')} />;
     }
-    // Nova: Alocações de Colaboradores (Gestor)
-    if (activeSection === 'alocacoes-colaboradores') {
-      return <CollaboratorAllocationsScreen onBack={() => setActiveSection('dashboards')} />;
+
+    if (activeSection === 'gerenciar-solicitacoes') {
+      if (currentUser === 'administrador' || currentUser === 'gestor') {
+        const manager = getCurrentManager();
+        return <ManagerServiceRequests manager={manager} userType={currentUser as 'administrador' | 'gestor'} />;
+      }
     }
-    // Nova: Revisão de Fotos (Gestor)
-    if (activeSection === 'revisao-fotos') {
-      return <ManagerPhotoReviewScreen onBack={() => setActiveSection('dashboards')} />;
+
+    // 4. TELAS ESPECÍFICAS DO ADMINISTRADOR
+    if (currentUser === 'administrador') {
+      if (activeSection === 'catalogo-servicos') return <ServiceCatalogScreen onBack={() => setActiveSection('dashboards')} />;
+      if (activeSection === 'gerenciar-usuarios') return <UserManagementScreen onBack={() => handleSectionChange('dashboards')} />;
+      if (activeSection === 'gerenciar-equipes') return <TeamManagementScreen onBack={() => setActiveSection('dashboards')} />;
+      if (activeSection === 'avaliacoes') return <AdminRatingsScreen onBack={() => handleSectionChange('dashboards')} />;
+      if (activeSection === 'controle-ponto') return <AdminTimeClockScreen onBack={() => setActiveSection('dashboards')} />;
+      if (activeSection === 'relatorios-equipes') return <AdminPerformanceReportsScreen onBack={() => setActiveSection('dashboards')} />;
+      if (activeSection === 'documentos') return <DocumentsScreen onBack={() => handleSectionChange('dashboards')} />;
+      if (activeSection === 'agenda-servicos') return <ServiceScheduleScreen userRole="admin" />;
+      if (activeSection === 'historico-fotos') return <AdminPhotoHistoryScreen onBack={() => setActiveSection('dashboards')} />;
+      if (activeSection === 'ordens-servico') return <ServiceOrdersScreen onBack={() => setActiveSection('dashboards')} />;
     }
-    // Nova: Histórico de Fotos (Admin)
-    if (activeSection === 'historico-fotos') {
-      return <AdminPhotoHistoryScreen onBack={() => setActiveSection('dashboards')} />;
+
+    // 5. TELAS ESPECÍFICAS DO GESTOR
+    if (currentUser === 'gestor') {
+      if (activeSection === 'controle-ponto') return <ManagerEmployeeControlScreen onBack={() => setActiveSection('dashboards')} />;
+      if (activeSection === 'relatorios-equipes') return <ManagerPerformanceReportsScreen onBack={() => setActiveSection('dashboards')} />;
+      if (activeSection === 'agenda-servicos') return <ServiceScheduleScreen userRole="manager" managerArea="norte" />;
+      if (activeSection === 'alocacoes-colaboradores') return <CollaboratorAllocationsScreen onBack={() => setActiveSection('dashboards')} />;
+      if (activeSection === 'revisao-fotos') return <ManagerPhotoReviewScreen onBack={() => setActiveSection('dashboards')} />;
     }
-    // Nova: Ordens de Serviço (Admin)
-    if (activeSection === 'ordens-servico') {
-      return <ServiceOrdersScreen onBack={() => setActiveSection('dashboards')} />;
+
+    // 6. TELAS ESPECÍFICAS DO COLABORADOR
+    if (currentUser === 'colaborador') {
+      if (activeSection === 'fotos-servicos') return <div className="p-6"><PhotoUploadSection onBack={() => handleSectionChange('dashboards')} /></div>;
+      if (activeSection === 'meu-ponto') return <CollaboratorTimeClockScreen onBack={() => handleSectionChange('dashboards')} />;
+      if (activeSection === 'relatorios-equipes') return <TeamReportsScreen onBack={() => setActiveSection('dashboards')} />;
     }
-    return <DashboardScreen userType={currentUser} onSectionChange={handleSectionChange} />;
+
+    // 7. TELAS ESPECÍFICAS DO CLIENTE
+    if (currentUser === 'cliente') {
+      if (activeSection === 'avaliacoes') return <ClientRatingsScreen onBack={() => handleSectionChange('dashboards')} />;
+      if (activeSection === 'solicitar-servicos') return <ServiceRequestScreen onBack={() => handleSectionChange('dashboards')} initialTab={serviceRequestTab} />;
+      if (activeSection === 'documentos-cliente') return <ClientDocumentsScreen onBack={() => handleSectionChange('dashboards')} />;
+      if (activeSection === 'servicos-agendados') return <ClientScheduledServicesScreen onBack={() => setActiveSection('dashboards')} />;
+      if (activeSection === 'dashboard-gastos') return <ClientExpensesDashboardScreen onBack={() => setActiveSection('dashboards')} />;
+      if (activeSection.startsWith('service-photos-')) {
+        const serviceId = activeSection.replace('service-photos-', '');
+        return <ClientServicePhotosScreen serviceId={serviceId} onBack={() => setActiveSection('dashboards')} />;
+      }
+    }
+
+    // Fallback final seguro
+    return <div className="p-10 text-center">Selecione uma opção no menu</div>;
   };
 
   if (!isLoggedIn) {
@@ -239,7 +182,7 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      {/* Navigation só aparece no dashboard */}
+      {/* Navigation apenas no dashboard */}
       {activeSection === 'dashboards' && (
         <Navigation 
           activeTab={activeTab}
@@ -261,7 +204,6 @@ export default function App() {
           onMobileClose={() => setIsMobileSidebarOpen(false)}
         />
         
-        {/* Mobile Sidebar Toggle Button */}
         <button
           onClick={() => setIsMobileSidebarOpen(true)}
           className="md:hidden fixed top-4 left-4 z-40 p-2 rounded-lg shadow-lg"
@@ -279,20 +221,16 @@ export default function App() {
         </main>
       </div>
 
-      {/* Barra de tipos de usuário para demo */}
+      {/* Dev Tools */}
       <div className="bg-white border-t border-gray-200 p-4">
-        <div className="flex flex-col gap-3">
-          {/* Tipos de Usuário */}
+         <div className="flex flex-col gap-3">
           <div className="flex justify-center items-center space-x-4">
-            <span className="text-sm text-black"></span>
             {['administrador', 'gestor', 'colaborador', 'cliente'].map((type) => (
               <button
                 key={type}
                 onClick={() => handleUserTypeChange(type)}
                 className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                  currentUser === type
-                    ? 'text-white'
-                    : 'text-black hover:bg-gray-100'
+                  currentUser === type ? 'text-white' : 'text-black hover:bg-gray-100'
                 }`}
                 style={currentUser === type ? { backgroundColor: '#6400A4' } : {}}
               >
@@ -300,73 +238,18 @@ export default function App() {
               </button>
             ))}
           </div>
-
-          {/* Atalhos de Desenvolvimento */}
+          {/* Atalhos */}
           <div className="flex justify-center items-center space-x-4 pt-2 border-t border-gray-100">
             <span className="text-xs text-gray-500">🔧 Dev Tools:</span>
-            <button
-              onClick={() => {
-                setCurrentUser('administrador');
-                setActiveSection('gerenciar-usuarios');
-              }}
-              className="px-3 py-1 text-xs rounded-md transition-colors border-2 hover:bg-purple-50"
-              style={{ borderColor: '#8B20EE', color: '#8B20EE' }}
-            >
-              👥 Gerenciar Usuários
-            </button>
-            <button
-              onClick={() => {
-                setCurrentUser('gestor');
-                setActiveSection('comunicacao');
-              }}
-              className="px-3 py-1 text-xs rounded-md transition-colors border-2 hover:bg-purple-50"
-              style={{ borderColor: '#6400A4', color: '#6400A4' }}
-            >
-              💬 Comunicação
-            </button>
-
-            <button
-              onClick={() => {
-                setCurrentUser('cliente');
-                setActiveSection('dashboard-gastos');
-              }}
-              className="px-3 py-1 text-xs rounded-md transition-colors border-2 hover:bg-blue-50"
-              style={{ borderColor: '#35BAE6', color: '#35BAE6' }}
-            >
-              💰 Dashboard de Gastos
-            </button>
-            <button
-              onClick={() => {
-                setCurrentUser('gestor');
-                setActiveSection('relatorios-equipes');
-              }}
-              className="px-3 py-1 text-xs rounded-md transition-colors border-2 hover:bg-purple-50"
-              style={{ borderColor: '#8B20EE', color: '#8B20EE' }}
-            >
-              📊 Relatórios (Gestor)
-            </button>
-            <button
-              onClick={() => {
-                setCurrentUser('administrador');
-                setActiveSection('relatorios-equipes');
-              }}
-              className="px-3 py-1 text-xs rounded-md transition-colors border-2 hover:bg-purple-50"
-              style={{ borderColor: '#6400A4', color: '#6400A4' }}
-            >
-              📈 Relatórios (Admin)
-            </button>
+            <button onClick={() => { setCurrentUser('administrador'); setActiveSection('gerenciar-usuarios'); }} className="px-3 py-1 text-xs rounded-md border-2 hover:bg-purple-50" style={{ borderColor: '#8B20EE', color: '#8B20EE' }}>👥 Usuários</button>
+            <button onClick={() => { setCurrentUser('gestor'); setActiveSection('comunicacao'); }} className="px-3 py-1 text-xs rounded-md border-2 hover:bg-purple-50" style={{ borderColor: '#6400A4', color: '#6400A4' }}>💬 Chat</button>
+            <button onClick={() => { setCurrentUser('cliente'); setActiveSection('dashboard-gastos'); }} className="px-3 py-1 text-xs rounded-md border-2 hover:bg-blue-50" style={{ borderColor: '#35BAE6', color: '#35BAE6' }}>💰 Gastos</button>
+            <button onClick={() => { setCurrentUser('gestor'); setActiveSection('gerenciar-solicitacoes'); }} className="px-3 py-1 text-xs rounded-md border-2 hover:bg-green-50" style={{ borderColor: '#10B981', color: '#10B981' }}>📋 Solicitações</button>
           </div>
-        </div>
+         </div>
       </div>
       
-      {/* Assistente IA */}
-      <AIAssistant 
-        isOpen={isAIAssistantOpen}
-        onClose={handleCloseAIAssistant}
-        userType={currentUser}
-      />
-      
-      {/* <Toaster /> */}
+      <AIAssistant isOpen={isAIAssistantOpen} onClose={handleCloseAIAssistant} userType={currentUser} />
     </div>
   );
 }

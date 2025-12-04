@@ -1,193 +1,157 @@
-const { Sequelize, Op } = require('sequelize');
-const { sequelize, Team, User, TeamMember } = require('../database/db');
+const { models, sequelize } = require('../database/connection');
+const { Op } = require('sequelize');
+const { handleDatabaseError } = require('../utils/errorHandling');
 
-// ==========================================================
-// FUNÇÕES - GERENCIAMENTO DE EQUIPES (ADMIN E GESTOR)
-// ==========================================================
+module.exports = {
+  // LISTAR EQUIPES (GET /api/teams)
+  async listTeams(req, res) {
+    try {
+      const { areas } = req.query;
+      const whereClause = {};
 
-// GET /api/teams
-exports.getAllTeams = async (req, res) => {
-  try {
-    const loggedInUser = req.user;
-    const whereCondition = {};
+      if (areas) {
+        const areaList = areas.split(',');
+        // Se a tabela teams tiver a coluna 'area', filtramos
+        // Se não tiver, e a área for definida pelos membros ou supervisor, a lógica muda.
+        // Assumindo que teams tem 'area' ou 'region' em string ou ID
+         // whereClause.area_id = ... (se for ID) ou whereClause.area = ... (se for string)
+         // Para evitar erro se a coluna não existir, deixo comentado ou genérico:
+         // whereClause.area = { [Op.in]: areaList }; 
+      }
 
-    // *** A MÁGICA DA PERMISSÃO ***
-    // Se for gestor, vê apenas as equipes que ele gerencia.
-    // Se for admin, o 'where' fica vazio e ele vê tudo.
-    if (loggedInUser.user_type === 'manager') {
-      whereCondition.manager_user_id = loggedInUser.id;
+      const teams = await models.teams.findAll({
+        where: whereClause,
+        include: [
+            // Inclui membros para contar
+            { 
+                model: models.team_members, 
+                as: 'team_members',
+                include: [{ model: models.users, as: 'user', attributes: ['full_name', 'avatar_url'] }]
+            },
+            // CORREÇÃO AQUI: O init-models define como 'supervisor', não 'manager_user'
+            {
+                model: models.users,
+                as: 'supervisor', 
+                attributes: ['full_name']
+            },
+            // Inclui Área (se tiver associação no init-models)
+            {
+                model: models.areas,
+                as: 'area',
+                attributes: ['name']
+            }
+        ]
+      });
+
+      // Formata para o frontend se necessário, ou retorna direto
+      const formattedTeams = teams.map(t => ({
+          id: t.team_id,
+          name: t.name,
+          description: t.description,
+          // Tenta pegar do objeto area, se não tiver pega do campo direto, se não, 'Geral'
+          area: t.area?.name || 'Geral', 
+          status: t.is_active ? 'active' : 'inactive',
+          // CORREÇÃO AQUI: Lendo de 'supervisor'
+          supervisorName: t.supervisor?.full_name || 'Sem Supervisor',
+          memberCount: t.team_members.length,
+          members: t.team_members.map(tm => ({
+              id: tm.user?.user_id,
+              name: tm.user?.full_name,
+              avatar: tm.user?.avatar_url
+          }))
+      }));
+
+      return res.json(formattedTeams);
+
+    } catch (error) {
+      console.error(error);
+      handleDatabaseError(res, error, 'listar equipes');
     }
+  },
 
-    const teams = await Team.findAll({
-      where: whereCondition, // Aplica o filtro de permissão
-      attributes: [
-        ['team_id', 'id'],
-        'name',
-        ['is_active', 'status'], 
-        'created_at',
-        'updated_at'
-      ],
-      include: [
-        {
-          model: User,
-          as: 'manager', 
-          attributes: [['user_id', 'id'], ['full_name', 'name'], 'email']
-        },
-        {
-          model: User,
-          as: 'members', 
-          attributes: [['user_id', 'id'], ['full_name', 'name'], 'email'],
-          through: { attributes: [] } 
-        }
-      ],
-      order: [['name', 'ASC']]
-    });
+  // CRIAR EQUIPE (POST /api/teams)
+  async createTeam(req, res) {
+    const t = await sequelize.transaction();
+    try {
+      const { name, description, area, supervisorId } = req.body;
 
-    // Formata o status para 'active'/'inactive'
-    const formattedTeams = teams.map((team) => {
-      const plainTeam = team.get({ plain: true });
-      return {
-        ...plainTeam,
-        status: plainTeam.status ? 'active' : 'inactive',
-        createdAt: plainTeam.created_at,
-        manager: plainTeam.manager ? { ...plainTeam.manager, role: 'gestor' } : null,
-        members: plainTeam.members.map((m) => ({ ...m, role: 'colaborador' }))
-      };
-    });
+      // Busca ID da área pelo nome (se vier string)
+      let areaId = null;
+      if (area) {
+          const areaRecord = await models.areas.findOne({ where: { name: area } });
+          if (areaRecord) areaId = areaRecord.area_id;
+      }
 
-    res.status(200).json(formattedTeams);
-  } catch (error) {
-    handleDatabaseError(res, error, 'buscar equipes');
-  }
-};
+      const newTeam = await models.teams.create({
+        name,
+        description,
+        area_id: areaId,
+        // O campo no banco (FK) chama manager_user_id, isso está certo
+        manager_user_id: supervisorId, 
+        is_active: true
+      }, { transaction: t });
 
-// POST /api/teams (Apenas Admin)
-exports.createTeam = async (req, res) => {
-  const { name, managerId, memberIds } = req.body;
-  
-  if (!name || !managerId) {
-    return res.status(400).json({ message: "Nome e Gestor são obrigatórios." });
-  }
+      await t.commit();
+      res.status(201).json(newTeam);
 
-  const t = await sequelize.transaction(); 
+    } catch (error) {
+      await t.rollback();
+      handleDatabaseError(res, error, 'criar equipe');
+    }
+  },
 
-  try {
-    const newTeam = await Team.create({
-      name,
-      manager_user_id: managerId,
-      is_active: true
-    }, { transaction: t });
+  // ATUALIZAR EQUIPE (PUT /api/teams/:id)
+  async updateTeam(req, res) {
+    try {
+        const { id } = req.params;
+        const { name, description, area, supervisorId } = req.body;
 
-    if (memberIds && memberIds.length > 0) {
-      const membersData = memberIds.map((userId) => ({
-        team_id: newTeam.team_id,
-        user_id: userId
-      }));
-      await TeamMember.bulkCreate(membersData, { transaction: t });
-    }
+        let areaId = null;
+        if (area) {
+            const areaRecord = await models.areas.findOne({ where: { name: area } });
+            if (areaRecord) areaId = areaRecord.area_id;
+        }
 
-    await t.commit();
-    
-    // Busca a equipe recém-criada para retornar ao frontend
-    const createdTeam = await Team.findByPk(newTeam.team_id, {
-      attributes: [['team_id', 'id'], 'name', ['is_active', 'status'], 'created_at'],
-      include: [
-        { model: User, as: 'manager', attributes: [['user_id', 'id'], ['full_name', 'name'], 'email'] },
-        { model: User, as: 'members', attributes: [['user_id', 'id'], ['full_name', 'name'], 'email'], through: { attributes: [] } }
-      ]
-    });
+        await models.teams.update({
+            name, 
+            description, 
+            area_id: areaId, 
+            manager_user_id: supervisorId
+        }, { where: { team_id: id } });
 
-    if (!createdTeam) {
-      return res.status(404).json({ message: "Equipe criada, mas não pôde ser recuperada."});
-    }
+        res.json({ message: 'Equipe atualizada' });
+    } catch (error) {
+        handleDatabaseError(res, error, 'atualizar equipe');
+    }
+  },
 
-    // ... (formatação do createdTeam) ...
-    const plainTeam = createdTeam.get({ plain: true });
-    const formattedTeam = {
-      // ... (formatação) ...
-    };
+  // ATUALIZAR STATUS (PUT /api/teams/:id/status)
+  async updateTeamStatus(req, res) {
+    try {
+        const { id } = req.params;
+        const { status } = req.body; 
+        
+        await models.teams.update({
+            is_active: status === 'active'
+        }, { where: { team_id: id } });
 
-    res.status(201).json(formattedTeam);
+        res.json({ message: 'Status atualizado' });
+    } catch (error) {
+        handleDatabaseError(res, error, 'atualizar status equipe');
+    }
+  },
 
-  } catch (error) {
-    await t.rollback(); 
-    handleDatabaseError(res, error, 'criar equipe');
-  }
-};
+  // EXCLUIR EQUIPE (DELETE /api/teams/:id)
+  async deleteTeam(req, res) {
+    try {
+        const { id } = req.params;
+        const count = await models.team_members.count({ where: { team_id: id } });
+        if (count > 0) return res.status(400).json({ message: 'Equipe tem membros. Remova-os antes.' });
 
-// PUT /api/teams/:id (Apenas Admin)
-exports.updateTeam = async (req, res) => {
-  const { id } = req.params;
-  const { name, managerId, memberIds } = req.body;
-
-  if (!name || !managerId) {
-    return res.status(400).json({ message: "Nome e Gestor são obrigatórios." });
-  }
-
-  const t = await sequelize.transaction();
-
-  try {
-    const team = await Team.findByPk(id);
-    if (!team) {
-      await t.rollback();
-      return res.status(404).json({ message: "Equipe não encontrada." });
-    }
-
-    // 1. Atualiza dados
-    await team.update({ name, manager_user_id: managerId }, { transaction: t });
-
-    // 2. Remove membros antigos
-    await TeamMember.destroy({ where: { team_id: id }, transaction: t });
-
-    // 3. Adiciona novos membros
-    if (memberIds && memberIds.length > 0) {
-      const membersData = memberIds.map((userId) => ({ team_id: id, user_id: userId }));
-      await TeamMember.bulkCreate(membersData, { transaction: t });
-    }
-
-    await t.commit();
-    res.status(200).json({ message: "Equipe atualizada com sucesso." });
-
-  } catch (error) {
-    await t.rollback();
-    handleDatabaseError(res, error, 'atualizar equipe');
-  }
-};
-
-// PUT /api/teams/:id/status (Apenas Admin)
-exports.updateTeamStatus = async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body; // Espera 'active' ou 'inactive'
-
-  if (status === undefined) {
-    return res.status(400).json({ message: "Status é obrigatório." });
-  }
-
-  try {
-    const team = await Team.findByPk(id);
-    if (!team) {
-      return res.status(404).json({ message: "Equipe não encontrada." });
-    }
-
-    await team.update({ is_active: status === 'active' });
-    res.status(200).json({ message: "Status da equipe atualizado." });
-  } catch (error) {
-    handleDatabaseError(res, error, 'atualizar status da equipe');
-  }
-};
-
-// DELETE /api/teams/:id (Apenas Admin)
-exports.deleteTeam = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const team = await Team.findByPk(id);
-    if (!team) {
-      return res.status(404).json({ message: "Equipe não encontrada." });
-    }
-
-    await team.destroy();
-    res.status(200).json({ message: "Equipe excluída com sucesso." });
-  } catch (error) {
-    handleDatabaseError(res, error, 'excluir equipe');
-  }
+        await models.teams.destroy({ where: { team_id: id } });
+        res.json({ message: 'Equipe excluída' });
+    } catch (error) {
+        handleDatabaseError(res, error, 'excluir equipe');
+    }
+  }
 };

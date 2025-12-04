@@ -1,113 +1,120 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { Allocation, Client, Collaborator, AllocationStats } from '../types';
+import api from '../../../../lib/api';
+import { Allocation, Collaborator, Client } from '../types';
 
-// ===================================
-// API Helper (Função auxiliar)
-// ===================================
-// Criamos um 'wrapper' para o fetch que já inclui o token
-const getAuthHeaders = () => {
-  // *** AJUSTE AQUI se o seu token estiver em outro lugar ***
-  const token = localStorage.getItem('authToken'); 
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  };
-};
-
-const api = {
-  get: async (url: string) => {
-    const res = await fetch(url, { headers: getAuthHeaders() });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || 'Falha ao buscar dados');
-    }
-    return res.json();
-  },
-  post: async (url: string, data: any) => {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || 'Falha ao criar');
-    }
-    return res.json();
-  },
-  put: async (url: string, data: any) => {
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || 'Falha ao atualizar');
-    }
-    return res.json();
-  },
-};
-
-
-// ===================================
-// Hook principal
-// ===================================
 export const useAllocations = () => {
-  // Estados de dados
   const [allocations, setAllocations] = useState<Allocation[]>([]);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [stats, setStats] = useState<AllocationStats>({ total: 0, active: 0, upcoming: 0, completed: 0 });
-
-  // Estados de UI
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAllocation, setEditingAllocation] = useState<Allocation | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
 
-  // Função para carregar todos os dados da tela
+  // Form states
+  const [selectedCollaborator, setSelectedCollaborator] = useState('');
+  const [selectedClient, setSelectedClient] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedWorkDays, setSelectedWorkDays] = useState<string[]>([]);
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+
+  // --- HELPER: Mapeia status do Banco para o Frontend ---
+  const mapBackendStatusToFrontend = (statusKey: string): any => {
+    // Ajuste conforme o que está no seu arquivo types.ts
+    if (statusKey === 'in_progress' || statusKey === 'active') return 'active';
+    if (statusKey === 'completed') return 'completed';
+    if (statusKey === 'cancelled') return 'cancelled';
+    // 'scheduled' ou qualquer outro vira 'upcoming' (ou o status padrão de "agendado" do seu tipo)
+    return 'upcoming'; 
+  };
+
   const fetchData = useCallback(async () => {
+    setLoading(true);
     try {
-      setIsLoading(true);
-      // Carrega todos os dados em paralelo
-      const [allocData, statsData, collData, clientData] = await Promise.all([
-        api.get(`/api/allocations?status=${filterStatus}`),
-        api.get('/api/allocations/stats'),
-        api.get('/api/users/list/my-staff'),
-        api.get('/api/clients/list/my-area')
+      const [allocRes, collabRes, clientRes] = await Promise.all([
+        api.get('/allocations'), 
+        api.get('/users'), 
+        api.get('/clients') 
       ]);
 
-      setAllocations(allocData);
-      setStats(statsData);
-      setCollaborators(collData);
-      setClients(clientData);
+      const mappedAllocations = allocRes.data.map((item: any) => ({
+        id: item.allocation_id,
+        collaboratorId: item.collaborator_user_id,
+        collaboratorName: item.collaborator_user?.full_name || 'Desconhecido',
+        collaboratorPosition: 'Colaborador', 
+        clientId: item.company_id,
+        clientName: item.company?.name || 'Desconhecido',
+        clientArea: item.area?.name || 'Geral',
+        startDate: item.start_date,
+        endDate: item.end_date,
+        // Mapeia os dias vindos da tabela filha
+        workDays: item.allocation_work_days ? item.allocation_work_days.map((d: any) => d.day_of_week) : [],
+        startTime: item.shift_start_time,
+        endTime: item.shift_end_time,
+        // AQUI ESTÁ A CORREÇÃO DO ERRO DE TIPO:
+        status: mapBackendStatusToFrontend(item.status_key),
+        createdAt: item.created_at
+      }));
 
-    } catch (err) {
-      toast.error('Erro ao carregar dados', { description: (err as Error).message });
+      setAllocations(mappedAllocations);
+      
+      const allUsers = collabRes.data.data || collabRes.data;
+      const collabUsers = allUsers.filter((u: any) => u.role_key === 'collaborator' || u.role === 'colaborador');
+      
+      setCollaborators(collabUsers.map((u: any) => ({
+          id: u.user_id,
+          name: u.full_name,
+          position: 'Colaborador',
+          team: 'Geral',
+          available: u.is_active
+      })));
+
+      const clientList = clientRes.data.clients || clientRes.data;
+      setClients(clientList.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          area: c.address?.neighborhood || 'Geral',
+          active: c.status === 'active'
+      })));
+
+    } catch (error) {
+      console.error("Erro ao buscar dados:", error);
+      toast.error("Erro ao carregar dados.");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [filterStatus]); // Recarrega se o filtro mudar
+  }, []);
 
-  // Carrega os dados na primeira vez
   useEffect(() => {
     fetchData();
-  }, [fetchData]); // Dependência do 'fetchData' (que depende do 'filterStatus')
+  }, [fetchData]);
 
-  // Filtra as alocações (isto permanece igual, é lógica de UI)
-  const filteredAllocations = useMemo(() => {
-    // A API já filtra, mas podemos re-filtrar no cliente se quisermos
-    // ou simplesmente confiar nos dados da 'allocations'
-    return allocations; 
-  }, [allocations]);
+  // --- HANDLERS ---
 
-
-  // Funções de manipulação do Dialog
   const handleOpenDialog = (allocation?: Allocation) => {
-    setEditingAllocation(allocation || null);
+    if (allocation) {
+      setEditingAllocation(allocation);
+      setSelectedCollaborator(allocation.collaboratorId.toString());
+      setSelectedClient(allocation.clientId.toString());
+      setStartDate(allocation.startDate);
+      setEndDate(allocation.endDate);
+      setSelectedWorkDays(allocation.workDays);
+      setStartTime(allocation.startTime);
+      setEndTime(allocation.endTime);
+    } else {
+      setEditingAllocation(null);
+      setSelectedCollaborator('');
+      setSelectedClient('');
+      setStartDate('');
+      setEndDate('');
+      setSelectedWorkDays([]);
+      setStartTime('');
+      setEndTime('');
+    }
     setDialogOpen(true);
   };
 
@@ -116,67 +123,90 @@ export const useAllocations = () => {
     setEditingAllocation(null);
   };
 
-  // Salva (Cria ou Edita) uma alocação
-  const handleSaveAllocation = useCallback(async (formData: Omit<Allocation, 'id' | 'createdAt' | 'status' | 'collaboratorName' | 'collaboratorPosition' | 'clientName' | 'clientArea'>) => {
-    setIsSaving(true);
+  const handleSaveAllocation = async () => {
+    if (!selectedCollaborator || !selectedClient || !startDate || !endDate || selectedWorkDays.length === 0 || !startTime || !endTime) {
+      toast.error('Campos obrigatórios');
+      return;
+    }
+
+    const payload = {
+        collaborator_user_id: parseInt(selectedCollaborator),
+        company_id: parseInt(selectedClient),
+        start_date: startDate,
+        end_date: endDate,
+        shift_start: startTime,
+        shift_end: endTime,
+        work_days: selectedWorkDays 
+    };
+
     try {
-      let url = '/api/allocations';
-      let promise;
-
-      if (editingAllocation) {
-        url = `/api/allocations/${editingAllocation.id}`;
-        promise = api.put(url, formData);
-      } else {
-        promise = api.post(url, formData);
-      }
-      
-      await promise;
-      
-      toast.success(editingAllocation ? 'Alocação atualizada' : 'Alocação criada');
-      handleCloseDialog();
-      await fetchData(); // Recarrega os dados!
-
-    } catch (err) {
-      toast.error('Erro ao salvar', { description: (err as Error).message });
-    } finally {
-      setIsSaving(false);
+        if (editingAllocation) {
+            await api.put(`/allocations/${editingAllocation.id}`, payload);
+            toast.success('Alocação atualizada');
+        } else {
+            await api.post('/allocations', payload);
+            toast.success('Alocação criada');
+        }
+        fetchData();
+        handleCloseDialog();
+    } catch (error: any) {
+        toast.error("Erro ao salvar", { description: error.response?.data?.message });
     }
-  }, [editingAllocation, fetchData]); // Depende de editingAllocation e fetchData
+  };
 
-  // Cancela (exclusão lógica) uma alocação
-  const handleDeleteAllocation = useCallback(async (id: number) => {
-    const allocation = allocations.find(a => a.id === id);
-    if (!allocation) return;
-
-    // TODO: Substituir window.confirm por um Dialog de confirmação
-    if (window.confirm(`Deseja realmente cancelar a alocação de ${allocation.collaboratorName}?`)) {
+  const handleDeleteAllocation = async (id: number) => {
+    if (window.confirm(`Deseja remover esta alocação?`)) {
       try {
-        await api.put(`/api/allocations/${id}/cancel`, {}); // PUT para /cancel
-        toast.success('Alocação cancelada');
-        await fetchData(); // Recarrega os dados!
-      } catch (err) {
-        toast.error('Erro ao cancelar', { description: (err as Error).message });
+          await api.delete(`/allocations/${id}`);
+          toast.success('Alocação removida');
+          fetchData();
+      } catch (error) {
+          toast.error("Erro ao remover");
       }
     }
-  }, [allocations, fetchData]);
+  };
+
+  const handleToggleWorkDay = (dayId: string) => {
+    setSelectedWorkDays(prev =>
+      prev.includes(dayId) ? prev.filter(d => d !== dayId) : [...prev, dayId]
+    );
+  };
+
+  const filteredAllocations = allocations.filter(allocation => {
+    if (filterStatus === 'all') return true;
+    return allocation.status === filterStatus;
+  });
+
+  const stats = {
+    total: allocations.length,
+    // Agora comparamos com os valores mapeados (frontend), removendo o erro do TS
+    active: allocations.filter(a => a.status === 'active').length,
+    // Usamos 'as string' ou verificamos apenas 'upcoming' se for o nome correto no seu type
+    upcoming: allocations.filter(a => (a.status as string) === 'upcoming').length,
+    completed: allocations.filter(a => a.status === 'completed').length
+  };
 
   return {
-    // Estado
-    filteredAllocations, // O componente de lista usa isso
-    collaborators,
-    clients,
-    filterStatus,
+    allocations: filteredAllocations,
     stats,
     dialogOpen,
     editingAllocation,
-    isLoading, // Informe o componente de tela que está carregando
-    isSaving, // Informe o dialog que está salvando
-
-    // Funções
+    filterStatus,
     setFilterStatus,
     handleOpenDialog,
     handleCloseDialog,
     handleSaveAllocation,
-    handleDeleteAllocation
+    handleDeleteAllocation,
+    formState: {
+      selectedCollaborator, setSelectedCollaborator,
+      selectedClient, setSelectedClient,
+      startDate, setStartDate,
+      endDate, setEndDate,
+      selectedWorkDays, handleToggleWorkDay,
+      startTime, setStartTime,
+      endTime, setEndTime
+    },
+    mockData: { collaborators, clients },
+    loading
   };
 };

@@ -20,6 +20,10 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: true,
       unique: "cnpj"
     },
+    main_area: {
+      type: DataTypes.STRING(50),
+      allowNull: true
+    },
     main_phone: {
       type: DataTypes.STRING(50),
       allowNull: true
@@ -36,11 +40,23 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: 1
+    },
+    // --- ADICIONADO MANUALMENTE PARA GARANTIR A LEITURA ---
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
     }
+    // ------------------------------------------------------
   }, {
     sequelize,
     tableName: 'companies',
-    timestamps: true,
+    timestamps: false, // Desligamos o automático para usar nossa definição manual acima
     indexes: [
       {
         name: "PRIMARY",

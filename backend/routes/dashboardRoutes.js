@@ -1,22 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const dashboardController = require('../controllers/dashboardController');
+const DashboardController = require('../controllers/dashboardController');
 const { protect } = require('../middleware/authMiddleware');
-const { checkRole } = require('../middleware/authorizationMiddleware');
 
-// =====================
-// ROTAS DO DASHBOARD
-// =====================
+// Todas as rotas de dashboard exigem login
+router.use(protect);
 
-// Proteger TODAS as rotas do Dashboard.
-// Apenas Admins e Gestores podem ver.
-router.use(protect, checkRole(['admin', 'manager']));
-
-// (GET /api/dashboard/stats)
-router.get('/stats', dashboardController.getDashboardStats);
-
-// (GET /api/dashboard/active-requests)
-// (Rota antiga era: /api/manager/requests/active)
-router.get('/active-requests', dashboardController.getActiveRequests);
+// Rota Única e Inteligente
+router.get('/', DashboardController.getDashboardData);
 
 module.exports = router;

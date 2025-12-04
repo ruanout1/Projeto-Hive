@@ -49,6 +49,11 @@ module.exports = function(sequelize, DataTypes) {
         key: 'user_id'
       }
     },
+    reminder: {
+      type: DataTypes.STRING(50), // ou DataTypes.ENUM('none', 'one_day_before', 'two_hours_before')
+      allowNull: true,
+      defaultValue: 'none'
+    },
     color_hex: {
       type: DataTypes.STRING(7),
       allowNull: true,
@@ -57,6 +62,7 @@ module.exports = function(sequelize, DataTypes) {
   }, {
     sequelize,
     tableName: 'calendar_events',
+    hasTrigger: true,
     timestamps: true,
     indexes: [
       {

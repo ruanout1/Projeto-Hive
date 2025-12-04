@@ -7,7 +7,7 @@ interface EmptyStateProps {
   filterStatus: string;
 }
 
-export function EmptyState({ onNewAllocation, filterStatus }: EmptyStateProps) {
+export default function EmptyState({ onNewAllocation, filterStatus }: EmptyStateProps) {
   return (
     <Card>
       <CardContent className="p-12 text-center">
@@ -16,7 +16,7 @@ export function EmptyState({ onNewAllocation, filterStatus }: EmptyStateProps) {
         </div>
         <h3 className="text-xl mb-2" style={{ color: '#6400A4' }}>Nenhuma alocação encontrada</h3>
         <p className="text-gray-600 mb-6">
-          {filterStatus === 'all'
+          {filterStatus === 'all' 
             ? 'Comece criando uma nova alocação de colaborador para um cliente.'
             : 'Não há alocações com este status no momento.'
           }

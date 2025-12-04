@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FileText, Download, Eye, Search, File, FileCheck, Calendar, Trash2, AlertTriangle } from 'lucide-react';
-import ScreenHeader from '../../components/ScreenHeader';
+import ScreenHeader from '../public/ScreenHeader';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
