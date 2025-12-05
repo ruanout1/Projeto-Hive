@@ -36,21 +36,39 @@ module.exports = {
       const requests = await models.service_requests.findAll({
         where: whereClause,
         include: [
-          { 
-            model: models.companies, 
+          {
+            model: models.companies,
             as: 'company',
             attributes: ['company_id', 'name', 'cnpj']
           },
-          { 
-            model: models.service_catalog, 
+          {
+            model: models.service_catalog,
             as: 'service_catalog',
-            attributes: ['service_catalog_id', 'name', 'price']
+            attributes: ['service_catalog_id', 'name', 'price', 'description']
           },
           {
             model: models.users,
             as: 'requester_user',
             attributes: ['user_id', 'full_name']
+          },
+          {
+            model: models.client_branches,
+            as: 'branch',
+            attributes: ['branch_id', 'name', 'street', 'number', 'neighborhood', 'city', 'state', 'area']
           }
+        ],
+        attributes: [
+          'service_request_id',
+          'request_number',
+          'title',
+          'description',
+          'desired_date',
+          'desired_time',
+          'priority_key',
+          'status_key',
+          'address_reference',
+          'created_at',
+          'updated_at'
         ],
         order: [['created_at', 'DESC']]
       });
@@ -68,17 +86,87 @@ module.exports = {
   async createRequest(req, res) {
     const t = await sequelize.transaction();
     try {
-      const { company_id, service_catalog_id, description, priority, preferred_date } = req.body;
+      const { service_catalog_id, description, priority, preferred_date, branch_id } = req.body;
       const requesterId = req.user.id;
+      const userRole = req.user.role_key;
 
+      // 1. ✅ GERAR request_number automaticamente (formato: REQ-YYYYMMDD-XXXXX)
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD
+      const timeStr = now.getTime().toString().slice(-5); // Últimos 5 dígitos do timestamp
+      const request_number = `REQ-${dateStr}-${timeStr}`;
+
+      // 2. ✅ DEDUZIR requester_type baseado no role do usuário
+      const requesterTypeMap = {
+        'client': 'client_user',
+        'admin': 'admin',
+        'manager': 'manager',
+        'collaborator': 'collaborator'
+      };
+      const requester_type = requesterTypeMap[userRole] || 'client_user';
+
+      // 3. ✅ BUSCAR company_id se o usuário for cliente
+      let company_id = req.body.company_id;
+      if (userRole === 'client' && !company_id) {
+        const clientUser = await models.client_users.findOne({
+          where: { user_id: requesterId }
+        });
+        if (clientUser) {
+          company_id = clientUser.company_id;
+        }
+      }
+
+      // 4. ✅ BUSCAR título do serviço na tabela service_catalog
+      let title = req.body.title;
+      if (!title && service_catalog_id) {
+        const service = await models.service_catalog.findByPk(service_catalog_id);
+        if (service) {
+          title = service.name;
+        }
+      }
+
+      // Se ainda não tem título, usar um fallback
+      if (!title) {
+        title = 'Solicitação de Serviço';
+      }
+
+      // 5. ✅ NORMALIZAR priority_key (converter valores do frontend para valores do banco)
+      const priorityMap = {
+        'urgente': 'urgent',
+        'rotina': 'low',
+        'baixa': 'low',
+        'média': 'medium',
+        'alta': 'high',
+        // Valores já corretos do banco
+        'low': 'low',
+        'medium': 'medium',
+        'high': 'high',
+        'urgent': 'urgent'
+      };
+
+      const normalizedPriority = priorityMap[priority?.toLowerCase()] || 'low';
+
+      // 6. ✅ VALIDAR que priority_key está nos valores aceitos pelo banco
+      const validPriorities = ['low', 'medium', 'high', 'urgent'];
+      const priority_key = validPriorities.includes(normalizedPriority) ? normalizedPriority : 'low';
+
+      // 7. ✅ VALIDAR status_key (garantir que seja um valor válido)
+      const validStatuses = ['pending', 'approved', 'in_progress', 'completed', 'cancelled', 'rejected'];
+      const status_key = validStatuses.includes(req.body.status?.toLowerCase()) ? req.body.status.toLowerCase() : 'pending';
+
+      // 8. ✅ CRIAR a solicitação com todos os campos obrigatórios e validados
       const newRequest = await models.service_requests.create({
+        request_number,           // ✅ Gerado automaticamente
+        requester_type,           // ✅ Deduzido do role
+        title,                    // ✅ Buscado do catálogo ou fallback
         company_id,
+        branch_id,
         service_catalog_id,
         requester_user_id: requesterId,
         description,
-        priority: priority || 'medium',
-        preferred_date,
-        status: 'pending' // Nasce como pendente
+        priority_key,             // ✅ Normalizado e validado
+        desired_date: preferred_date,
+        status_key                // ✅ Validado (sempre 'pending' para novas solicitações)
       }, { transaction: t });
 
       await t.commit();

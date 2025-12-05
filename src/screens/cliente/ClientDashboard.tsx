@@ -137,32 +137,41 @@ export default function ClientDashboard({ onSectionChange }: ClientDashboardProp
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        console.log('🔄 Buscando dados do backend...');
-        
-        // Faz as duas requisições em paralelo
+
+        console.log('🔄 Carregando dados do dashboard...');
+
+        // ⚠️ TEMPORÁRIO: Rotas de serviços do cliente ainda não existem no backend
+        // O backend atual (/api/dashboard) retorna apenas stats básicas
+        // TODO: Implementar rotas /api/client/current-service e /api/client/service-history
+        /*
         const [currentResponse, historyResponse] = await Promise.allSettled([
-          api.get('/client-portal/current-service'),
-          api.get('/client-portal/history')
+          api.get('/client/current-service'),
+          api.get('/client/service-history')
         ]);
 
         // Processa serviço atual
         if (currentResponse.status === 'fulfilled' && currentResponse.value.data) {
           setCurrentService(currentResponse.value.data);
-          console.log(' Serviço atual carregado do backend');
+          console.log('✅ Serviço atual carregado do backend');
         } else {
           setCurrentService(FALLBACK_CURRENT_SERVICE);
-          console.log('ℹ Usando dados de fallback para Serviço Atual');
+          console.log('ℹ️ Usando dados de fallback para Serviço Atual');
         }
 
         // Processa histórico
         if (historyResponse.status === 'fulfilled' && Array.isArray(historyResponse.value.data) && historyResponse.value.data.length > 0) {
           setServiceHistory(historyResponse.value.data);
-          console.log(' Histórico carregado do backend:', historyResponse.value.data.length, 'serviços');
+          console.log('✅ Histórico carregado do backend:', historyResponse.value.data.length, 'serviços');
         } else {
           setServiceHistory(FALLBACK_SERVICE_HISTORY);
-          console.log('ℹ Usando dados de fallback para Histórico');
+          console.log('ℹ️ Usando dados de fallback para Histórico');
         }
+        */
+
+        // ✅ Usando dados de fallback enquanto backend não tem as rotas
+        setCurrentService(FALLBACK_CURRENT_SERVICE);
+        setServiceHistory(FALLBACK_SERVICE_HISTORY);
+        console.log('ℹ️ Usando dados de fallback (rotas de backend ainda não implementadas)');
 
       } catch (error: any) {
         console.error(" Erro ao buscar dados do backend:", error);

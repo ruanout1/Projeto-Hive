@@ -76,29 +76,37 @@ export default function ClientExpensesDashboardScreen({ onBack }: { onBack?: () 
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        console.log('🔄 Buscando dados financeiros do backend...');
 
-        // ✅ CORRETO: Usando api.ts com JWT automático
+        console.log('🔄 Carregando dados financeiros...');
+
+        // ⚠️ TEMPORÁRIO: Rotas de faturas ainda não existem no backend
+        // Usando dados de fallback até as rotas serem implementadas
+        // TODO: Descomentar quando /api/invoices, /api/expenses/summary e /api/expenses/trends forem criadas
+        /*
         const [invoicesRes, summaryRes, trendsRes] = await Promise.allSettled([
-          api.get('/client-portal/invoices'),
-          api.get('/client-portal/expenses/summary'),
-          api.get('/client-portal/expenses/trends')
+          api.get('/invoices'),
+          api.get('/expenses/summary'),
+          api.get('/expenses/trends')
         ]);
 
         // Processa faturas
         if (invoicesRes.status === 'fulfilled' && Array.isArray(invoicesRes.value.data) && invoicesRes.value.data.length > 0) {
           setInvoices(invoicesRes.value.data);
-          console.log(' Faturas carregadas do backend:', invoicesRes.value.data.length);
+          console.log('✅ Faturas carregadas do backend:', invoicesRes.value.data.length);
         } else {
           setInvoices(FALLBACK_INVOICES);
-          console.log('ℹ Usando faturas de fallback');
+          console.log('ℹ️ Usando faturas de fallback');
         }
+        */
 
+        // ✅ Usando dados locais (fallback) enquanto backend não tem rotas
+        setInvoices(FALLBACK_INVOICES);
+        console.log('ℹ️ Usando dados de fallback (rotas de backend ainda não implementadas)');
+
+        /* Processamento de dados do backend (desabilitado temporariamente)
         // Processa resumo financeiro
         if (summaryRes.status === 'fulfilled' && summaryRes.value.data) {
-          console.log(' Resumo financeiro carregado');
-          // Dados já estão sendo calculados localmente
+          console.log('✅ Resumo financeiro carregado');
         }
 
         // Processa tendências/gráficos
@@ -109,10 +117,9 @@ export default function ClientExpensesDashboardScreen({ onBack }: { onBack?: () 
           if (trendsRes.value.data.trendData) {
             setTrendData(trendsRes.value.data.trendData);
           }
-          console.log(' Gráficos carregados do backend');
-        } else {
-          console.log('ℹ Usando gráficos de fallback');
+          console.log('✅ Gráficos carregados do backend');
         }
+        */
 
       } catch (error: any) {
         console.error(' Erro ao buscar dados financeiros:', error);

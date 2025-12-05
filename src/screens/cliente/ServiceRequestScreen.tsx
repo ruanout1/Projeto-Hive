@@ -38,6 +38,7 @@ interface PendingConfirmation {
 interface ServiceRequest {
   service_request_id?: string;  // Opcional para compatibilidade
   id?: string;                   // Opcional para dados mock
+  request_number?: string;       // ✅ Número da requisição (REQ-YYYYMMDD-XXXXX)
   service: string;
   date: string;
   priority: string;
@@ -49,15 +50,22 @@ interface ServiceRequest {
 }
 
 // Interfaces para dados da API
+interface ServiceCategory {
+  id: number;
+  name: string;
+  color: string;
+}
+
 interface ServiceOption {
   id: number;
   name: string;
   description: string;
-  category: string;
-  category_color: string;
+  category: ServiceCategory;
   price?: number;
   duration_value?: number;
   duration_type?: string;
+  status?: string;
+  created_at?: string;
 }
 
 interface Branch {
@@ -90,13 +98,6 @@ const normalizeRequest = (r: any): ServiceRequest => {
     'low': 'rotina'
   };
 
-  // Montar location com fallback hierárquico
-  const location =
-    r.unit_name ||
-    r.full_address ||
-    [r.city, r.state].filter(Boolean).join(' / ') ||
-    'Unidade não informada';
-
   // Normalizar data (pode vir em ISO 2024-12-03 ou dd/mm/yyyy)
   const normalizeDate = (dateStr: string | undefined): string => {
     if (!dateStr) return '';
@@ -113,16 +114,31 @@ const normalizeRequest = (r: any): ServiceRequest => {
     }
   };
 
+  // ✅ Extrair nome do serviço (prioridade: service_catalog.name > title > fallback)
+  const serviceName = r.service_catalog?.name || r.title || r.service_type || 'Serviço';
+
+  // ✅ Montar location com dados reais do backend
+  const location = r.branch?.name ||
+                   r.address_reference ||
+                   r.unit_name ||
+                   r.full_address ||
+                   [r.city, r.state].filter(Boolean).join(' / ') ||
+                   'Unidade não informada';
+
+  // ✅ Extrair área do branch ou fallback
+  const area = r.branch?.area || r.area_name || r.area || '';
+
   return {
     service_request_id: String(r.service_request_id ?? ''),
-    service: r.service_type || r.title || r.service || 'Serviço',
+    request_number: r.request_number || '',  // ✅ Número da requisição
+    service: serviceName,
     description: r.description || '',
-    date: normalizeDate(r.desired_date || r.date),
-    requestedAt: normalizeDate(r.created_at || r.requestedAt),
+    date: normalizeDate(r.desired_date || r.date) || 'Não informada',
+    requestedAt: normalizeDate(r.created_at || r.requestedAt) || 'Não informada',
     status: statusMap[r.status] || statusMap[r.status_key] || 'pendente',
     priority: priorityMap[r.priority] || priorityMap[r.priority_key] || 'rotina',
     location,
-    area: r.area_name || r.area || '',
+    area,
   };
 };
 
@@ -155,9 +171,9 @@ useEffect(() => {
 
         // Buscar solicitações
         const [requestsRes, servicesRes, branchesRes] = await Promise.all([
-          api.get('/client-portal/requests'),
-          api.get('/client-portal/services'),
-          api.get('/client-portal/branches')
+          api.get('/service-requests'),
+          api.get('/service-catalog'),
+          api.get('/clients/my-branches')
         ]);
 
         // Normalizar requests antes de salvar no estado
@@ -261,16 +277,25 @@ useEffect(() => {
       return;
     }
 
+    // ✅ Converter data de Date para formato ISO (YYYY-MM-DD)
+    const formatDateToISO = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    // ✅ Payload correto para o backend
     const payload = {
-      service: service.name,  // Nome do serviço
+      service_catalog_id: service.id,           // ✅ ID do serviço (não o nome)
       description: description.trim(),
-      date: requestedDate.toLocaleDateString('pt-BR'),
-      priority,
-      addressId: branch.id  // ID da filial
+      preferred_date: formatDateToISO(requestedDate),  // ✅ Data em ISO (YYYY-MM-DD)
+      priority,                                 // ✅ 'urgente' ou 'rotina'
+      branch_id: branch.id                      // ✅ ID da filial
     };
 
     try {
-      const response = await api.post('/client-portal/requests', payload);
+      const response = await api.post('/service-requests', payload);
       const normalized = normalizeRequest(response.data);
       setAllRequests(prev => [normalized, ...prev]);
 
@@ -448,9 +473,9 @@ useEffect(() => {
                       ) : (
                         serviceOptions.map((service) => (
                           <SelectItem key={service.id} value={service.id.toString()}>
-                            {service.name} - {service.category}
-                          </SelectItem> 
-                        )) 
+                            {service.name} - {service.category.name}
+                          </SelectItem>
+                        ))
                       )}
                     </SelectContent>
                   </Select>
@@ -461,12 +486,12 @@ useEffect(() => {
                     <div className="flex items-center space-x-3 mb-2">
                       <Building2
                         className="h-6 w-6"
-                        style={{ color: getCategoryColor(selectedServiceInfo.category) }}
+                        style={{ color: selectedServiceInfo.category.color }}
                       />
                       <div>
                         <h4 className="text-black">{selectedServiceInfo.name}</h4>
-                        <Badge className="text-xs border-none" style={getCategoryStyle(selectedServiceInfo.category)}>
-                          {selectedServiceInfo.category}
+                        <Badge className="text-xs border-none" style={getCategoryStyle(selectedServiceInfo.category.name)}>
+                          {selectedServiceInfo.category.name}
                         </Badge>
                       </div>
                     </div>
@@ -710,30 +735,30 @@ useEffect(() => {
                     <div
                       key={service.id}
                       className="border-2 rounded-lg p-4 cursor-pointer hover:shadow-lg transition-all bg-white hover:scale-105"
-                      style={{ 
-                        borderColor: service.category_color || getCategoryColor(service.category),
+                      style={{
+                        borderColor: service.category.color,
                         borderTopWidth: '4px'
                       }}
                       onClick={() => handleServiceSelect(service.id.toString())}
                     >
                       <div className="w-full text-left">
                         <div className="flex items-start space-x-3 mb-3">
-                          <div 
+                          <div
                             className="p-2 rounded-lg"
-                            style={{ backgroundColor: (service.category_color || getCategoryColor(service.category)) + '20' }}
+                            style={{ backgroundColor: service.category.color + '20' }}
                           >
-                            <Building2 
-                              className="h-6 w-6" 
-                              style={{ color: service.category_color || getCategoryColor(service.category) }} 
+                            <Building2
+                              className="h-6 w-6"
+                              style={{ color: service.category.color }}
                             />
                           </div>
                           <div className="flex-1">
                             <h4 className="text-black mb-1">{service.name}</h4>
-                            <Badge 
+                            <Badge
                               className="text-xs border-none"
-                              style={getCategoryStyle(service.category)}
+                              style={getCategoryStyle(service.category.name)}
                             >
-                              {service.category}
+                              {service.category.name}
                             </Badge>
                           </div>
                         </div>

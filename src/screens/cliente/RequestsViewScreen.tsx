@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/input';
 interface RequestUI {
   service_request_id?: string;
   id?: string;
+  request_number?: string;  // ✅ Número da requisição (REQ-YYYYMMDD-XXXXX)
   service: string;
   date: string;
   priority: string;
@@ -161,7 +162,13 @@ export default function RequestsViewScreen({ category, requests, onBack }: Reque
                           {getStatusBadge(request.status)}
                           {getPriorityBadge(request.priority)}
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">ID: {request.service_request_id || request.id}</p>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {request.request_number ? (
+                            <>Número: <span className="font-medium text-purple-600">{request.request_number}</span></>
+                          ) : (
+                            <>ID: {request.service_request_id || request.id}</>
+                          )}
+                        </p>
                       </div>
                     </div>
 

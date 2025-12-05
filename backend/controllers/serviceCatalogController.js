@@ -90,6 +90,9 @@ exports.deleteCategory = async (req, res) => {
 exports.getAllCatalogServices = async (req, res) => {
   try {
     const services = await models.service_catalog.findAll({
+      where: {
+        status: 'active' // ✅ Filtrar apenas serviços ativos
+      },
       include: [{
         model: models.service_categories,
         as: 'category', // Verifique no seu init-models se o alias é 'category' ou 'service_category'
@@ -98,11 +101,11 @@ exports.getAllCatalogServices = async (req, res) => {
       order: [['name', 'ASC']],
       attributes: [
         ['service_catalog_id', 'id'],
-        'name', 'description', 'price', 'duration_value', 
+        'name', 'description', 'price', 'duration_value',
         'duration_type', 'status', 'created_at'
       ]
     });
-    
+
     // O Sequelize já retorna JSON limpo com associations se não usar raw:true
     res.status(200).json(services);
   } catch (error) {

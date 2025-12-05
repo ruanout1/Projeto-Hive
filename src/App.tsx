@@ -40,6 +40,7 @@ import CollaboratorTimeClockScreen from './screens/colaborador/CollaboratorTimeC
 
 // --- IMPORTS DAS TELAS DO CLIENTE ---
 import Navigation from './screens/cliente/Navigation';
+import ClientDashboard from './screens/cliente/ClientDashboard';
 import ClientRatingsScreen from './screens/cliente/ClientRatingsScreen';
 import ServiceRequestScreen from './screens/cliente/ServiceRequestScreen';
 import ClientDocumentsScreen from './screens/cliente/ClientDocumentsScreen';
@@ -106,8 +107,8 @@ export default function App() {
             return <TeamReportsScreen onBack={() => {}} />; 
         }
         if (currentUser === 'cliente') {
-            // Cliente cai no Dashboard de Gastos
-            return <ClientExpensesDashboardScreen onBack={() => {}} />;
+            // ✅ Cliente agora cai no Dashboard Principal
+            return <ClientDashboard />;
         }
     }
 

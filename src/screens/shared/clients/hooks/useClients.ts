@@ -76,7 +76,8 @@ export function useClients() {
 
       // Preparar payload para o backend
       const payload = {
-        legal_name: clientData.name,
+        name: clientData.name,        // ✅ Nome da empresa (obrigatório)
+        legal_name: clientData.name,  // ✅ Razão social (pode ser igual ao name)
         cnpj: clientData.cnpj,
         email: clientData.email,
         phone: clientData.phone,
@@ -91,6 +92,7 @@ export function useClients() {
         },
         area: clientData.area,
         locations: clientData.locations?.map((loc: ClientLocation) => ({
+          id: loc.id,  // ✅ Incluir ID para update/create correto
           name: loc.name,
           address: {
             street: loc.address.street,
@@ -102,7 +104,7 @@ export function useClients() {
             state: loc.address.state
           },
           area: loc.area,
-          is_primary: loc.isPrimary
+          isPrimary: loc.isPrimary  // ✅ Usar isPrimary (frontend) e is_primary (backend)
         })) || [],
         notes: clientData.notes || '',
         status: clientData.status
