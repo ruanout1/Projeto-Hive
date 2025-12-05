@@ -10,21 +10,31 @@ export const useCatalogMutations = (refetch: () => void) => {
   // --- MUTAÇÕES DE SERVIÇO ---
 
   const saveService = async (
-    payload: ServiceFormData, 
+    payload: ServiceFormData,
     editingService: Service | null
   ): Promise<boolean> => {
-    
+
     setActionLoading(true);
     const loadingToast = toast.loading(
       editingService ? 'Atualizando serviço...' : 'Criando serviço...'
     );
 
     try {
+      // ✅ Normalizar payload: converter category_id para número e adicionar status
+      const normalizedPayload = {
+        ...payload,
+        category_id: Number(payload.category_id),
+        price: Number(payload.price),
+        duration_value: Number(payload.duration_value),
+        // ✅ Garantir status 'active' ao criar novo serviço
+        ...(editingService ? {} : { status: 'active' })
+      };
+
       if (editingService) {
-        await api.put(`/service-catalog/${editingService.id}`, payload);
+        await api.put(`/service-catalog/${editingService.id}`, normalizedPayload);
         toast.success('Serviço atualizado!');
       } else {
-        await api.post(`/service-catalog`, payload);
+        await api.post(`/service-catalog`, normalizedPayload);
         toast.success('Serviço criado!');
       }
       await refetch();
@@ -43,7 +53,7 @@ export const useCatalogMutations = (refetch: () => void) => {
 
   const toggleServiceStatus = async (service: Service): Promise<Service | null> => {
     if (actionLoading) return null;
-    
+
     const newStatus = service.status === 'active' ? 'inactive' : 'active';
     setActionLoading(true);
     const loadingToast = toast.loading(`${newStatus === 'active' ? 'Ativando' : 'Desativando'} serviço...`);
@@ -66,7 +76,7 @@ export const useCatalogMutations = (refetch: () => void) => {
 
   const deleteService = async (service: Service): Promise<boolean> => {
     if (actionLoading) return false;
-    
+
     setActionLoading(true);
     const loadingToast = toast.loading('Excluindo serviço...');
 
@@ -119,7 +129,7 @@ export const useCatalogMutations = (refetch: () => void) => {
 
   const deleteCategory = async (category: Category): Promise<boolean> => {
     if (actionLoading) return false;
-    
+
     setActionLoading(true);
     const loadingToast = toast.loading('Excluindo categoria...');
 

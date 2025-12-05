@@ -1,13 +1,27 @@
 import { useState } from 'react';
-import { ArrowLeft, Calendar, AlertTriangle, CheckCircle, Clock, Plus, Filter } from 'lucide-react';
+import { ArrowLeft, Calendar, AlertTriangle, CheckCircle, Clock, Plus, Filter, MapPin } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 
+interface RequestUI {
+  service_request_id?: string;
+  id?: string;
+  request_number?: string;  // ✅ Número da requisição (REQ-YYYYMMDD-XXXXX)
+  service: string;
+  date: string;
+  priority: string;
+  status: string;
+  requestedAt: string;
+  description: string;
+  location?: string;
+  area?: string;
+}
+
 interface RequestsViewScreenProps {
   category: string;
-  requests: any[];
+  requests: RequestUI[];
   onBack: () => void;
 }
 
@@ -75,11 +89,20 @@ export default function RequestsViewScreen({ category, requests, onBack }: Reque
     }
   };
 
-  const filteredRequests = requests.filter(request => 
-    request.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    request.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRequests = requests.filter(request => {
+    const search = searchTerm.toLowerCase();
+    const requestId = (request.service_request_id || request.id)?.toString() || '';
+
+    return (
+      request.service?.toLowerCase().includes(search) ||
+      requestId.toLowerCase().includes(search) ||
+      request.description?.toLowerCase().includes(search) ||
+      request.status?.toLowerCase().includes(search) ||
+      request.priority?.toLowerCase().includes(search) ||
+      request.location?.toLowerCase().includes(search) ||
+      request.area?.toLowerCase().includes(search)
+    );
+  });
 
   return (
     <div className="p-6 h-screen flex flex-col overflow-hidden">
@@ -115,7 +138,7 @@ export default function RequestsViewScreen({ category, requests, onBack }: Reque
           <div className="flex space-x-4">
             <div className="flex-1">
               <Input
-                placeholder="Buscar por serviço, ID ou descrição..."
+                placeholder="Buscar por serviço, ID, descrição, localização ou área..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -131,7 +154,7 @@ export default function RequestsViewScreen({ category, requests, onBack }: Reque
             {filteredRequests.length > 0 ? (
               <div className="space-y-4 p-6">
                 {filteredRequests.map((request) => (
-                  <div key={request.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div key={request.service_request_id || request.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
@@ -139,7 +162,13 @@ export default function RequestsViewScreen({ category, requests, onBack }: Reque
                           {getStatusBadge(request.status)}
                           {getPriorityBadge(request.priority)}
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">ID: {request.id}</p>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {request.request_number ? (
+                            <>Número: <span className="font-medium text-purple-600">{request.request_number}</span></>
+                          ) : (
+                            <>ID: {request.service_request_id || request.id}</>
+                          )}
+                        </p>
                       </div>
                     </div>
 
@@ -149,7 +178,7 @@ export default function RequestsViewScreen({ category, requests, onBack }: Reque
                       </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4 text-sm mb-3">
                       <div>
                         <p className="text-gray-600">Data Solicitada:</p>
                         <p className="text-black">{request.date}</p>
@@ -159,6 +188,23 @@ export default function RequestsViewScreen({ category, requests, onBack }: Reque
                         <p className="text-black">{request.requestedAt}</p>
                       </div>
                     </div>
+
+                    {/* Localização e Área */}
+                    {(request.location || request.area) && (
+                      <div className="border-t pt-3 space-y-2">
+                        {request.location && (
+                          <div className="flex items-center gap-2 text-sm text-gray-700">
+                            <MapPin className="h-4 w-4 text-purple-600" />
+                            <span>{request.location}</span>
+                          </div>
+                        )}
+                        {request.area && (
+                          <div className="text-sm text-gray-600 ml-6">
+                            Área: {request.area}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

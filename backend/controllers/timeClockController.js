@@ -1,9 +1,19 @@
 const { Op } = require('sequelize');
-const Team = require('../models/Team');
-const TeamMember = require('../models/TeamMember');
-const User = require('../models/User');
-const TimeRecord = require('../models/TimeClockEntry'); // Verifique o nome deste model
-const { handleDatabaseError } = require('../utils/errorHandling');
+const {
+  Team,
+  TeamMember,
+  User,
+  TimeClockEntry
+} = require('../database/db');
+
+// Helper para erros de banco
+const handleDatabaseError = (res, error, action) => {
+  console.error(`Erro ao ${action}:`, error);
+  return res.status(500).json({
+    message: `Erro ao ${action}`,
+    error: error.message
+  });
+};
 
 // =====================================
 // FUNÇÕES PARA CONTROLE DE PONTO (ADMIN E GESTOR)
@@ -13,7 +23,7 @@ const { handleDatabaseError } = require('../utils/errorHandling');
 const getManagedEmployeeIds = async (user) => {
   let teamIds = [];
 
-  if (user.user_type === 'manager') {
+  if (user.role_key === 'manager') {
     // 1. Gestor: Buscar apenas suas equipes
     const managerTeams = await Team.findAll({
       where: { manager_id: user.id },
