@@ -55,6 +55,7 @@ function setupAssociations() {
   // --- Client and Addresses ---
   Client.hasMany(ClientAddress, { foreignKey: 'client_id', as: 'addresses' });
   ClientAddress.belongsTo(Client, { foreignKey: 'client_id', as: 'client' });
+  Client.hasMany(ServiceRequest, { foreignKey: 'client_id', as: 'serviceRequests' });
 
   Area.hasMany(ClientAddress, { foreignKey: 'area_id', as: 'clientAddresses' });
   ClientAddress.belongsTo(Area, { foreignKey: 'area_id', as: 'area' });
