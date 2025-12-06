@@ -33,7 +33,7 @@ module.exports = function(sequelize, DataTypes) {
     },
     collaborator_user_id: {
       type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: true,
+      allowNull: false, // Geralmente obrigatório saber quem tirou a foto
       references: {
         model: 'users',
         key: 'user_id'
@@ -62,7 +62,7 @@ module.exports = function(sequelize, DataTypes) {
     taken_at: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP')
+      defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
     },
     review_status_key: {
       type: DataTypes.STRING(30),
@@ -75,7 +75,11 @@ module.exports = function(sequelize, DataTypes) {
     },
     reviewed_by_user_id: {
       type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: true
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'user_id'
+      }
     },
     reviewed_at: {
       type: DataTypes.DATE,
@@ -89,11 +93,22 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: 0
+    },
+    // --- DATAS (CORRIGIDAS PARA O SEQUELIZE LER) ---
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
     }
   }, {
     sequelize,
     tableName: 'service_order_photos',
-    timestamps: true,
+    timestamps: false, // Desligado pois definimos created_at/updated_at manualmente acima
     indexes: [
       {
         name: "PRIMARY",
@@ -104,6 +119,20 @@ module.exports = function(sequelize, DataTypes) {
         ]
       },
       {
+        name: "fk_sop_service_order",
+        using: "BTREE",
+        fields: [
+          { name: "service_order_id" },
+        ]
+      },
+      {
+        name: "fk_sop_scheduled_service",
+        using: "BTREE",
+        fields: [
+          { name: "scheduled_service_id" },
+        ]
+      },
+      {
         name: "fk_sop_company",
         using: "BTREE",
         fields: [
@@ -111,7 +140,7 @@ module.exports = function(sequelize, DataTypes) {
         ]
       },
       {
-        name: "fk_sop_collab",
+        name: "fk_sop_collaborator",
         using: "BTREE",
         fields: [
           { name: "collaborator_user_id" },
@@ -132,17 +161,10 @@ module.exports = function(sequelize, DataTypes) {
         ]
       },
       {
-        name: "idx_photos_scheduled",
+        name: "fk_sop_reviewer",
         using: "BTREE",
         fields: [
-          { name: "scheduled_service_id" },
-        ]
-      },
-      {
-        name: "idx_photos_order",
-        using: "BTREE",
-        fields: [
-          { name: "service_order_id" },
+          { name: "reviewed_by_user_id" },
         ]
       },
     ]

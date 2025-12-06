@@ -3,6 +3,8 @@ export interface Category {
   id: string;
   name: string;
   color: string;
+  icon?: string; // Novo
+  isSystem?: boolean; // Novo
 }
 
 export interface Service {
