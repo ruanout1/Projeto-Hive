@@ -1,83 +1,64 @@
-// /shared/clients/hooks/useClients.ts
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Client, ClientLocation } from '../types/client';
+import api from '../../../../lib/api';
 
 export function useClients() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Função para buscar clientes (Listar)
+  // Busca Clientes
   const fetchClients = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        console.error("Sem token de autenticação");
-        return;
-      }
-
-      const response = await fetch('http://localhost:5000/api/clients', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      const data = await response.json();
+      const response = await api.get('/clients');
+      const data = response.data;
       
-      if (response.ok) {
-        // Adaptar dados do backend para o formato do frontend
-        const formattedClients: Client[] = (data.clients || []).map((client: any) => ({
-          id: client.id,
-          name: client.legal_name || client.name,
-          cnpj: client.cnpj,
-          email: client.email,
-          phone: client.phone,
-          address: {
-            street: client.address?.street || '',
-            number: client.address?.number || '',
-            complement: client.address?.complement || '',
-            zipCode: client.address?.zip_code || client.address?.zipCode || '',
-            neighborhood: client.address?.neighborhood || '',
-            city: client.address?.city || '',
-            state: client.address?.state || ''
-          },
-          area: client.area || 'centro',
-          locations: client.locations || [],
-          status: client.status || 'active',
-          servicesActive: client.services_active || client.servicesActive || 0,
-          servicesCompleted: client.services_completed || client.servicesCompleted || 0,
-          lastService: client.last_service || client.lastService || '-',
-          rating: client.rating || 0,
-          totalValue: client.total_value || client.totalValue || 'R$ 0,00',
-          notes: client.notes || '',
-          createdAt: client.created_at || client.createdAt
-        }));
-        
-        setClients(formattedClients);
-      } else {
-        toast.error(`Erro ao carregar: ${data.message || 'Erro desconhecido'}`);
-      }
-    } catch (error) {
+      const formattedClients: Client[] = (data.clients || []).map((client: any) => ({
+        id: client.id,
+        name: client.legal_name || client.name,
+        cnpj: client.cnpj,
+        email: client.email,
+        phone: client.phone,
+        address: {
+          street: client.address?.street || '',
+          number: client.address?.number || '',
+          complement: client.address?.complement || '',
+          zipCode: client.address?.zip_code || client.address?.zipCode || '',
+          neighborhood: client.address?.neighborhood || '',
+          city: client.address?.city || '',
+          state: client.address?.state || ''
+        },
+        area: client.area || 'centro',
+        locations: client.locations || [],
+        status: client.status || 'active',
+        servicesActive: client.services_active || 0,
+        servicesCompleted: client.services_completed || 0,
+        lastService: client.last_service || '-',
+        rating: client.rating || 0,
+        totalValue: client.total_value || 'R$ 0,00',
+        notes: client.notes || '',
+        createdAt: client.createdAt || client.created_at
+      }));
+      
+      setClients(formattedClients);
+    } catch (error: any) {
       console.error("Erro de conexão:", error);
-      toast.error("Erro de conexão com o servidor");
+      toast.error("Erro ao carregar clientes");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Função para Salvar (Criar ou Editar)
+  // Salvar Cliente (Empresa)
   const saveClient = async (clientData: any, isEditing: boolean, id?: number) => {
     try {
-      const token = localStorage.getItem('authToken');
-      const url = isEditing 
-        ? `http://localhost:5000/api/clients/${id}`
-        : 'http://localhost:5000/api/clients';
-      
-      const method = isEditing ? 'PUT' : 'POST';
+      const url = isEditing ? `/clients/${id}` : '/clients';
+      const method = isEditing ? 'put' : 'post';
 
-      // Preparar payload para o backend
       const payload = {
-        name: clientData.name,        // ✅ Nome da empresa (obrigatório)
-        legal_name: clientData.name,  // ✅ Razão social (pode ser igual ao name)
+        name: clientData.name,
+        legal_name: clientData.name,
         cnpj: clientData.cnpj,
         email: clientData.email,
         phone: clientData.phone,
@@ -85,147 +66,194 @@ export function useClients() {
           street: clientData.address.street,
           number: clientData.address.number,
           complement: clientData.address.complement || '',
-          zip_code: clientData.address.zipCode,
+          zipCode: clientData.address.zipCode,
           neighborhood: clientData.address.neighborhood,
           city: clientData.address.city,
           state: clientData.address.state
         },
         area: clientData.area,
-        locations: clientData.locations?.map((loc: ClientLocation) => ({
-          id: loc.id,  // ✅ Incluir ID para update/create correto
-          name: loc.name,
-          address: {
-            street: loc.address.street,
-            number: loc.address.number,
-            complement: loc.address.complement || '',
-            zip_code: loc.address.zipCode,
-            neighborhood: loc.address.neighborhood,
-            city: loc.address.city,
-            state: loc.address.state
-          },
-          area: loc.area,
-          isPrimary: loc.isPrimary  // ✅ Usar isPrimary (frontend) e is_primary (backend)
-        })) || [],
         notes: clientData.notes || '',
-        status: clientData.status
+        status: clientData.status,
+        // Envia locations apenas na criação para facilitar
+        locations: !isEditing && clientData.locations ? clientData.locations.map((loc: any) => ({
+            name: loc.name,
+            address: loc.address,
+            area: loc.area,
+            is_primary: loc.isPrimary
+        })) : undefined
       };
 
-      const response = await fetch(url, {
-        method,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
+      // @ts-ignore
+      const response = await api[method](url, payload);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success(isEditing ? 'Cliente atualizado com sucesso!' : 'Cliente criado com sucesso!');
-        fetchClients(); // Recarrega a lista automaticamente
+      if (response.status === 200 || response.status === 201) {
+        toast.success(isEditing ? 'Cliente atualizado!' : 'Cliente criado!');
+        fetchClients(); 
         return true;
-      } else {
-        toast.error(`Erro: ${data.message || 'Falha ao salvar'}`);
-        return false;
       }
-    } catch (error) {
-      console.error("Erro ao salvar:", error);
-      toast.error('Erro de conexão ao salvar.');
+    } catch (error: any) {
+      toast.error(`Erro: ${error.response?.data?.message || 'Falha ao salvar'}`);
       return false;
     }
+    return false;
   };
 
   const toggleClientStatus = async (id: number, currentStatus: string) => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/clients/${id}/toggle-status`, {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        }
-      });
-
-      if (response.ok) {
+      const response = await api.patch(`/clients/${id}/toggle-status`);
+      if (response.status === 200) {
         const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-        toast.success(`Cliente ${newStatus === 'active' ? 'ativado' : 'desativado'} com sucesso!`);
-        // Atualiza a lista localmente para ser rápido
+        toast.success(`Status alterado com sucesso!`);
         setClients(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
-      } else {
-        const data = await response.json();
-        toast.error(`Erro ao alterar status: ${data.message}`);
       }
     } catch (error) {
-      toast.error("Erro de conexão");
+      toast.error("Erro ao alterar status");
     }
   };
 
-  // Função para Deletar
   const deleteClient = async (id: number) => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/clients/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        toast.success("Cliente excluído com sucesso!");
-        fetchClients(); // Recarrega a lista
+      const response = await api.delete(`/clients/${id}`);
+      if (response.status === 200) {
+        toast.success("Cliente excluído!");
+        fetchClients();
         return true;
-      } else {
-        const data = await response.json();
-        toast.error(`Erro ao excluir: ${data.message}`);
-        return false;
       }
-    } catch (error) {
-      toast.error("Erro de conexão ao excluir.");
+    } catch (error: any) {
+      toast.error(`Erro ao excluir: ${error.response?.data?.message || 'Erro desconhecido'}`);
       return false;
     }
+    return false;
   };
 
-  // /shared/clients/hooks/useClients.ts - CORRIJA ESTA FUNÇÃO:
-const updateClientLocations = async (clientId: number, locations: ClientLocation[]): Promise<void> => {
+  // --- FUNÇÃO: ADICIONAR FILIAL (POST) ---
+const addClientLocation = async (clientId: number, locationData: any): Promise<boolean> => {
   try {
-    const token = localStorage.getItem('authToken');
-    const response = await fetch(`http://localhost:5000/api/clients/${clientId}/locations`, {
-      method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` 
+    // Formata os dados para o backend
+    const payload = {
+      name: locationData.name,
+      email: locationData.email || '',     // NOVO: incluir email
+      phone: locationData.phone || '',     // NOVO: incluir telefone
+      cnpj: locationData.cnpj || '',       // NOVO: incluir CNPJ
+      address: {
+        street: locationData.address.street,
+        number: locationData.address.number,
+        complement: locationData.address.complement || '',
+        zipCode: locationData.address.zipCode,
+        neighborhood: locationData.address.neighborhood,
+        city: locationData.address.city,
+        state: locationData.address.state
       },
-      body: JSON.stringify({ 
-        locations: locations.map(loc => ({
-          name: loc.name,
-          address: {
-            street: loc.address.street,
-            number: loc.address.number,
-            complement: loc.address.complement || '',
-            zip_code: loc.address.zipCode,
-            neighborhood: loc.address.neighborhood,
-            city: loc.address.city,
-            state: loc.address.state
-          },
-          area: loc.area,
-          is_primary: loc.isPrimary
-        }))
-      })
-    });
+      area: locationData.area,
+      isPrimary: Boolean(locationData.isPrimary || false)
+    };
 
-    if (response.ok) {
-      toast.success("Unidades atualizadas com sucesso!");
-      fetchClients(); // Atualiza a lista geral
-    } else {
-      const data = await response.json();
-      toast.error(`Erro ao salvar unidades: ${data.message}`);
+    const response = await api.post(`/clients/${clientId}/locations`, payload);
+    
+    if (response.status === 201 || response.status === 200) {
+      toast.success("Unidade adicionada com sucesso!");
+      fetchClients(); // Atualiza a lista de clientes
+      return true;
     }
-  } catch (error) {
-    toast.error("Erro de rede ao atualizar unidades");
+  } catch (error: any) {
+    console.error("Erro ao adicionar unidade:", error);
+    toast.error(`Erro ao adicionar unidade: ${error.response?.data?.message || 'Erro desconhecido'}`);
+    return false;
+  }
+  return false;
+};
+
+  /// --- FUNÇÃO: ATUALIZAR FILIAL (PUT) - VERIFIQUE ---
+const updateClientLocation = async (clientId: number, locationId: string, locationData: any): Promise<boolean> => {
+  try {
+    const payload = {
+      name: locationData.name,
+      email: locationData.email || '',     // VERIFIQUE se está vindo email
+      phone: locationData.phone || '',     // VERIFIQUE se está vindo telefone
+      cnpj: locationData.cnpj || '',       // VERIFIQUE se está vindo CNPJ
+      area: locationData.area,
+      isPrimary: Boolean(locationData.isPrimary || false), // VERIFIQUE se está marcando como principal
+      address: {
+        street: locationData.address.street,
+        number: locationData.address.number,
+        complement: locationData.address.complement || '',
+        zipCode: locationData.address.zipCode,
+        neighborhood: locationData.address.neighborhood,
+        city: locationData.address.city,
+        state: locationData.address.state
+      }
+    };
+
+    console.log("📤 Enviando para o backend:", payload); // ADICIONE ESTE LOG
+
+    const response = await api.put(`/clients/${clientId}/locations/${locationId}`, payload);
+    
+    console.log("📥 Resposta do backend:", response.data); // ADICIONE ESTE LOG
+    
+    toast.success("Unidade atualizada!");
+    fetchClients(); // IMPORTANTE: Isso atualiza a lista no frontend
+    return true;
+  } catch (error: any) {
+    console.error("Erro no update:", error);
+    const msg = error.response?.data?.message || 'Erro desconhecido ao atualizar';
+    toast.error(`Erro: ${msg}`);
+    return false;
   }
 };
 
-  // Carrega lista inicial
+  // --- FUNÇÃO: REMOVER FILIAL (DELETE) ---
+  const removeClientLocation = async (clientId: number, locationId: string): Promise<void> => {
+    try {
+      // Verifica se é uma unidade temporária (local)
+      if (locationId.toString().startsWith('loc-')) {
+        // Atualiza localmente sem chamar API
+        setClients(prev => prev.map(client => {
+          if (client.id === clientId) {
+            const updatedLocations = client.locations?.filter(loc => loc.id !== locationId) || [];
+            return { ...client, locations: updatedLocations };
+          }
+          return client;
+        }));
+        toast.success("Unidade removida!");
+        return;
+      }
+
+      // Remove do backend
+      const response = await api.delete(`/clients/${clientId}/locations/${locationId}`);
+      
+      if (response.status === 200) {
+        toast.success("Unidade removida com sucesso!");
+        fetchClients(); // Atualiza a lista completa
+      }
+    } catch (error: any) {
+      toast.error(`Erro ao remover unidade: ${error.response?.data?.message || 'Erro desconhecido'}`);
+    }
+  };
+
+  // --- FUNÇÃO LEGADA: Atualizações em lote (mantida para compatibilidade) ---
+  const updateClientLocations = async (clientId: number, locations: ClientLocation[]): Promise<void> => {
+    try {
+      // Esta função não deve ser usada para adicionar/atualizar unidades individuais
+      // Mantida apenas para compatibilidade com código existente
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+      
+      // Atualiza localmente
+      setClients(prev => prev.map(c => 
+        c.id === clientId ? { ...c, locations } : c
+      ));
+      
+      // Se tiver unidades temporárias, mostra aviso
+      const hasTempLocations = locations.some(loc => loc.id.toString().startsWith('loc-'));
+      if (hasTempLocations) {
+        toast.warning("Alterações salvas localmente. Use as funções específicas para sincronizar com o servidor.");
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar localizações:", error);
+      toast.error("Erro ao atualizar unidades");
+    }
+  };
+
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
@@ -235,8 +263,11 @@ const updateClientLocations = async (clientId: number, locations: ClientLocation
     loading, 
     fetchClients, 
     saveClient, 
-    deleteClient,
-    toggleClientStatus,
-    updateClientLocations  
+    deleteClient, 
+    toggleClientStatus, 
+    addClientLocation,    // Exporta - POST /clients/{id}/locations
+    updateClientLocation, // Exporta - PUT /clients/{id}/locations/{locationId}
+    removeClientLocation, // Exporta - DELETE /clients/{id}/locations/{locationId}
+    updateClientLocations // Exporta (legado) - Atualização local
   };
 }

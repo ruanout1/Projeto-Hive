@@ -4,7 +4,6 @@ const { handleDatabaseError } = require('../utils/errorHandling');
 
 // ========================================================================
 // 1. LISTAGEM DE CLIENTES (GET /api/clients) - VERSÃO COMPLETA
-// Agora retorna Notes e Locations para a visualização funcionar
 // ========================================================================
 exports.getClients = async (req, res) => {
   try {
@@ -20,14 +19,19 @@ exports.getClients = async (req, res) => {
       ];
     }
 
-    // 2. Busca no Banco (Trazendo TUDO: Filiais e Usuários)
+    // 2. Busca no Banco
     const { count, rows } = await models.companies.findAndCountAll({
       where: whereClause,
       include: [
         {
           model: models.client_branches,
           as: 'client_branches',
-          required: false 
+          required: false,
+          attributes: [
+            'branch_id', 'name', 'email', 'phone', 'cnpj', 'area', 
+            'is_main_branch', 'street', 'number', 'complement', 
+            'neighborhood', 'city', 'state', 'zip_code'
+          ]
         },
         {
           model: models.client_users,
@@ -42,28 +46,36 @@ exports.getClients = async (req, res) => {
       distinct: true
     });
 
-    // 3. Formatação para o Frontend (O SEGREDO ESTÁ AQUI)
+    // 3. Formatação para o Frontend
     const formattedData = rows.map(company => {
-      // Acha a matriz e o contato principal
       const mainBranch = company.client_branches?.find(b => b.is_main_branch) || company.client_branches?.[0];
       const primaryContact = company.client_users?.find(u => u.is_primary_contact)?.user || company.client_users?.[0]?.user;
 
-      // Mapeia TODAS as filiais para o formato que o Frontend espera (ClientLocation[])
-      const locations = company.client_branches?.map(branch => ({
-        id: branch.branch_id, // O ID real do banco
-        name: branch.name,
-        area: branch.area || 'centro', // Fallback se estiver null
-        isPrimary: branch.is_main_branch,
-        address: {
+      // CORREÇÃO AQUI: Incluir os novos campos no mapeamento
+      const locations = company.client_branches?.map(branch => {
+        // SE FOR A MATRIZ, PEGA OS DADOS DA EMPRESA SE OS CAMPOS ESTIVEREM VAZIOS
+        const isMainBranch = branch.is_main_branch;
+        
+        return {
+          id: branch.branch_id,
+          name: branch.name,
+          // Para a matriz, prioriza os dados da filial, mas usa da empresa se estiver vazio
+          email: branch.email || (isMainBranch ? company.main_email : '') || '',
+          phone: branch.phone || (isMainBranch ? company.main_phone : '') || '',
+          cnpj: branch.cnpj || (isMainBranch ? company.cnpj : '') || '',
+          area: branch.area || 'centro',
+          isPrimary: isMainBranch,
+          address: {
             street: branch.street,
             number: branch.number,
             complement: branch.complement,
             neighborhood: branch.neighborhood,
             city: branch.city,
             state: branch.state,
-            zipCode: branch.zip_code // Backend (snake) -> Frontend (camel)
-        }
-      })) || [];
+            zipCode: branch.zip_code
+          }
+        };
+      }) || [];
 
       return {
         id: company.company_id,
@@ -72,25 +84,18 @@ exports.getClients = async (req, res) => {
         email: primaryContact?.email || company.main_email || '-',
         phone: primaryContact?.phone || company.main_phone || '-',
         status: company.is_active ? 'active' : 'inactive',
-        
-        // Campo que estava faltando:
-        notes: company.notes, 
-
-        // Objeto de endereço principal (da Matriz)
+        notes: company.notes,
         address: {
-            street: mainBranch?.street || '',
-            number: mainBranch?.number || '',
-            complement: mainBranch?.complement || '',
-            neighborhood: mainBranch?.neighborhood || '',
-            city: mainBranch?.city || '',
-            state: mainBranch?.state || '',
-            zipCode: mainBranch?.zip_code || '' 
+          street: mainBranch?.street || '',
+          number: mainBranch?.number || '',
+          complement: mainBranch?.complement || '',
+          neighborhood: mainBranch?.neighborhood || '',
+          city: mainBranch?.city || '',
+          state: mainBranch?.state || '',
+          zipCode: mainBranch?.zip_code || ''
         },
-
-        // Lista completa de unidades para o Modal de Visualização
-        locations: locations,
-
-        // Campos calculados (Mockados por enquanto)
+        area: company.main_area || 'centro',
+        locations: locations, // AGORA COM OS CAMPOS NOVOS E DADOS DA EMPRESA PARA A MATRIZ
         servicesActive: 0,
         servicesCompleted: 0,
         lastService: '-',
@@ -121,13 +126,23 @@ exports.getClientById = async (req, res) => {
 
     const company = await models.companies.findByPk(id, {
       include: [
-        // Todas as filiais
-        { model: models.client_branches, as: 'client_branches' },
-        // Todos os usuários vinculados
+        { 
+          model: models.client_branches, 
+          as: 'client_branches',
+          attributes: [
+            'branch_id', 'name', 'email', 'phone', 'cnpj', 'area', 
+            'is_main_branch', 'street', 'number', 'complement', 
+            'neighborhood', 'city', 'state', 'zip_code'
+          ]
+        },
         { 
           model: models.client_users, 
           as: 'client_users',
-          include: [{ model: models.users, as: 'user', attributes: ['user_id', 'full_name', 'email', 'role_key'] }]
+          include: [{ 
+            model: models.users, 
+            as: 'user', 
+            attributes: ['user_id', 'full_name', 'email', 'role_key'] 
+          }]
         }
       ]
     });
@@ -136,7 +151,62 @@ exports.getClientById = async (req, res) => {
       return res.status(404).json({ message: 'Cliente não encontrado' });
     }
 
-    res.json(company);
+    const mainBranch = company.client_branches?.find(b => b.is_main_branch) || company.client_branches?.[0];
+    const primaryContact = company.client_users?.find(u => u.is_primary_contact)?.user || company.client_users?.[0]?.user;
+
+    // CORREÇÃO AQUI TAMBÉM
+    const locations = company.client_branches?.map(branch => {
+      const isMainBranch = branch.is_main_branch;
+      
+      return {
+        id: branch.branch_id,
+        name: branch.name,
+        // Para a matriz, usa dados da empresa se a filial não tiver
+        email: branch.email || (isMainBranch ? company.main_email : '') || '',
+        phone: branch.phone || (isMainBranch ? company.main_phone : '') || '',
+        cnpj: branch.cnpj || (isMainBranch ? company.cnpj : '') || '',
+        area: branch.area || 'centro',
+        isPrimary: isMainBranch,
+        address: {
+          street: branch.street,
+          number: branch.number,
+          complement: branch.complement,
+          neighborhood: branch.neighborhood,
+          city: branch.city,
+          state: branch.state,
+          zipCode: branch.zip_code
+        }
+      };
+    }) || [];
+
+    const formattedCompany = {
+      id: company.company_id,
+      name: company.name,
+      cnpj: company.cnpj,
+      email: primaryContact?.email || company.main_email || '-',
+      phone: primaryContact?.phone || company.main_phone || '-',
+      status: company.is_active ? 'active' : 'inactive',
+      notes: company.notes,
+      address: {
+        street: mainBranch?.street || '',
+        number: mainBranch?.number || '',
+        complement: mainBranch?.complement || '',
+        neighborhood: mainBranch?.neighborhood || '',
+        city: mainBranch?.city || '',
+        state: mainBranch?.state || '',
+        zipCode: mainBranch?.zip_code || ''
+      },
+      area: company.main_area || 'centro',
+      locations: locations,
+      servicesActive: 0,
+      servicesCompleted: 0,
+      lastService: '-',
+      rating: 0,
+      totalValue: 'R$ 0,00',
+      createdAt: company.created_at
+    };
+
+    res.json(formattedCompany);
 
   } catch (error) {
     handleDatabaseError(res, error, 'buscar detalhes do cliente');
@@ -170,6 +240,9 @@ exports.createClient = async (req, res) => {
         company_id: newCompany.company_id,
         name: 'Matriz',
         is_main_branch: true,
+        email: email,           
+        phone: phone,          
+        cnpj: cnpj,
         street: address.street,
         number: address.number,
         complement: address.complement,
@@ -220,120 +293,224 @@ exports.createClient = async (req, res) => {
 // 4. ATUALIZAR CLIENTE (PUT /api/clients/:id)
 // Atualiza Empresa + Obs + Área + Endereço Principal + FILIAIS (Loop Inteligente)
 // ========================================================================
-exports.updateClient = async (req, res) => {
-  const t = await sequelize.transaction(); 
+exports.updateClientLocation = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
-    const { id } = req.params;
-    // locations: Array de filiais que vem do frontend
-    const { name, legal_name, cnpj, email, phone, notes, area, address, locations } = req.body;
+    const { id, locationId } = req.params;
+    const data = req.body;
+    const addr = data.address || {};
 
-    // 1. Atualiza dados da Empresa (Se vierem no body)
-    // Verificamos se 'name' existe para evitar zerar dados caso o front mande só locations
-    if (name) {
-        const [updated] = await models.companies.update({
-          name, 
-          legal_name, 
-          cnpj, 
-          main_phone: phone, 
-          main_email: email,
-          notes: notes,       
-          main_area: area     
-        }, {
-          where: { company_id: id },
-          transaction: t
-        });
-
-        if (!updated && !locations) { // Se não atualizou empresa e não tem locations, erro
-            await t.rollback();
-            return res.status(404).json({ message: 'Cliente não encontrado' });
-        }
+    const branch = await models.client_branches.findOne({ 
+      where: { branch_id: locationId, company_id: id }, 
+      transaction: t 
+    });
+    
+    if (!branch) { 
+      await t.rollback(); 
+      return res.status(404).json({ message: 'Filial não encontrada.' }); 
     }
 
-    // 2. Atualiza o Endereço da Matriz (Se vier no body)
-    if (address) {
-        await models.client_branches.update({
-            street: address.street,
-            number: address.number,
-            complement: address.complement,
-            neighborhood: address.neighborhood,
-            city: address.city,
-            state: address.state,
-            zip_code: address.zip_code || address.zipCode, 
-            area: area 
-        }, {
-            where: { 
-                company_id: id,
-                is_main_branch: true 
-            },
-            transaction: t
-        });
+    const isMainBranch = branch.is_main_branch;
+    const willBeMainBranch = data.isPrimary === true || data.isPrimary === "true" || data.isPrimary === 1;
+
+    // SE É OU VAI SER MATRIZ, SINCRONIZA COM A EMPRESA
+    if (isMainBranch || willBeMainBranch) {
+      // Atualiza a empresa com os dados da filial (se for matriz)
+      await models.companies.update({
+        main_email: data.email || branch.email,
+        main_phone: data.phone || branch.phone,
+        cnpj: data.cnpj || branch.cnpj
+      }, { 
+        where: { company_id: id }, 
+        transaction: t 
+      });
     }
 
-    // 3. (NOVO) Atualiza ou Cria Filiais Adicionais
-    if (locations && Array.isArray(locations)) {
-      for (const loc of locations) {
-        // Dados da filial formatados para o banco
-        const branchData = {
-            name: loc.name,
-            street: loc.address.street,
-            number: loc.address.number,
-            complement: loc.address.complement,
-            neighborhood: loc.address.neighborhood,
-            city: loc.address.city,
-            state: loc.address.state,
-            zip_code: loc.address.zipCode || loc.address.zip_code,
-            area: loc.area,
-            is_main_branch: loc.isPrimary || false
-        };
-
-        // LÓGICA INTELIGENTE:
-        // Se o ID for uma string que começa com 'temp' ou 'loc-' (gerado pelo front), é CRIAÇÃO.
-        // Se o ID for um número (ou string numérica do banco), é ATUALIZAÇÃO.
-        const isNew = String(loc.id).startsWith('temp') || String(loc.id).startsWith('loc-');
-
-        if (isNew) {
-            // CREATE
-            await models.client_branches.create({
-                company_id: id,
-                ...branchData
-            }, { transaction: t });
-        } else {
-            // UPDATE
-            await models.client_branches.update(branchData, {
-                where: { branch_id: loc.id, company_id: id }, // Garante segurança
-                transaction: t
-            });
-        }
-      }
+    // SE VAI TORNAR-SE MATRIZ, DESMARCA OUTRAS
+    if (willBeMainBranch && !isMainBranch) {
+      await models.client_branches.update({ 
+        is_main_branch: false 
+      }, { 
+        where: { company_id: id }, 
+        transaction: t 
+      });
     }
 
+    // Atualiza a filial
+    await branch.update({
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      cnpj: data.cnpj,
+      area: data.area,
+      is_main_branch: willBeMainBranch,
+      street: addr.street,
+      number: addr.number,
+      complement: addr.complement,
+      neighborhood: addr.neighborhood,
+      city: addr.city,
+      state: addr.state,
+      zip_code: addr.zipCode
+    }, { transaction: t });
+    
     await t.commit();
-    res.json({ success: true, message: 'Dados atualizados com sucesso' });
-
+    res.json({ message: 'Filial atualizada com sucesso.' });
   } catch (error) {
     await t.rollback();
-    handleDatabaseError(res, error, 'atualizar cliente');
+    handleDatabaseError(res, error, 'atualizar filial');
   }
 };
+
 // ========================================================================
 // 5. GESTÃO DE LOCAIS / FILIAIS (POST /api/clients/:id/locations)
 // ========================================================================
+// exports.addClientLocation = async (req, res) => {
+//   try {
+//     const { id } = req.params; // company_id
+//     const { name, street, number, neighborhood, city, state, zip_code } = req.body;
+
+//     const newBranch = await models.client_branches.create({
+//       company_id: id,
+//       name: name || `${street}, ${number}`, // Nome automático se não vier
+//       street, number, neighborhood, city, state, zip_code,
+//       is_main_branch: false
+//     });
+
+//     res.status(201).json(newBranch);
+
+//   } catch (error) {
+//     handleDatabaseError(res, error, 'adicionar local');
+//   }
+// };
+
+// ========================================================================
+// 6. GESTÃO DE FILIAIS E STATUS
+// ========================================================================
+
 exports.addClientLocation = async (req, res) => {
+  const t = await sequelize.transaction();
+    try {
+      const { id } = req.params;
+      const data = req.body; 
+      const addr = data.address || {};
+
+      if (data.isPrimary) {
+         await models.client_branches.update({ is_main_branch: false }, { where: { company_id: id }, transaction: t });
+         
+         // SE VIROU MATRIZ, ATUALIZA A EMPRESA PAI TAMBÉM
+         await models.companies.update({
+             main_email: data.email,
+             main_phone: data.phone,
+             cnpj: data.cnpj
+         }, { where: { company_id: id }, transaction: t });
+      }
+
+      const newBranch = await models.client_branches.create({
+        company_id: id,
+        name: data.name,
+        email: data.email, // Novo
+        phone: data.phone, // Novo
+        cnpj: data.cnpj,   // Novo
+        street: addr.street,
+        number: addr.number,
+        complement: addr.complement,
+        neighborhood: addr.neighborhood,
+        city: addr.city,
+        state: addr.state,
+        zip_code: addr.zipCode,
+        area: data.area || 'centro',
+        is_main_branch: data.isPrimary || false,
+        is_active: true
+      }, { transaction: t });
+
+      await t.commit();
+      return res.status(201).json(newBranch);
+    } catch (error) {
+      await t.rollback();
+      handleDatabaseError(res, error, 'adicionar filial');
+    }
+  },
+
+exports.updateClientLocation = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
-    const { id } = req.params; // company_id
-    const { name, street, number, neighborhood, city, state, zip_code } = req.body;
+      const { id, locationId } = req.params;
+      const data = req.body;
+      const addr = data.address || {};
 
-    const newBranch = await models.client_branches.create({
-      company_id: id,
-      name: name || `${street}, ${number}`, // Nome automático se não vier
-      street, number, neighborhood, city, state, zip_code,
-      is_main_branch: false
-    });
+      console.log("🔍 DEBUG - Iniciando atualização de filial");
+      console.log("🔍 DEBUG - company_id:", id);
+      console.log("🔍 DEBUG - branch_id:", locationId);
+      console.log("🔍 DEBUG - isPrimary recebido:", data.isPrimary);
+      console.log("🔍 DEBUG - Tipo de isPrimary:", typeof data.isPrimary);
 
-    res.status(201).json(newBranch);
+      const branch = await models.client_branches.findOne({ 
+        where: { branch_id: locationId, company_id: id }, 
+        transaction: t 
+      });
+      
+      if (!branch) { 
+        await t.rollback(); 
+        return res.status(404).json({ message: 'Filial não encontrada.' }); 
+      }
 
+      // VERIFICAÇÃO IMPORTANTE: data.isPrimary pode vir como string "true"
+      const isPrimary = data.isPrimary === true || data.isPrimary === "true" || data.isPrimary === 1;
+      
+      console.log("🔍 DEBUG - isPrimary após conversão:", isPrimary);
+
+      if (isPrimary) {
+        console.log("🔄 DEBUG - Marcando como PRINCIPAL - Iniciando troca");
+        
+        // 1. Desmarca todas as outras filiais
+        const result = await models.client_branches.update({ 
+          is_main_branch: false 
+        }, { 
+          where: { company_id: id }, 
+          transaction: t 
+        });
+        
+        console.log("🔄 DEBUG - Filiais desmarcadas:", result[0]);
+        
+        // 2. Sincroniza empresa pai
+        const companyUpdate = await models.companies.update({
+          main_email: data.email,
+          main_phone: data.phone,
+          cnpj: data.cnpj
+        }, { 
+          where: { company_id: id }, 
+          transaction: t 
+        });
+        
+        console.log("🔄 DEBUG - Empresa atualizada:", companyUpdate[0]);
+      }
+
+      console.log("🔍 DEBUG - Atualizando dados da filial...");
+      
+      await branch.update({
+         name: data.name,
+         email: data.email, // Novo
+         phone: data.phone, // Novo
+         cnpj: data.cnpj,   // Novo
+         area: data.area,
+         is_main_branch: isPrimary, // Usa o valor convertido
+         street: addr.street,
+         number: addr.number,
+         complement: addr.complement,
+         neighborhood: addr.neighborhood,
+         city: addr.city,
+         state: addr.state,
+         zip_code: addr.zipCode
+      }, { transaction: t });
+      
+      await t.commit();
+      console.log("✅ DEBUG - Transação commitada com sucesso");
+      
+      res.json({ message: 'Filial atualizada com sucesso.' });
   } catch (error) {
-    handleDatabaseError(res, error, 'adicionar local');
+      await t.rollback();
+      console.error("❌ DEBUG - Erro na transação:", error);
+      handleDatabaseError(res, error, 'atualizar filial');
   }
 };
 

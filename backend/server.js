@@ -29,6 +29,7 @@ app.use('/api/service-requests', require('./routes/serviceRequestRoutes'));
 app.use('/api/teams', require('./routes/teamRoutes'));
 app.use('/api/team-members', require('./routes/teamMemberRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+app.use('/api/photo-review', require('./routes/photoReviewRoutes'));
 app.use('/api/allocations', require('./routes/collaboratorAllocationRoutes'));
 // app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 // ... adicione as outras conforme necessário

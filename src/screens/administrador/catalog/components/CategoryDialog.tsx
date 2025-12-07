@@ -18,7 +18,7 @@ export default function CategoryDialog({
     onCategoryFormDataChange({ ...categoryFormData, [field]: value });
   };
 
-  const colorOptions = ['#6400A4', '#8B20EE', '#10B981', '#35BAE6', '#F59E0B', '#EF4444'];
+  const colorOptions = ['#6B7280', '#000000'];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -47,14 +47,16 @@ export default function CategoryDialog({
 
           <div>
             <Label htmlFor="categoryColor" style={{ color: '#8B20EE' }}>Cor</Label>
+            <p className="text-xs text-gray-500 mt-1 mb-2">Categorias personalizadas podem usar cinza ou preto</p>
             <div className="flex space-x-2 mt-1">
               {colorOptions.map(color => (
                 <button
                   key={color}
                   onClick={() => handleInputChange('color', color)}
-                  className={`w-10 h-10 rounded-lg transition-transform ${categoryFormData.color === color ? 'ring-2 ring-offset-2 ring-purple-500 scale-110' : ''} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-10 h-10 rounded-lg transition-transform border-2 ${categoryFormData.color === color ? 'ring-2 ring-offset-2 ring-purple-500 scale-110 border-purple-500' : 'border-gray-200'}`}
                   style={{ backgroundColor: color }}
                   disabled={loading}
+                  aria-label={`Selecionar cor ${color}`}
                 />
               ))}
             </div>
@@ -68,7 +70,7 @@ export default function CategoryDialog({
           <Button
             onClick={onSave}
             disabled={!categoryFormData.name || loading}
-            style={{ backgroundColor: '#8B20EE', color: 'white' }}
+            style={{ backgroundColor: '#6400A4', color: 'white' }}
             className="hover:opacity-90"
           >
             {loading ? (

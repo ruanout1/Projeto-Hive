@@ -11,8 +11,8 @@ exports.getAllCategories = async (req, res) => {
   try {
     const categories = await models.service_categories.findAll({
       order: [['name', 'ASC']],
-      // Mapeamos category_id para 'id' para o frontend não quebrar
-      attributes: [['category_id', 'id'], 'name', 'color']
+      // Adicionamos 'icon' e 'is_system' ao retorno
+      attributes: [['category_id', 'id'], 'name', 'color', 'icon', 'is_system']
     });
     res.status(200).json(categories);
   } catch (error) {
@@ -23,16 +23,32 @@ exports.getAllCategories = async (req, res) => {
 // POST /api/service-catalog/categories
 exports.createCategory = async (req, res) => {
   const { name, color } = req.body;
+  
+  // REGRA DE NEGÓCIO: Cores permitidas para usuário
+  // Se o usuário tentar criar algo colorido, forçamos para cinza (#6B7280) ou preto (#000000).
+  // As cores vibrantes são exclusivas do sistema.
+  let finalColor = color;
+  const allowedUserColors = ['#6B7280', '#000000'];
+
+  if (!allowedUserColors.includes(color)) {
+      // Se não for uma das cores permitidas, força o padrão Cinza
+      finalColor = '#6B7280'; 
+  }
+
   try {
     const newCategory = await models.service_categories.create({ 
         name, 
-        color: color || '#6400A4' // Cor padrão roxa se não vier
+        color: finalColor,
+        icon: 'Hash', // Ícone padrão para categorias personalizadas
+        is_system: false // Sempre falso para categorias criadas por usuário
     });
     
     res.status(201).json({
       id: newCategory.category_id,
       name: newCategory.name,
-      color: newCategory.color
+      color: newCategory.color,
+      icon: newCategory.icon,
+      isSystem: newCategory.is_system
     });
   } catch (error) {
     handleDatabaseError(res, error, 'criar categoria');
@@ -48,7 +64,17 @@ exports.updateCategory = async (req, res) => {
     const category = await models.service_categories.findByPk(id);
     if (!category) return res.status(404).json({ message: "Categoria não encontrada." });
 
-    await category.update({ name, color });
+    // Proteção: Não deixar alterar categorias do sistema (opcional, mas recomendado)
+    if (category.is_system) {
+        return res.status(403).json({ message: "Categorias do sistema não podem ser editadas." });
+    }
+    
+    // Validação de cor também no update
+    let finalColor = color;
+    const allowedUserColors = ['#6B7280', '#000000'];
+    if (!allowedUserColors.includes(color)) finalColor = '#6B7280';
+
+    await category.update({ name, color: finalColor });
     
     res.status(200).json({
       id: category.category_id,
@@ -64,7 +90,16 @@ exports.updateCategory = async (req, res) => {
 exports.deleteCategory = async (req, res) => {
   const { id } = req.params;
   try {
-    // Verifica se tem serviços vinculados antes de apagar
+    const category = await models.service_categories.findByPk(id);
+    
+    if (!category) return res.status(404).json({ message: "Categoria não encontrada." });
+    
+    // TRAVA DE SEGURANÇA: Não apagar categorias padrão
+    if (category.is_system) {
+        return res.status(403).json({ message: "Categorias padrão do sistema não podem ser excluídas." });
+    }
+
+    // Verifica se tem serviços vinculados
     const servicesCount = await models.service_catalog.count({ where: { category_id: id } });
     
     if (servicesCount > 0) {
@@ -73,9 +108,7 @@ exports.deleteCategory = async (req, res) => {
       });
     }
 
-    const deleted = await models.service_categories.destroy({ where: { category_id: id } });
-    if (!deleted) return res.status(404).json({ message: "Categoria não encontrada." });
-
+    await category.destroy();
     res.status(200).json({ message: "Categoria excluída." });
   } catch (error) {
     handleDatabaseError(res, error, 'excluir categoria');
@@ -95,8 +128,8 @@ exports.getAllCatalogServices = async (req, res) => {
       },
       include: [{
         model: models.service_categories,
-        as: 'category', // Verifique no seu init-models se o alias é 'category' ou 'service_category'
-        attributes: [['category_id', 'id'], 'name', 'color']
+        as: 'category', 
+        attributes: [['category_id', 'id'], 'name', 'color', 'icon'] // Incluindo ícone
       }],
       order: [['name', 'ASC']],
       attributes: [
@@ -105,8 +138,6 @@ exports.getAllCatalogServices = async (req, res) => {
         'duration_type', 'status', 'created_at'
       ]
     });
-
-    // O Sequelize já retorna JSON limpo com associations se não usar raw:true
     res.status(200).json(services);
   } catch (error) {
     handleDatabaseError(res, error, 'buscar catálogo');
@@ -158,7 +189,7 @@ exports.updateCatalogService = async (req, res) => {
 // PUT /api/service-catalog/:id/status
 exports.updateCatalogServiceStatus = async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body; // 'active' ou 'inactive'
+  const { status } = req.body; 
 
   try {
     const [updated] = await models.service_catalog.update({ status }, {

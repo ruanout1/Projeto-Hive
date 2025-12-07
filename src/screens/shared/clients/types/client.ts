@@ -11,6 +11,9 @@ export interface Address {
 export interface ClientLocation {
   id: string;
   name: string;
+  email?: string;        // NOVO - Email da filial
+  phone?: string;        // NOVO - Telefone da filial
+  cnpj?: string;         // NOVO - CNPJ da filial
   address: Address;
   area: string;
   isPrimary: boolean;
@@ -33,4 +36,15 @@ export interface Client {
   totalValue: string;
   notes?: string;
   createdAt?: string;
+}
+
+// Opcional: você pode criar um tipo para o formulário de unidade
+export interface ClientLocationFormData {
+  name: string;
+  email: string;
+  phone: string;
+  cnpj: string;
+  address: Address;
+  area: 'norte' | 'sul' | 'leste' | 'oeste' | 'centro';
+  isPrimary: boolean;
 }

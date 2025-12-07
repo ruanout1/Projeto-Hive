@@ -1,13 +1,17 @@
 const { Sequelize } = require('sequelize');
-const initModels = require('../models/init-models'); // Caminho para o init-models
+const initModels = require('../models/init-models'); 
 require('dotenv').config();
 
-// Configuração da conexão
+// 1. Configuração da Conexão
 const sequelize = new Sequelize(
   process.env.DB_NAME || 'hive',
   process.env.DB_USER || 'root',
   process.env.DB_PASS || '',
+  process.env.DB_NAME || 'hive',
+  process.env.DB_USER || 'root',
+  process.env.DB_PASS || '',
   {
+    host: process.env.DB_HOST || 'localhost',
     host: process.env.DB_HOST || 'localhost',
     dialect: 'mysql',
     logging: false,
@@ -19,22 +23,30 @@ const sequelize = new Sequelize(
       dateStrings: true,
       typeCast: true
     }
+    define: {
+      timestamps: true,
+      underscored: true,
+    },
+    dialectOptions: {
+      dateStrings: true,
+      typeCast: true
+    }
   }
 );
 
-// Inicializa os modelos
-var models = {};
+// 2. Inicialização dos Modelos (A parte mais importante!)
+let models = {};
 try {
     models = initModels(sequelize);
-    console.log("✅ Modelos inicializados no connection.js");
+    console.log("✅ [Database] Modelos e associações carregados com sucesso.");
 } catch (error) {
-    console.error("❌ Erro ao inicializar modelos:", error);
+    console.error("❌ [Database] Erro fatal ao carregar modelos:", error);
 }
 
-// Teste de conexão (Opcional, mas bom para debug)
+// 3. Teste de Conexão
 sequelize.authenticate()
-  .then(() => console.log('🔌 Conexão MySQL estabelecida.'))
-  .catch(err => console.error('❌ Falha na conexão MySQL:', err));
+  .then(() => console.log('🔌 [Database] Conexão MySQL estabelecida.'))
+  .catch(err => console.error('❌ [Database] Falha na conexão:', err.message));
 
-// Exporta para os Controllers usarem: const { models } = require('../database/connection');
+// 4. Exportação (Objeto com tudo que o sistema precisa)
 module.exports = { sequelize, models };

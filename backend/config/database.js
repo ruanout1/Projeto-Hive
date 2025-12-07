@@ -1,10 +1,11 @@
-require('dotenv').config();
 const { Sequelize } = require('sequelize');
+const initModels = require('../models/init-models'); // Importa o carregador gerado
+require('dotenv').config();
 
-// Verifica se o banco deve ser ativado (opcional, mas bom manter)
+// Verifica se o banco deve ser ativado
 if (process.env.USE_DB === 'false') {
   console.log('⚙️ Banco de dados desativado (modo mock).');
-  module.exports = null;
+  module.exports = { sequelize: null, models: null };
   return;
 }
 
@@ -19,7 +20,7 @@ const sequelize = new Sequelize(
     logging: false,
     define: {
       timestamps: true,
-      underscored: true,
+      underscored: true, // Importante para o seu banco snake_case
     },
     dialectOptions: {
       charset: 'utf8mb4'
@@ -27,11 +28,14 @@ const sequelize = new Sequelize(
   }
 );
 
-// Teste rápido de conexão (apenas log)
-sequelize.authenticate()
-  .then(() => console.log('✅ Conexão com o banco (config) OK!'))
-  .catch((err) => console.error('❌ Falha na conexão (config):', err.message));
+// Carrega todos os modelos e associações
+const models = initModels(sequelize);
 
-// --- A CORREÇÃO ESTÁ AQUI EMBAIXO ---
-// Exportamos DIRETAMENTE a instância, sem chaves {}
-module.exports = sequelize;
+// Teste de conexão
+sequelize
+  .authenticate()
+  .then(() => console.log('✅ Conexão com o banco de dados estabelecida!'))
+  .catch((err) => console.error('❌ Erro ao conectar no banco:', err));
+
+// Exportamos a instância e os models
+module.exports = { sequelize, models };

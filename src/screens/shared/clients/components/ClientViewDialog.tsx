@@ -1,4 +1,3 @@
-// /shared/clients/components/ClientViewDialog.tsx - VERSÃO CORRIGIDA COM TOGGLE IGUAL AO PROTÓTIPO
 import { useState } from 'react';
 import { Mail, Phone, MapPin, Calendar, Star, Building2, Plus, Edit, Trash2 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
@@ -14,15 +13,35 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from 'sonner';
 import { Client, ClientLocation } from '../types/client';
 
+// Lista de Estados Brasileiros - ADIÇÃO
+const BR_STATES = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
+  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
+  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
+
 interface ClientViewDialogProps {
   isOpen: boolean;
   onClose: () => void;
   client: Client | null;
   onEdit: (client: Client) => void;
+  
+  // Props para gestão de unidades - ATUALIZADO
+  canDelete?: boolean;
+  onAddLocation?: (clientId: number, data: any) => Promise<boolean>;
+  onUpdateLocation?: (clientId: number, locationId: string, data: any) => Promise<boolean>;
+  onDeleteLocation?: (locationId: string) => Promise<void>;
+  
+  // Mantido por compatibilidade se algo ainda usar
   onUpdateClientLocations?: (clientId: number, locations: ClientLocation[]) => Promise<void>;
 }
 
-export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClientLocations }: ClientViewDialogProps) {
+export function ClientViewDialog({ 
+    isOpen, onClose, client, onEdit, onUpdateClientLocations,
+    canDelete = false, // Padrão false (segurança)
+    onDeleteLocation, onAddLocation, onUpdateLocation // Novas props
+}: ClientViewDialogProps) {
+  
   if (!client) return null;
 
   const [activeTab, setActiveTab] = useState('info');
@@ -30,8 +49,12 @@ export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClie
   const [editingUnit, setEditingUnit] = useState<ClientLocation | null>(null);
   const [unitToDelete, setUnitToDelete] = useState<ClientLocation | null>(null);
   
+  // ESTADO ATUALIZADO COM OS NOVOS CAMPOS
   const [unitForm, setUnitForm] = useState({
     name: '',
+    email: '', // NOVO
+    phone: '', // NOVO
+    cnpj: '',  // NOVO
     address: { street: '', number: '', complement: '', zipCode: '', neighborhood: '', city: '', state: '' },
     area: 'centro',
     isPrimary: false
@@ -47,11 +70,19 @@ export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClie
       .filter(Boolean).join(', ');
   };
 
+  // FUNÇÃO ATUALIZADA PARA PREENCHER OS NOVOS CAMPOS
   const handleOpenUnitForm = (unit?: ClientLocation) => {
     if (unit) {
+      console.log("🔍 DEBUG - Editando unidade:", unit); // ADICIONE ESTE LOG
+    console.log("🔍 DEBUG - Email da unidade:", unit.email); // ADICIONE ESTE LOG
+    console.log("🔍 DEBUG - Telefone da unidade:", unit.phone); // ADICIONE ESTE LOG
+    console.log("🔍 DEBUG - CNPJ da unidade:", unit.cnpj); // ADICIONE ESTE LOG
       setEditingUnit(unit);
       setUnitForm({
         name: unit.name,
+        email: unit.email || '', // NOVO
+        phone: unit.phone || '', // NOVO
+        cnpj: unit.cnpj || '',   // NOVO
         address: { ...unit.address },
         area: unit.area,
         isPrimary: unit.isPrimary
@@ -60,6 +91,9 @@ export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClie
       setEditingUnit(null);
       setUnitForm({
         name: '',
+        email: '', // NOVO
+        phone: '', // NOVO
+        cnpj: '',  // NOVO
         address: { street: '', number: '', complement: '', zipCode: '', neighborhood: '', city: '', state: '' },
         area: 'centro',
         isPrimary: false
@@ -68,51 +102,133 @@ export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClie
     setIsAddUnitOpen(true);
   };
 
-  const handleSaveUnit = async () => {
-    if (!unitForm.name || !unitForm.address.street) {
-        toast.error("Preencha os campos obrigatórios");
-        return;
+  // --- LÓGICA DE SALVAR SIMPLIFICADA ---
+const handleSaveUnit = async () => {
+  console.log("💾 Salvando unidade com dados:", unitForm); // <-- ADICIONE
+  console.log("É principal?", unitForm.isPrimary); // <-- ADICIONE
+  if (!unitForm.name || !unitForm.address.street) {
+    toast.error("Preencha os campos obrigatórios");
+    return;
+  }
+
+  try {
+    // Se é EDIÇÃO (tem ID) e temos a função específica
+    if (editingUnit && onUpdateLocation) {
+      // AGORA SIMPLIFICADO: O backend deve cuidar de desmarcar outras unidades principais
+      await onUpdateLocation(client.id, editingUnit.id, unitForm);
+      toast.success("Unidade atualizada com sucesso!");
+    } 
+    // Se é CRIAÇÃO (Novo) e temos a função específica
+    else if (onAddLocation) {
+      // O backend deve cuidar de verificar se já existe uma principal
+      await onAddLocation(client.id, unitForm);
+      toast.success("Unidade criada com sucesso!");
     }
+    // Fallback para lógica antiga se as novas funções não existirem
+    else if (onUpdateClientLocations) {
+      let newLocations = [...(client.locations || [])];
 
-    let newLocations = [...(client.locations || [])];
-
-    if (editingUnit) {
+      if (editingUnit) {
         newLocations = newLocations.map(loc => 
-            loc.id === editingUnit.id 
-            ? { ...loc, ...unitForm, id: loc.id }
-            : unitForm.isPrimary ? { ...loc, isPrimary: false } : loc
+          loc.id === editingUnit.id 
+          ? { ...loc, ...unitForm, id: loc.id }
+          : unitForm.isPrimary ? { ...loc, isPrimary: false } : loc
         );
-    } else {
+      } else {
         const newUnit: ClientLocation = {
-            id: `loc-${Date.now()}`,
-            ...unitForm
+          id: `loc-${Date.now()}`,
+          ...unitForm
         };
         if (unitForm.isPrimary) {
-            newLocations = newLocations.map(l => ({ ...l, isPrimary: false }));
+          newLocations = newLocations.map(l => ({ ...l, isPrimary: false }));
         }
         newLocations.push(newUnit);
+      }
+
+      await onUpdateClientLocations(client.id, newLocations);
+      toast.success("Unidade salva com sucesso!");
     }
 
-    if (onUpdateClientLocations) {
-        await onUpdateClientLocations(client.id, newLocations);
-    }
     setIsAddUnitOpen(false);
-  };
+  } catch (error: any) {
+    console.error("Erro ao salvar unidade:", error);
+    toast.error(`Erro ao salvar unidade: ${error.message || 'Erro desconhecido'}`);
+  }
+};
 
   const handleConfirmDeleteUnit = async () => {
-    if (!unitToDelete || !onUpdateClientLocations) return;
+    if (!unitToDelete) return;
     
-    const newLocations = client.locations?.filter(l => l.id !== unitToDelete.id) || [];
-    await onUpdateClientLocations(client.id, newLocations);
-    setUnitToDelete(null);
+    try {
+      // SE TIVERMOS A FUNÇÃO DE DELETE DIRETO (CORRETO), USAMOS ELA
+      if (onDeleteLocation) {
+          await onDeleteLocation(unitToDelete.id);
+          toast.success("Unidade excluída com sucesso!");
+      } 
+      // FALLBACK PARA O UPDATE DA LISTA (LEGADO)
+      else if (onUpdateClientLocations) {
+          const newLocations = client.locations?.filter(l => l.id !== unitToDelete.id) || [];
+          await onUpdateClientLocations(client.id, newLocations);
+          toast.success("Unidade excluída com sucesso!");
+      }
+      
+      setUnitToDelete(null);
+    } catch (error: any) {
+      console.error("Erro ao excluir unidade:", error);
+      toast.error(`Erro ao excluir unidade: ${error.message || 'Erro desconhecido'}`);
+    }
+  };
+
+  // Helper para máscara de CEP - ADIÇÃO
+  const handleZipCodeChange = (value: string) => {
+      // Remove tudo que não é dígito
+      let v = value.replace(/\D/g, "");
+      // Limita a 8 dígitos
+      if (v.length > 8) v = v.slice(0, 8);
+      // Aplica máscara XXXXX-XXX
+      if (v.length > 5) v = v.replace(/^(\d{5})(\d)/, "$1-$2");
+      
+      setUnitForm({ ...unitForm, address: { ...unitForm.address, zipCode: v }});
+  };
+
+  // Helper para máscara de CNPJ - NOVO
+  const handleCnpjChange = (value: string) => {
+    // Remove tudo que não é dígito
+    let v = value.replace(/\D/g, "");
+    // Limita a 14 dígitos
+    if (v.length > 14) v = v.slice(0, 14);
+    // Aplica máscara XX.XXX.XXX/XXXX-XX
+    if (v.length > 12) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2}).*/, "$1.$2.$3/$4-$5");
+    else if (v.length > 8) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{1,4}).*/, "$1.$2.$3/$4");
+    else if (v.length > 5) v = v.replace(/^(\d{2})(\d{3})(\d{1,3}).*/, "$1.$2.$3");
+    else if (v.length > 2) v = v.replace(/^(\d{2})(\d{1,3}).*/, "$1.$2");
+    
+    setUnitForm({ ...unitForm, cnpj: v });
+  };
+
+  // Helper para máscara de Telefone - NOVO
+  const handlePhoneChange = (value: string) => {
+    // Remove tudo que não é dígito
+    let v = value.replace(/\D/g, "");
+    
+    // Aplica máscara baseada no tamanho
+    if (v.length <= 10) { // Telefone fixo (XX) XXXX-XXXX
+      if (v.length > 6) v = v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+      else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,4}).*/, "($1) $2");
+      else if (v.length > 0) v = v.replace(/^(\d{0,2}).*/, "($1");
+    } else { // Celular (XX) 9XXXX-XXXX
+      v = v.substring(0, 11);
+      if (v.length > 7) v = v.replace(/^(\d{2})(\d{1})(\d{4})(\d{0,4}).*/, "($1) $2 $3-$4");
+      else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,1})(\d{0,4}).*/, "($1) $2 $3");
+    }
+    
+    setUnitForm({ ...unitForm, phone: v });
   };
 
   return (
     <>
-      {/* Dialog Principal */}
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-          {/* ✅ TÍTULO CORRIGIDO - MAIS SUAVE */}
           <DialogHeader>
             <DialogTitle style={{ color: '#6400A4', fontSize: '1.25rem', fontWeight: '600' }}>Detalhes do Cliente</DialogTitle>
             <DialogDescription className="text-sm">
@@ -120,7 +236,6 @@ export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClie
             </DialogDescription>
           </DialogHeader>
 
-          {/* Header do Cliente - MANTIDO IGUAL */}
           <div className="flex items-center space-x-4 p-4 rounded-lg" style={{ backgroundColor: 'rgba(100, 0, 164, 0.05)' }}>
             <Avatar className="h-16 w-16" style={{ backgroundColor: '#6400A4' }}>
               <AvatarFallback style={{ 
@@ -153,7 +268,6 @@ export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClie
             </div>
           </div>
 
-          {/* Tabs - ✅ TOGGLE CORRIGIDO EXATAMENTE COMO NO PROTÓTIPO */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
             <TabsList className="grid w-full grid-cols-2" style={{ backgroundColor: 'rgba(100, 0, 164, 0.1)' }}>
               <TabsTrigger 
@@ -177,9 +291,7 @@ export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClie
               </TabsTrigger>
             </TabsList>
 
-            {/* Conteúdo - Informações Gerais */}
             <TabsContent value="info" className="flex-1 overflow-y-auto space-y-6 py-4">
-              {/* Informações de Contato - MANTIDO IGUAL */}
               <div>
                 <h4 className="mb-3 font-medium" style={{ color: '#6400A4' }}>Informações de Contato</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -208,7 +320,6 @@ export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClie
                 </div>
               </div>
 
-              {/* ✅ CARDS DE ESTATÍSTICAS CORRIGIDOS */}
               <div>
                 <h4 className="mb-3 font-medium" style={{ color: '#6400A4' }}>Estatísticas de Serviços</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -233,7 +344,6 @@ export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClie
                 </div>
               </div>
 
-              {/* Observações */}
               {client.notes && (
                 <div>
                   <h4 className="mb-3 font-medium" style={{ color: '#6400A4' }}>Observações</h4>
@@ -243,14 +353,12 @@ export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClie
                 </div>
               )}
 
-              {/* ✅ "CLIENTE DESDE" - GARANTIR QUE APAREÇA */}
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Calendar className="h-4 w-4" style={{ color: '#8B20EE' }} />
                 <span>Cliente desde {client.createdAt ? new Date(client.createdAt).toLocaleDateString('pt-BR') : 'data não informada'}</span>
               </div>
             </TabsContent>
 
-            {/* Conteúdo - Unidades */}
             <TabsContent value="units" className="flex-1 overflow-y-auto space-y-4 py-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-600">
@@ -286,31 +394,73 @@ export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClie
                               {location.area.charAt(0).toUpperCase() + location.area.slice(1)}
                             </Badge>
                           </div>
+                          {/* MOSTRAR OS NOVOS CAMPOS NA LISTA - NOVO */}
+                          <div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-600">
+                            {location.email && (
+                              <div className="flex items-center gap-1">
+                                <Mail className="h-3 w-3" />
+                                <span>{location.email}</span>
+                              </div>
+                            )}
+                            {location.phone && (
+                              <div className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                <span>{location.phone}</span>
+                              </div>
+                            )}
+                            {location.cnpj && (
+                              <div className="flex items-center gap-1">
+                                <span className="font-medium">CNPJ:</span>
+                                <span>{location.cnpj}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
                             onClick={() => handleOpenUnitForm(location)}
                             style={{ borderColor: '#6400A4', color: '#6400A4' }}
                             className="hover:bg-purple-50"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setUnitToDelete(location)}
-                            disabled={location.isPrimary && client.locations?.length === 1}
-                            className="hover:bg-red-50"
-                            style={{ 
-                              borderColor: '#EF4444', 
-                              color: '#EF4444',
-                              opacity: location.isPrimary && client.locations?.length === 1 ? 0.5 : 1
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          
+                          {/* LÓGICA DA LIXEIRA - ATUALIZADA */}
+                          {canDelete && (
+                             <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => {
+                                    // Regra: Se for Principal, avisa. Se for a única, bloqueia.
+                                    if (client.locations && client.locations.length === 1) {
+                                        toast.error("Você não pode excluir a única unidade do cliente.");
+                                        return;
+                                    }
+                                    
+                                    if (location.isPrimary) {
+                                        toast.warning("Não é possível excluir a unidade Principal (Matriz).", {
+                                            description: "Edite outra unidade e marque-a como 'Principal' antes de excluir esta."
+                                        });
+                                        return;
+                                    }
+
+                                    // Se passou, abre confirmação
+                                    setUnitToDelete(location);
+                                }} 
+                                // Removemos o 'disabled' antigo para permitir o clique e mostrar o aviso
+                                className="hover:bg-red-50" 
+                                style={{ 
+                                    borderColor: '#EF4444', 
+                                    color: '#EF4444',
+                                    // Opacidade visual para indicar que Matriz é especial, mas clicável para ver o aviso
+                                    opacity: location.isPrimary ? 0.6 : 1 
+                                }}
+                             >
+                                <Trash2 className="h-4 w-4" />
+                             </Button>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-start gap-2 text-sm text-gray-600">
@@ -357,159 +507,211 @@ export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClie
         </DialogContent>
       </Dialog>
 
-      {/* Dialog para Adicionar/Editar Unidade */}
-      <Dialog open={isAddUnitOpen} onOpenChange={setIsAddUnitOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle style={{ color: '#6400A4' }}>
-              {editingUnit ? 'Editar Unidade' : 'Adicionar Nova Unidade'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingUnit ? 'Atualize as informações da unidade' : 'Cadastre uma nova unidade/filial para este cliente'}
-            </DialogDescription>
-          </DialogHeader>
+            <Dialog open={isAddUnitOpen} onOpenChange={setIsAddUnitOpen}>
+  <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <DialogHeader>
+      <DialogTitle style={{ color: '#6400A4' }}>
+        {editingUnit ? 'Editar Unidade' : 'Adicionar Nova Unidade'}
+      </DialogTitle>
+      <DialogDescription>
+        {editingUnit ? 'Atualize as informações da unidade' : 'Cadastre uma nova unidade/filial para este cliente'}
+      </DialogDescription>
+    </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="unit-name">Nome da Unidade *</Label>
-              <Input
-                id="unit-name"
-                placeholder="Ex: Matriz, Filial Centro, etc."
-                value={unitForm.name}
-                onChange={(e) => setUnitForm({ ...unitForm, name: e.target.value })}
-              />
-            </div>
+    <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-2">
+      <div>
+        <Label htmlFor="unit-name">Nome da Unidade *</Label>
+        <Input
+          id="unit-name"
+          placeholder="Ex: Matriz, Filial Centro, etc."
+          value={unitForm.name}
+          onChange={(e) => setUnitForm({ ...unitForm, name: e.target.value })}
+        />
+      </div>
 
-            <div>
-              <Label htmlFor="unit-area">Área de Atendimento *</Label>
-              <Select
-                value={unitForm.area}
-                onValueChange={(value: 'norte' | 'sul' | 'leste' | 'oeste' | 'centro') => 
-                  setUnitForm({ ...unitForm, area: value })
-                }
-              >
-                <SelectTrigger id="unit-area">
-                  <SelectValue placeholder="Selecione a área" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="norte">Norte</SelectItem>
-                  <SelectItem value="sul">Sul</SelectItem>
-                  <SelectItem value="leste">Leste</SelectItem>
-                  <SelectItem value="oeste">Oeste</SelectItem>
-                  <SelectItem value="centro">Centro</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <div>
+        <Label htmlFor="unit-cnpj">CNPJ da Filial</Label>
+        <Input 
+          id="unit-cnpj"
+          placeholder="XX.XXX.XXX/XXXX-XX"
+          value={unitForm.cnpj}
+          onChange={e => handleCnpjChange(e.target.value)}
+          maxLength={18}
+        />
+      </div>
 
-            <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
-              <Switch
-                id="unit-primary"
-                checked={unitForm.isPrimary}
-                onCheckedChange={(checked) => setUnitForm({ ...unitForm, isPrimary: checked })}
-              />
-              <Label htmlFor="unit-primary" className="cursor-pointer">
-                Definir como unidade principal
-              </Label>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="unit-email">Email da Filial</Label>
+          <Input 
+            id="unit-email"
+            type="email"
+            placeholder="filial@empresa.com"
+            value={unitForm.email}
+            onChange={e => setUnitForm({...unitForm, email: e.target.value})}
+          />
+        </div>
+        <div>
+          <Label htmlFor="unit-phone">Telefone</Label>
+          <Input 
+            id="unit-phone"
+            placeholder="(XX) X XXXX-XXXX"
+            value={unitForm.phone}
+            onChange={e => handlePhoneChange(e.target.value)}
+            maxLength={15}
+          />
+        </div>
+      </div>
 
-            <div className="space-y-4 pt-4 border-t">
-              <h4 className="text-sm font-medium" style={{ color: '#6400A4' }}>Endereço da Unidade</h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <Label htmlFor="unit-street">Logradouro/Rua *</Label>
-                  <Input
-                    id="unit-street"
-                    placeholder="Nome da rua"
-                    value={unitForm.address.street}
-                    onChange={(e) => setUnitForm({
-                      ...unitForm,
-                      address: { ...unitForm.address, street: e.target.value }
-                    })}
-                  />
-                </div>
+      <div>
+        <Label htmlFor="unit-area">Área de Atendimento *</Label>
+        <Select
+          value={unitForm.area}
+          onValueChange={(value: 'norte' | 'sul' | 'leste' | 'oeste' | 'centro') => 
+            setUnitForm({ ...unitForm, area: value })
+          }
+        >
+          <SelectTrigger id="unit-area">
+            <SelectValue placeholder="Selecione a área" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="norte">Norte</SelectItem>
+            <SelectItem value="sul">Sul</SelectItem>
+            <SelectItem value="leste">Leste</SelectItem>
+            <SelectItem value="oeste">Oeste</SelectItem>
+            <SelectItem value="centro">Centro</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-                <div>
-                  <Label htmlFor="unit-number">Número *</Label>
-                  <Input
-                    id="unit-number"
-                    placeholder="123"
-                    value={unitForm.address.number}
-                    onChange={(e) => setUnitForm({
-                      ...unitForm,
-                      address: { ...unitForm.address, number: e.target.value }
-                    })}
-                  />
-                </div>
+      <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+        <Switch
+          id="unit-primary"
+          checked={unitForm.isPrimary}
+          onCheckedChange={(checked) => {
+            // Aviso se estiver desmarcando uma unidade principal existente
+            if (editingUnit?.isPrimary && !checked) {
+              toast.warning("Você está desmarcando a unidade principal.", {
+                description: "Recomenda-se marcar outra unidade como principal antes de desmarcar esta."
+              });
+            }
+            setUnitForm({ ...unitForm, isPrimary: checked });
+          }}
+        />
+        <Label htmlFor="unit-primary" className="cursor-pointer">
+          Definir como unidade principal
+          {unitForm.isPrimary && (
+            <span className="ml-2 text-xs text-purple-600 font-semibold">
+              (Todas as outras unidades serão desmarcadas como principal)
+            </span>
+          )}
+        </Label>
+      </div>
 
-                <div>
-                  <Label htmlFor="unit-complement">Complemento</Label>
-                  <Input
-                    id="unit-complement"
-                    placeholder="Sala, Bloco, etc."
-                    value={unitForm.address.complement}
-                    onChange={(e) => setUnitForm({
-                      ...unitForm,
-                      address: { ...unitForm.address, complement: e.target.value }
-                    })}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="unit-zipCode">CEP *</Label>
-                  <Input
-                    id="unit-zipCode"
-                    placeholder="00000-000"
-                    value={unitForm.address.zipCode}
-                    onChange={(e) => setUnitForm({
-                      ...unitForm,
-                      address: { ...unitForm.address, zipCode: e.target.value }
-                    })}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="unit-neighborhood">Setor/Bairro *</Label>
-                  <Input
-                    id="unit-neighborhood"
-                    placeholder="Nome do bairro"
-                    value={unitForm.address.neighborhood}
-                    onChange={(e) => setUnitForm({
-                      ...unitForm,
-                      address: { ...unitForm.address, neighborhood: e.target.value }
-                    })}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="unit-city">Cidade *</Label>
-                  <Input
-                    id="unit-city"
-                    placeholder="Nome da cidade"
-                    value={unitForm.address.city}
-                    onChange={(e) => setUnitForm({
-                      ...unitForm,
-                      address: { ...unitForm.address, city: e.target.value }
-                    })}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="unit-state">Estado *</Label>
-                  <Input
-                    id="unit-state"
-                    placeholder="UF (ex: SP)"
-                    maxLength={2}
-                    value={unitForm.address.state}
-                    onChange={(e) => setUnitForm({
-                      ...unitForm,
-                      address: { ...unitForm.address, state: e.target.value.toUpperCase() }
-                    })}
-                  />
-                </div>
-              </div>
-            </div>
+      <div className="space-y-4 pt-4 border-t">
+        <h4 className="text-sm font-medium" style={{ color: '#6400A4' }}>Endereço da Unidade</h4>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <Label htmlFor="unit-street">Logradouro/Rua *</Label>
+            <Input
+              id="unit-street"
+              placeholder="Nome da rua"
+              value={unitForm.address.street}
+              onChange={(e) => setUnitForm({
+                ...unitForm,
+                address: { ...unitForm.address, street: e.target.value }
+              })}
+            />
           </div>
+
+          <div>
+            <Label htmlFor="unit-number">Número *</Label>
+            <Input
+              id="unit-number"
+              placeholder="123"
+              value={unitForm.address.number}
+              onChange={(e) => setUnitForm({
+                ...unitForm,
+                address: { ...unitForm.address, number: e.target.value }
+              })}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="unit-complement">Complemento</Label>
+            <Input
+              id="unit-complement"
+              placeholder="Sala, Bloco, etc."
+              value={unitForm.address.complement}
+              onChange={(e) => setUnitForm({
+                ...unitForm,
+                address: { ...unitForm.address, complement: e.target.value }
+              })}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="unit-zipCode">CEP *</Label>
+            <Input
+              id="unit-zipCode"
+              placeholder="00000-000"
+              value={unitForm.address.zipCode}
+              onChange={(e) => handleZipCodeChange(e.target.value)}
+              maxLength={9}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="unit-neighborhood">Setor/Bairro *</Label>
+            <Input
+              id="unit-neighborhood"
+              placeholder="Nome do bairro"
+              value={unitForm.address.neighborhood}
+              onChange={(e) => setUnitForm({
+                ...unitForm,
+                address: { ...unitForm.address, neighborhood: e.target.value }
+              })}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="unit-city">Cidade *</Label>
+            <Input
+              id="unit-city"
+              placeholder="Nome da cidade"
+              value={unitForm.address.city}
+              onChange={(e) => setUnitForm({
+                ...unitForm,
+                address: { ...unitForm.address, city: e.target.value }
+              })}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="unit-state">Estado *</Label>
+            <Select
+              value={unitForm.address.state}
+              onValueChange={(value) => setUnitForm({
+                ...unitForm,
+                address: { ...unitForm.address, state: value }
+              })}
+            >
+              <SelectTrigger id="unit-state">
+                <SelectValue placeholder="Selecione o estado" />
+              </SelectTrigger>
+              <SelectContent>
+                {BR_STATES.map((uf) => (
+                  <SelectItem key={uf} value={uf}>
+                    {uf}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+    </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddUnitOpen(false)}>
@@ -526,8 +728,7 @@ export function ClientViewDialog({ isOpen, onClose, client, onEdit, onUpdateClie
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Confirmação de Exclusão de Unidade */}
-      <AlertDialog open={!!unitToDelete} onOpenChange={(open) => !open && setUnitToDelete(null)}>
+      <AlertDialog open={!!unitToDelete} onOpenChange={(open: boolean) => !open && setUnitToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle style={{ color: '#6400A4' }}>Confirmar Exclusão de Unidade</AlertDialogTitle>

@@ -20,6 +20,17 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.STRING(20),
       allowNull: true,
       defaultValue: "#6400A4"
+    },
+    // NOVAS COLUNAS
+    icon: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      defaultValue: 'Hash'
+    },
+    is_system: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: 0
     }
   }, {
     sequelize,
