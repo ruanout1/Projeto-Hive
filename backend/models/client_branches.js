@@ -19,6 +19,20 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.STRING(255),
       allowNull: false
     },
+    // --- NOVOS CAMPOS ---
+    email: {
+      type: DataTypes.STRING(255),
+      allowNull: true
+    },
+    phone: {
+      type: DataTypes.STRING(50),
+      allowNull: true
+    },
+    cnpj: {
+      type: DataTypes.STRING(20),
+      allowNull: true
+    },
+    // --------------------
     nickname: {
       type: DataTypes.STRING(100),
       allowNull: true
@@ -78,28 +92,9 @@ module.exports = function(sequelize, DataTypes) {
     tableName: 'client_branches',
     timestamps: true,
     indexes: [
-      {
-        name: "PRIMARY",
-        unique: true,
-        using: "BTREE",
-        fields: [
-          { name: "branch_id" },
-        ]
-      },
-      {
-        name: "idx_branches_company",
-        using: "BTREE",
-        fields: [
-          { name: "company_id" },
-        ]
-      },
-      {
-        name: "idx_branches_city",
-        using: "BTREE",
-        fields: [
-          { name: "city" },
-        ]
-      },
+      { name: "PRIMARY", unique: true, using: "BTREE", fields: [{ name: "branch_id" }] },
+      { name: "idx_branches_company", using: "BTREE", fields: [{ name: "company_id" }] },
+      { name: "idx_branches_city", using: "BTREE", fields: [{ name: "city" }] },
     ]
   });
 };

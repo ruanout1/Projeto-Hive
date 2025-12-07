@@ -1,5 +1,4 @@
-// /shared/clients/ClientsScreen.tsx - VERSÃO CORRIGIDA
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ScreenHeader from '../../public/ScreenHeader';
 import { Button } from '../../../components/ui/button';
 import { Plus } from 'lucide-react';
@@ -19,7 +18,17 @@ interface ClientsScreenProps {
 }
 
 export default function ClientsScreen({ onBack, userRole = 'admin' }: ClientsScreenProps) {
-  const { clients, saveClient, deleteClient, toggleClientStatus, updateClientLocations } = useClients();
+  const { 
+    clients, 
+    saveClient, 
+    deleteClient, 
+    toggleClientStatus, 
+    updateClientLocations,
+    removeClientLocation,
+    addClientLocation,    // NOVO: Adicionado do hook
+    updateClientLocation  // NOVO: Adicionado do hook
+  } = useClients();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
   
@@ -28,6 +37,19 @@ export default function ClientsScreen({ onBack, userRole = 'admin' }: ClientsScr
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [viewingClient, setViewingClient] = useState<Client | null>(null);
+
+  // Sincroniza o cliente em visualização com a lista atualizada
+  useEffect(() => {
+    if (viewingClient && isViewOpen) {
+      // Busca a versão mais recente deste cliente na lista atualizada
+      const updatedClient = clients.find(c => c.id === viewingClient.id);
+      
+      // Se achou (e mudou algo), atualiza o estado do modal
+      if (updatedClient && updatedClient !== viewingClient) {
+        setViewingClient(updatedClient);
+      }
+    }
+  }, [clients, viewingClient, isViewOpen]);
 
   // Cálculos para estatísticas
   const activeCount = clients.filter(c => c.status === 'active').length;
@@ -54,35 +76,22 @@ export default function ClientsScreen({ onBack, userRole = 'admin' }: ClientsScr
     return matchesSearch && matchesStatus;
   });
 
-  // Permissões baseadas no tipo de usuário
-  const canDelete = userRole === 'admin';
+  // Permissões
+  const canDelete = userRole === 'admin'; 
   const canCreateEdit = userRole === 'admin' || userRole === 'manager';
 
   // Handlers
-  const handleCreate = () => { 
-    setEditingClient(null); 
-    setIsFormOpen(true); 
-  };
-
-  const handleEdit = (client: Client) => { 
-    setEditingClient(client); 
-    setIsFormOpen(true); 
-  };
-
-  const handleView = (client: Client) => { 
-    setViewingClient(client); 
-    setIsViewOpen(true); 
-  };
-  
-  const handleDeleteClick = (client: Client) => { 
-    setClientToDelete(client); 
-  };
+  const handleCreate = () => { setEditingClient(null); setIsFormOpen(true); };
+  const handleEdit = (client: Client) => { setEditingClient(client); setIsFormOpen(true); };
+  const handleView = (client: Client) => { setViewingClient(client); setIsViewOpen(true); };
+  const handleDeleteClick = (client: Client) => { setClientToDelete(client); };
   
   const handleConfirmDelete = async () => {
     if (clientToDelete) {
       const success = await deleteClient(clientToDelete.id);
       if (success) {
         setClientToDelete(null);
+        // Se estava vendo o cliente que foi deletado, fecha o modal
         if (viewingClient?.id === clientToDelete.id) {
           setIsViewOpen(false);
           setViewingClient(null);
@@ -104,15 +113,12 @@ export default function ClientsScreen({ onBack, userRole = 'admin' }: ClientsScr
     return success;
   };
 
-  // Função vazia para quando não há permissão
   const emptyFunction = () => {};
 
   return (
     <div className="h-full bg-gray-50">
-      {/* Header com Background Branco */}
       <div className="bg-white border-b border-gray-200 p-6">
         <div className="max-w-7xl mx-auto">
-          {/* Header com Botão */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex-1">
               <ScreenHeader 
@@ -121,83 +127,67 @@ export default function ClientsScreen({ onBack, userRole = 'admin' }: ClientsScr
                 onBack={onBack}
               />
             </div>
-            
-            {/* Botão Condicional - Admin e Gestor podem criar */}
             {canCreateEdit && (
               <Button 
                 onClick={handleCreate}
                 style={{ backgroundColor: '#6400A4', color: 'white' }}
                 className="hover:opacity-90 transition-opacity"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Cliente
+                <Plus className="h-4 w-4 mr-2" /> Adicionar Cliente
               </Button>
             )}
           </div>
-
-          {/* Cards de Estatísticas */}
-          <ClientStats 
-            total={clients.length}
-            active={activeCount}
-            inactive={inactiveCount}
-            revenue={totalRevenue}
-          />
+          <ClientStats total={clients.length} active={activeCount} inactive={inactiveCount} revenue={totalRevenue} />
         </div>
       </div>
 
-      {/* Filtros com Background Branco */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <ClientFilters 
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            filterStatus={filterStatus}
-            onFilterChange={setFilterStatus}
+            searchTerm={searchTerm} onSearchChange={setSearchTerm}
+            filterStatus={filterStatus} onFilterChange={setFilterStatus}
           />
         </div>
       </div>
 
-      {/* Lista de Clientes */}
       <div className="max-w-7xl mx-auto p-6">
         <ClientList 
           clients={filteredClients}
           onView={handleView}
           onEdit={canCreateEdit ? handleEdit : emptyFunction} 
-          onDelete={canDelete ? handleDeleteClick : emptyFunction}
+          onDelete={canDelete ? handleDeleteClick : undefined}
           onToggleStatus={handleToggleStatus}
         />
       </div>
 
-      {/* Dialogs */}
       <ClientFormDialog 
         isOpen={isFormOpen}
-        onClose={() => {
-          setIsFormOpen(false);
-          setEditingClient(null);
-        }}
+        onClose={() => { setIsFormOpen(false); setEditingClient(null); }}
         onSave={handleSaveClient}
         editingClient={editingClient}
       />
 
-      {/* Dialog de Visualização */}
       {viewingClient && (
         <ClientViewDialog 
           isOpen={isViewOpen} 
-          onClose={() => {
-            setIsViewOpen(false);
-            setViewingClient(null);
-          }} 
+          onClose={() => { setIsViewOpen(false); setViewingClient(null); }} 
           client={viewingClient} 
           onEdit={(client) => { 
             setIsViewOpen(false); 
             setEditingClient(client); 
             setIsFormOpen(true); 
           }}
+          // ADIÇÃO: Funções novas para resolver o erro 404
+          onAddLocation={addClientLocation}
+          onUpdateLocation={updateClientLocation}
+          onDeleteLocation={(locId) => removeClientLocation(viewingClient.id, locId)}
+          // Mantido por compatibilidade
           onUpdateClientLocations={updateClientLocations}
+          
+          canDelete={canDelete} 
         />
       )}
 
-      {/* Dialog de Confirmação de Exclusão */}
       <DeleteClientDialog 
         isOpen={!!clientToDelete}
         onClose={() => setClientToDelete(null)}

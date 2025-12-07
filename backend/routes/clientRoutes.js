@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const ClientController = require('../controllers/clientController'); // Controller NOVO
+const ClientController = require('../controllers/ClientController'); // Controller NOVO
 const { protect } = require('../middleware/authMiddleware');
 // const { checkRole } = require('../middleware/authorizationMiddleware'); // Use se precisar restringir acesso
 
@@ -47,18 +47,35 @@ if (ClientController.addClientLocation) {
     router.post('/:id/locations', ClientController.addClientLocation);
 }
 
+// PUT /api/clients/:id/locations/:locationId
+// Atualiza uma filial existente (INCLUÍDO - estava faltando)
+if (ClientController.updateClientLocation) {
+    router.put('/:id/locations/:locationId', ClientController.updateClientLocation);
+}
+
 // DELETE /api/clients/:id/locations/:locationId
 // Remove uma filial (exceto matriz)
 if (ClientController.removeClientLocation) {
     router.delete('/:id/locations/:locationId', ClientController.removeClientLocation);
 }
 
-router.delete('/:id', ClientController.deleteClient);
-router.patch('/:id/toggle-status', ClientController.toggleClientStatus);
+// --- OUTRAS ROTAS ---
+
+// DELETE /api/clients/:id
+// Remove um cliente completo
+if (ClientController.deleteClient) {
+    router.delete('/:id', ClientController.deleteClient);
+}
+
+// PATCH /api/clients/:id/toggle-status
+// Ativa/desativa cliente
+if (ClientController.toggleClientStatus) {
+    router.patch('/:id/toggle-status', ClientController.toggleClientStatus);
+}
+
 // --- ROTAS ANTIGAS (COMENTADAS PARA NÃO QUEBRAR) ---
 // Estas funções ainda não foram migradas para o controller novo.
 // router.get('/stats', ClientController.getClientsStats); 
 // router.get('/list/my-area', ClientController.getManagerClientsList);
-// router.patch('/:id/toggle-status', ClientController.toggleClientStatus);
 
 module.exports = router;
