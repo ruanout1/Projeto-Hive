@@ -1,4 +1,4 @@
-const { models } = require('../config/database');
+const { models } = require('../database/connection');
 const { handleDatabaseError } = require('../utils/errorHandling');
 
 module.exports = {

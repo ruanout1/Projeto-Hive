@@ -13,6 +13,12 @@ router.use(protect);
 
 // --- ROTAS DE LEITURA ---
 
+// GET /api/clients/my-branches
+// ✅ Cliente logado busca suas próprias filiais (DEVE VIR ANTES DE /:id)
+if (ClientController.getMyBranches) {
+    router.get('/my-branches', ClientController.getMyBranches);
+}
+
 // GET /api/clients
 // Lista clientes com paginação e filtros
 if (ClientController.getClients) {

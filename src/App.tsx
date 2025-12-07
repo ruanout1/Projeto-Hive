@@ -41,6 +41,7 @@ import CollaboratorTimeClockScreen from './screens/colaborador/CollaboratorTimeC
 
 // --- IMPORTS DAS TELAS DO CLIENTE ---
 import Navigation from './screens/cliente/Navigation';
+import ClientDashboard from './screens/cliente/ClientDashboard';
 import ClientRatingsScreen from './screens/cliente/ClientRatingsScreen';
 import ServiceRequestScreen from './screens/cliente/ServiceRequestScreen';
 import ClientDocumentsScreen from './screens/cliente/ClientDocumentsScreen';

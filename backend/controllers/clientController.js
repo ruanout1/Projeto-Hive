@@ -1,4 +1,4 @@
-const { models, sequelize } = require('../config/database');
+const { models, sequelize } = require('../database/connection');
 const { Op } = require('sequelize');
 const { handleDatabaseError } = require('../utils/errorHandling');
 
@@ -583,7 +583,7 @@ exports.deleteClient = async (req, res) => {
 exports.toggleClientStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Busca o cliente atual
     const client = await models.companies.findByPk(id);
     if (!client) {
@@ -592,16 +592,63 @@ exports.toggleClientStatus = async (req, res) => {
 
     // Inverte o status
     const newStatus = !client.is_active;
-    
+
     await client.update({ is_active: newStatus });
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: `Cliente ${newStatus ? 'ativado' : 'desativado'} com sucesso`,
       is_active: newStatus
     });
 
   } catch (error) {
     handleDatabaseError(res, error, 'alterar status cliente');
+  }
+};
+
+// ========================================================================
+// 7. BUSCAR MINHAS FILIAIS (GET /api/clients/my-branches)
+// Endpoint para o cliente logado buscar suas próprias filiais
+// ========================================================================
+exports.getMyBranches = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user.user_id;
+
+    // 1. Busca o company_id do cliente logado
+    const clientUser = await models.client_users.findOne({
+      where: { user_id: userId }
+    });
+
+    if (!clientUser) {
+      return res.status(404).json({ message: 'Usuário não vinculado a nenhuma empresa' });
+    }
+
+    // 2. Busca todas as filiais da empresa do cliente
+    const branches = await models.client_branches.findAll({
+      where: {
+        company_id: clientUser.company_id,
+        is_active: true
+      },
+      order: [
+        ['is_main_branch', 'DESC'], // Matriz primeiro
+        ['name', 'ASC']
+      ]
+    });
+
+    // 3. Formata os dados para o frontend
+    const formattedBranches = branches.map(branch => ({
+      id: branch.branch_id,
+      name: branch.name,
+      address: `${branch.street}, ${branch.number}${branch.complement ? ' - ' + branch.complement : ''}, ${branch.neighborhood}, ${branch.city} - ${branch.state}`,
+      neighborhood: branch.neighborhood,
+      city: branch.city,
+      state: branch.state,
+      area: branch.area
+    }));
+
+    res.json(formattedBranches);
+
+  } catch (error) {
+    handleDatabaseError(res, error, 'buscar minhas filiais');
   }
 };
