@@ -6,7 +6,6 @@ module.exports = {
   // 1. LISTAR ENVIOS (GET /api/photo-review)
   async listSubmissions(req, res) {
     try {
-      console.log("📸 [PhotoReview] Iniciando busca de fotos...");
       const { status, search } = req.query;
 
       // Filtro de Status da Foto
@@ -14,7 +13,6 @@ module.exports = {
       if (status === 'pending') statusFilter = { review_status_key: 'pending' };
       else if (status === 'sent') statusFilter = { review_status_key: { [Op.in]: ['approved', 'sent'] } };
 
-      console.log("📸 [PhotoReview] Filtro aplicado:", statusFilter);
 
       const photos = await models.service_order_photos.findAll({
         where: statusFilter,
@@ -39,8 +37,6 @@ module.exports = {
         ],
         order: [['created_at', 'DESC']]
       });
-
-      console.log(`📸 [PhotoReview] Encontradas ${photos.length} fotos no total.`);
 
       // Agrupar fotos por Serviço
       const groupedSubmissions = {};
@@ -90,7 +86,6 @@ module.exports = {
       });
 
       const result = Object.values(groupedSubmissions);
-      console.log(`📸 [PhotoReview] Retornando ${result.length} grupos de submissão.`);
 
       // Filtro de busca
       if (search) {

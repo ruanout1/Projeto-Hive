@@ -7,11 +7,7 @@ const sequelize = new Sequelize(
   process.env.DB_NAME || 'hive',
   process.env.DB_USER || 'root',
   process.env.DB_PASS || '',
-  process.env.DB_NAME || 'hive',
-  process.env.DB_USER || 'root',
-  process.env.DB_PASS || '',
   {
-    host: process.env.DB_HOST || 'localhost',
     host: process.env.DB_HOST || 'localhost',
     dialect: 'mysql',
     logging: false,
@@ -23,18 +19,10 @@ const sequelize = new Sequelize(
       dateStrings: true,
       typeCast: true
     }
-    define: {
-      timestamps: true,
-      underscored: true,
-    },
-    dialectOptions: {
-      dateStrings: true,
-      typeCast: true
-    }
   }
 );
 
-// 2. Inicialização dos Modelos (A parte mais importante!)
+// 2. Inicialização dos Modelos
 let models = {};
 try {
     models = initModels(sequelize);
@@ -48,5 +36,5 @@ sequelize.authenticate()
   .then(() => console.log('🔌 [Database] Conexão MySQL estabelecida.'))
   .catch(err => console.error('❌ [Database] Falha na conexão:', err.message));
 
-// 4. Exportação (Objeto com tudo que o sistema precisa)
+// 4. Exportação
 module.exports = { sequelize, models };
