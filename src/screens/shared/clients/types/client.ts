@@ -1,3 +1,5 @@
+// src\screens\shared\clients\types\client.ts - ATUALIZADO
+
 export interface Address {
   street: string;
   number: string;
@@ -11,11 +13,11 @@ export interface Address {
 export interface ClientLocation {
   id: string;
   name: string;
-  email?: string;        // NOVO - Email da filial
-  phone?: string;        // NOVO - Telefone da filial
-  cnpj?: string;         // NOVO - CNPJ da filial
+  email?: string;
+  phone?: string;
+  cnpj?: string;
   address: Address;
-  area: string;
+  area: 'norte' | 'sul' | 'leste' | 'oeste' | 'centro';
   isPrimary: boolean;
 }
 
@@ -26,7 +28,7 @@ export interface Client {
   email: string;
   phone: string;
   address: Address;
-  area: string;
+  area: 'norte' | 'sul' | 'leste' | 'oeste' | 'centro';
   locations?: ClientLocation[];
   status: 'active' | 'inactive';
   servicesActive: number;
@@ -38,8 +40,19 @@ export interface Client {
   createdAt?: string;
 }
 
-// Opcional: você pode criar um tipo para o formulário de unidade
-export interface ClientLocationFormData {
+// Tipos para formulários
+export interface ClientFormData {
+  name: string;
+  cnpj: string;
+  email: string;
+  phone: string;
+  address: Address;
+  area: 'norte' | 'sul' | 'leste' | 'oeste' | 'centro';
+  notes: string;
+  status: 'active' | 'inactive';
+}
+
+export interface LocationFormData {
   name: string;
   email: string;
   phone: string;

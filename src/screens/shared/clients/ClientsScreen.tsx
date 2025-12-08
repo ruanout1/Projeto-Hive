@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+// src\screens\shared\clients\ClientsScreen.tsx - ATUALIZADO
+
+import { useState } from 'react';
 import ScreenHeader from '../../public/ScreenHeader';
 import { Button } from '../../../components/ui/button';
 import { Plus } from 'lucide-react';
@@ -8,8 +10,8 @@ import { ClientStats } from './components/ClientStats';
 import { ClientFilters } from './components/ClientFilters';
 import { ClientList } from './components/ClientList';
 import { ClientFormDialog } from './components/ClientFormDialog';
-import { ClientViewDialog } from './components/ClientViewDialog';
 import { DeleteClientDialog } from './components/DeleteClientDialog';
+import { ClientManagementScreen } from './components/ClientManagementScreen'; // NOVO IMPORT
 import { Client } from './types/client';
 
 interface ClientsScreenProps {
@@ -23,80 +25,81 @@ export default function ClientsScreen({ onBack, userRole = 'admin' }: ClientsScr
     saveClient, 
     deleteClient, 
     toggleClientStatus, 
-    updateClientLocations,
-    removeClientLocation,
-    addClientLocation,    // NOVO: Adicionado do hook
-    updateClientLocation  // NOVO: Adicionado do hook
+    addClientLocation,
+    updateClientLocation,
+    removeClientLocation
   } = useClients();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
   
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isViewOpen, setIsViewOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [viewingClient, setViewingClient] = useState<Client | null>(null);
+  const [viewingClient, setViewingClient] = useState<Client | null>(null); // NOVO ESTADO
 
-  // Sincroniza o cliente em visualização com a lista atualizada
-  useEffect(() => {
-    if (viewingClient && isViewOpen) {
-      // Busca a versão mais recente deste cliente na lista atualizada
-      const updatedClient = clients.find(c => c.id === viewingClient.id);
-      
-      // Se achou (e mudou algo), atualiza o estado do modal
-      if (updatedClient && updatedClient !== viewingClient) {
-        setViewingClient(updatedClient);
-      }
-    }
-  }, [clients, viewingClient, isViewOpen]);
+  // Permissões
+  const canDelete = userRole === 'admin'; 
+  const canCreateEdit = userRole === 'admin' || userRole === 'manager';
 
-  // Cálculos para estatísticas
+  // Estatísticas
   const activeCount = clients.filter(c => c.status === 'active').length;
   const inactiveCount = clients.filter(c => c.status === 'inactive').length;
   const totalRevenue = clients.reduce((sum, c) => {
     if (!c.totalValue) return sum;
-    const valueStr = c.totalValue.replace(/[R$\s.]/g, '').replace(',', '.');
-    const value = parseFloat(valueStr);
+    const cleanValue = c.totalValue
+      .replace('R$', '')
+      .replace(/\./g, '')
+      .replace(',', '.')
+      .trim();
+    const value = parseFloat(cleanValue);
     return sum + (isNaN(value) ? 0 : value);
   }, 0);
 
-  // Filtragem de clientes
+  // Filtragem
   const filteredClients = clients.filter(client => {
+    const searchLower = searchTerm.toLowerCase();
     const matchesSearch = 
-      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.name.toLowerCase().includes(searchLower) ||
       client.cnpj.includes(searchTerm) ||
-      client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.email.toLowerCase().includes(searchLower) ||
       client.phone.includes(searchTerm) ||
-      `${client.address.street} ${client.address.number} ${client.address.neighborhood} ${client.address.city}`
-        .toLowerCase().includes(searchTerm.toLowerCase());
+      client.address.street.toLowerCase().includes(searchLower) ||
+      client.address.neighborhood.toLowerCase().includes(searchLower) ||
+      client.address.city.toLowerCase().includes(searchLower);
     
     const matchesStatus = filterStatus === 'todos' || client.status === filterStatus;
     
     return matchesSearch && matchesStatus;
   });
 
-  // Permissões
-  const canDelete = userRole === 'admin'; 
-  const canCreateEdit = userRole === 'admin' || userRole === 'manager';
-
   // Handlers
-  const handleCreate = () => { setEditingClient(null); setIsFormOpen(true); };
-  const handleEdit = (client: Client) => { setEditingClient(client); setIsFormOpen(true); };
-  const handleView = (client: Client) => { setViewingClient(client); setIsViewOpen(true); };
-  const handleDeleteClick = (client: Client) => { setClientToDelete(client); };
+  const handleCreate = () => { 
+    setEditingClient(null); 
+    setIsFormOpen(true); 
+  };
+
+  const handleEdit = (client: Client) => { 
+    if (!canCreateEdit) return;
+    setEditingClient(client); 
+    setIsFormOpen(true); 
+  };
+
+  const handleView = (client: Client) => { 
+    setViewingClient(client); // AGORA MUDA PARA TELA DEDICADA
+  };
+
+  const handleDeleteClick = (client: Client) => { 
+    if (!canDelete) return;
+    setClientToDelete(client); 
+  };
   
   const handleConfirmDelete = async () => {
-    if (clientToDelete) {
-      const success = await deleteClient(clientToDelete.id);
-      if (success) {
-        setClientToDelete(null);
-        // Se estava vendo o cliente que foi deletado, fecha o modal
-        if (viewingClient?.id === clientToDelete.id) {
-          setIsViewOpen(false);
-          setViewingClient(null);
-        }
-      }
+    if (!clientToDelete) return;
+    
+    const success = await deleteClient(clientToDelete.id);
+    if (success) {
+      setClientToDelete(null);
     }
   };
 
@@ -113,10 +116,47 @@ export default function ClientsScreen({ onBack, userRole = 'admin' }: ClientsScr
     return success;
   };
 
+  const handleSaveClientFromManagement = async (clientData: any) => {
+    const success = await saveClient(clientData, true, viewingClient?.id);
+    return success;
+  };
+
+  // Funções para o gerenciamento de unidades
+  const handleAddLocation = async (clientId: number, locationData: any) => {
+    return await addClientLocation(clientId, locationData);
+  };
+
+  const handleUpdateLocation = async (clientId: number, locationId: string, locationData: any) => {
+    return await updateClientLocation(clientId, locationId, locationData);
+  };
+
+  const handleDeleteLocation = async (clientId: number, locationId: string) => {
+    await removeClientLocation(clientId, locationId);
+  };
+
+  // Função vazia para quando não há permissão
   const emptyFunction = () => {};
 
+  // Se estamos visualizando um cliente, mostra a tela de gerenciamento
+  if (viewingClient) {
+    return (
+      <ClientManagementScreen
+        client={viewingClient}
+        onBack={() => setViewingClient(null)}
+        onSaveClient={handleSaveClientFromManagement}
+        onAddLocation={handleAddLocation}
+        onUpdateLocation={handleUpdateLocation}
+        onDeleteLocation={handleDeleteLocation}
+        onToggleClientStatus={toggleClientStatus}
+        userRole={userRole}
+      />
+    );
+  }
+
+  // Tela principal de lista de clientes
   return (
     <div className="h-full bg-gray-50">
+      {/* Header com estatísticas */}
       <div className="bg-white border-b border-gray-200 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
@@ -131,62 +171,56 @@ export default function ClientsScreen({ onBack, userRole = 'admin' }: ClientsScr
               <Button 
                 onClick={handleCreate}
                 style={{ backgroundColor: '#6400A4', color: 'white' }}
-                className="hover:opacity-90 transition-opacity"
+                className="hover:opacity-90 transition-opacity shadow-md"
               >
-                <Plus className="h-4 w-4 mr-2" /> Adicionar Cliente
+                <Plus className="h-4 w-4 mr-2" /> 
+                Adicionar Cliente
               </Button>
             )}
           </div>
-          <ClientStats total={clients.length} active={activeCount} inactive={inactiveCount} revenue={totalRevenue} />
-        </div>
-      </div>
-
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <ClientFilters 
-            searchTerm={searchTerm} onSearchChange={setSearchTerm}
-            filterStatus={filterStatus} onFilterChange={setFilterStatus}
+          
+          <ClientStats 
+            total={clients.length} 
+            active={activeCount} 
+            inactive={inactiveCount} 
+            revenue={totalRevenue} 
           />
         </div>
       </div>
 
+      {/* Filtros */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <ClientFilters 
+            searchTerm={searchTerm} 
+            onSearchChange={setSearchTerm}
+            filterStatus={filterStatus} 
+            onFilterChange={setFilterStatus}
+          />
+        </div>
+      </div>
+
+      {/* Lista de clientes */}
       <div className="max-w-7xl mx-auto p-6">
         <ClientList 
           clients={filteredClients}
-          onView={handleView}
-          onEdit={canCreateEdit ? handleEdit : emptyFunction} 
+          onView={handleView} // AGORA LEVA PARA TELA DEDICADA
+          onEdit={canCreateEdit ? handleEdit : emptyFunction}
           onDelete={canDelete ? handleDeleteClick : undefined}
-          onToggleStatus={handleToggleStatus}
+          onToggleStatus={canCreateEdit ? handleToggleStatus : emptyFunction}
         />
       </div>
 
+      {/* Diálogos */}
       <ClientFormDialog 
         isOpen={isFormOpen}
-        onClose={() => { setIsFormOpen(false); setEditingClient(null); }}
+        onClose={() => { 
+          setIsFormOpen(false); 
+          setEditingClient(null); 
+        }}
         onSave={handleSaveClient}
         editingClient={editingClient}
       />
-
-      {viewingClient && (
-        <ClientViewDialog 
-          isOpen={isViewOpen} 
-          onClose={() => { setIsViewOpen(false); setViewingClient(null); }} 
-          client={viewingClient} 
-          onEdit={(client) => { 
-            setIsViewOpen(false); 
-            setEditingClient(client); 
-            setIsFormOpen(true); 
-          }}
-          // ADIÇÃO: Funções novas para resolver o erro 404
-          onAddLocation={addClientLocation}
-          onUpdateLocation={updateClientLocation}
-          onDeleteLocation={(locId) => removeClientLocation(viewingClient.id, locId)}
-          // Mantido por compatibilidade
-          onUpdateClientLocations={updateClientLocations}
-          
-          canDelete={canDelete} 
-        />
-      )}
 
       <DeleteClientDialog 
         isOpen={!!clientToDelete}

@@ -1,5 +1,6 @@
-// /shared/clients/components/ClientCard.tsx - NOVO COMPONENTE
-import { Eye, Edit, Trash2, Power, MapPin, Phone, Mail, FileText, Calendar, Star } from 'lucide-react';
+// src\screens\shared\clients\components\ClientCard.tsx - PEQUENAS CORREÇÕES
+
+import { Eye, Edit, Trash2, Power, MapPin, Phone, Mail, FileText, Calendar, Star, Building2 } from 'lucide-react'; // Adicionei Building2
 import { Button } from '../../../../components/ui/button';
 import { Badge } from '../../../../components/ui/badge';
 import { Avatar, AvatarFallback } from '../../../../components/ui/avatar';
@@ -46,7 +47,7 @@ export function ClientCard({ client, onView, onEdit, onDelete, onToggleStatus }:
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">
-              <h3 style={{ color: '#6400A4' }} className="text-lg font-semibold">
+              <h3 style={{ color: '#6400A4' }} className="text-lg font-semibold truncate">
                 {client.name}
               </h3>
               <Badge
@@ -63,7 +64,7 @@ export function ClientCard({ client, onView, onEdit, onDelete, onToggleStatus }:
               )}
             </div>
 
-            {/* Informações de Contato - Layout do Protótipo */}
+            {/* Informações de Contato */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-600 mb-2">
               <div className="flex items-center space-x-2 min-w-0">
                 <FileText className="h-4 w-4 flex-shrink-0" style={{ color: '#6400A4' }} />
@@ -79,16 +80,24 @@ export function ClientCard({ client, onView, onEdit, onDelete, onToggleStatus }:
               </div>
             </div>
 
-            {/* Endereço */}
-            <div className="flex items-center space-x-2 text-sm text-gray-600 mb-3">
-              <MapPin className="h-4 w-4 flex-shrink-0" style={{ color: '#8B20EE' }} />
-              <span className="truncate">{formatAddress(client.address)}</span>
+            {/* Endereço e Unidades */}
+            <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+              <div className="flex items-center space-x-2">
+                <MapPin className="h-4 w-4 flex-shrink-0" style={{ color: '#8B20EE' }} />
+                <span className="truncate max-w-xs">{formatAddress(client.address)}</span>
+              </div>
+              {client.locations && client.locations.length > 1 && (
+                <div className="flex items-center space-x-1">
+                  <Building2 className="h-4 w-4 text-blue-500" />
+                  <span className="text-xs text-blue-600">{client.locations.length} unidades</span>
+                </div>
+              )}
             </div>
 
-            {/* Estatísticas - Layout do Protótipo */}
-            <div className="flex items-center space-x-4 text-xs text-gray-500">
+            {/* Estatísticas */}
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
               <div className="flex items-center space-x-1">
-                <span>Serviços Ativos: <span style={{ color: '#6400A4' }}>{client.servicesActive}</span></span>
+                <span>Ativos: <span style={{ color: '#6400A4' }}>{client.servicesActive}</span></span>
               </div>
               <div className="flex items-center space-x-1">
                 <span>Concluídos: <span className="text-green-600">{client.servicesCompleted}</span></span>
@@ -104,7 +113,7 @@ export function ClientCard({ client, onView, onEdit, onDelete, onToggleStatus }:
           </div>
         </div>
 
-        {/* Actions - Layout do Protótipo */}
+        {/* Actions */}
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -142,7 +151,7 @@ export function ClientCard({ client, onView, onEdit, onDelete, onToggleStatus }:
             {client.status === 'active' ? 'Desativar' : 'Ativar'}
           </Button>
 
-          {/* Botão Excluir Condicional (Só Admin) */}
+          {/* Botão Excluir condicional (somente admin) */}
           {onDelete && (
             <Button
               variant="outline"
