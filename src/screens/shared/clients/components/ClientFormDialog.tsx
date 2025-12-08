@@ -65,6 +65,45 @@ export function ClientFormDialog({ isOpen, onClose, onSave, editingClient }: Cli
   };
   const formatZip = (v: string) => v.replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2');
 
+  const validateCNPJ = (cnpj: string) => {
+  const cleanCNPJ = cnpj.replace(/\D/g, '');
+  if (cleanCNPJ.length !== 14) return false;
+  
+  // Elimina CNPJs inválidos conhecidos
+  if (/^(\d)\1+$/.test(cleanCNPJ)) return false;
+  
+  // Valida dígitos verificadores
+  let tamanho = cleanCNPJ.length - 2;
+  let numeros = cleanCNPJ.substring(0, tamanho);
+  let digitos = cleanCNPJ.substring(tamanho);
+  let soma = 0;
+  let pos = tamanho - 7;
+  
+  for (let i = tamanho; i >= 1; i--) {
+    soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+    if (pos < 2) pos = 9;
+  }
+  
+  let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+  if (resultado !== parseInt(digitos.charAt(0))) return false;
+  
+  tamanho = tamanho + 1;
+  numeros = cleanCNPJ.substring(0, tamanho);
+  soma = 0;
+  pos = tamanho - 7;
+  
+  for (let i = tamanho; i >= 1; i--) {
+    soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+    if (pos < 2) pos = 9;
+  }
+  
+  resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+  if (resultado !== parseInt(digitos.charAt(1))) return false;
+  
+  return true;
+};
+
+
   const handleAddLocation = () => {
     setLocations([...locations, {
       id: `temp-${Date.now()}`, 
@@ -94,11 +133,19 @@ export function ClientFormDialog({ isOpen, onClose, onSave, editingClient }: Cli
     }));
   };
 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); 
     if (!formData.name || !formData.cnpj || !formData.email) {
       toast.error('Preencha todos os campos obrigatórios!');
       return;
+    }
+
+    // Validar CNPJ
+    const cleanCNPJ = formData.cnpj.replace(/\D/g, '');
+    if (!validateCNPJ(cleanCNPJ)) {
+      toast.error('CNPJ inválido!');
+    return;
     }
 
     // Validar endereço principal
