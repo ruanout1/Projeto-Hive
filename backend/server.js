@@ -20,6 +20,10 @@ const userRoutes = require('./routes/userRoutes');
 const serviceCatalogRoutes = require('./routes/serviceCatalogRoutes');
 const collaboratorAllocationRoutes = require('./routes/collaboratorAllocationRoutes');
 const authRoutes = require('./routes/authRoutes');
+const adminClientRoutes = require('./routes/adminClientRoutes');
+const adminDocumentsRoutes = require('./routes/AdminDocumentsRoutes');
+const serviceOrderRoutes = require('./routes/serviceOrderRoutes');
+const photoHistoryRoutes = require('./routes/photoHistoryRoutes');
 
 // =============================================
 // 🔹 REGISTRAR ASSOCIAÇÕES
@@ -67,6 +71,11 @@ app.use('/api/users', userRoutes);
 app.use('/api/service-catalog', serviceCatalogRoutes);
 app.use('/api/allocations', collaboratorAllocationRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/admin/clients', adminClientRoutes);
+app.use('/api/documents', adminDocumentsRoutes);
+app.use('/api/service-orders', serviceOrderRoutes);
+app.use('/api/photo-history', photoHistoryRoutes);
+
 
 // =====================
 // ROTA DE HEALTH CHECK

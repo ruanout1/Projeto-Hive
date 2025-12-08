@@ -17,4 +17,7 @@ router.put('/:id', protect, checkRole(['admin']), teamController.updateTeam);
 router.put('/:id/status', protect, checkRole(['admin']), teamController.updateTeamStatus);
 router.delete('/:id', protect, checkRole(['admin']), teamController.deleteTeam);
 
+// ✅ ADICIONE ESTAS DUAS ROTAS AQUI:
+router.get('/available/managers', protect, checkRole(['admin']), teamController.getAvailableManagers);
+router.get('/available/members', protect, checkRole(['admin']), teamController.getAvailableMembers);
 module.exports = router;

@@ -14,7 +14,7 @@ exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.findAll({
       where: {
-        user_type: {
+        role_key: {
           [Op.in]: ['manager', 'collaborator']
         }
       },
@@ -23,7 +23,8 @@ exports.getAllUsers = async (req, res) => {
         'full_name',
         'email',
         'phone',
-        'user_type',
+        'role_key',
+        'avatar_url',
         'is_active',
         'created_at',
         'last_login'
@@ -44,7 +45,7 @@ exports.getAllUsers = async (req, res) => {
       const userJson = user.toJSON();
       
       // Formatar role
-      const role = userJson.user_type === 'manager' ? 'gestor' : 'colaborador';
+      const role = userJson.role_key === 'manager' ? 'gestor' : 'colaborador';
       
       // Formatar status
       const status = userJson.is_active ? 'active' : 'inactive';
@@ -94,6 +95,7 @@ exports.getAllUsers = async (req, res) => {
         name: userJson.full_name,
         email: userJson.email,
         phone: userJson.phone || '',
+        avatar: userJson.avatar_url || null,
         role,
         position: userJson.collaboratorDetails?.position,
         areas,
@@ -124,7 +126,7 @@ exports.createUser = async (req, res) => {
   const t = await sequelize.transaction();
   
   try {
-    const { name, email, phone, role, position, team, areas, status } = req.body;
+    const { name, email, phone, password, role, position, team, areas, status } = req.body;
 
     // Validações
     if (!name || !email || !phone || !role) {
@@ -132,6 +134,24 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Campos obrigatórios faltando'
+      });
+    }
+
+    // ✅ VALIDAÇÃO: Senha obrigatória
+    if (!password) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'A senha é obrigatória'
+      });
+    }
+
+    // ✅ VALIDAÇÃO: Senha mínima
+    if (password.length < 6) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'A senha deve ter pelo menos 6 caracteres'
       });
     }
 
@@ -165,16 +185,17 @@ exports.createUser = async (req, res) => {
       });
     }
 
-    // Senha padrão temporária
-    const defaultPassword = 'Hive@2025';
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    // ✅ USAR A SENHA FORNECIDA
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Mapear role_key
+    const roleKey = role === 'gestor' ? 'manager' : 'collaborator';
 
     // Inserir usuário
-    const userType = role === 'gestor' ? 'manager' : 'collaborator';
     const newUser = await User.create({
       email,
       password_hash: hashedPassword,
-      user_type: userType,
+      role_key: roleKey,
       full_name: name,
       phone,
       is_active: status === 'active'
@@ -218,8 +239,7 @@ exports.createUser = async (req, res) => {
         id: newUser.user_id,
         name,
         email,
-        role,
-        defaultPassword
+        role
       }
     });
 
@@ -242,7 +262,7 @@ exports.updateUser = async (req, res) => {
   
   try {
     const { id } = req.params;
-    const { name, email, phone, role, position, team, areas, status } = req.body;
+    const { name, email, phone, password, role, position, team, areas, status } = req.body;
 
     // Verificar se usuário existe
     const user = await User.findByPk(id, { transaction: t });
@@ -255,15 +275,32 @@ exports.updateUser = async (req, res) => {
       });
     }
 
-    // Atualizar dados básicos
-    const userType = role === 'gestor' ? 'manager' : 'collaborator';
-    await user.update({
+    // Mapear role_key
+    const roleKey = role === 'gestor' ? 'manager' : 'collaborator';
+
+    // Preparar dados de atualização
+    const updateData = {
       full_name: name,
       email,
       phone,
-      user_type: userType,
+      role_key: roleKey,
       is_active: status === 'active'
-    }, { transaction: t });
+    };
+
+    // ✅ ATUALIZAR SENHA APENAS SE FOI FORNECIDA
+    if (password && password.trim() !== '') {
+      if (password.length < 6) {
+        await t.rollback();
+        return res.status(400).json({
+          success: false,
+          message: 'A senha deve ter pelo menos 6 caracteres'
+        });
+      }
+      updateData.password_hash = await bcrypt.hash(password, 10);
+    }
+
+    // Atualizar dados básicos
+    await user.update(updateData, { transaction: t });
 
     // Atualizar cargo se for colaborador
     if (role === 'colaborador' && position) {
@@ -398,7 +435,7 @@ exports.toggleUserStatus = async (req, res) => {
 };
 
 // ==========================================
-// FUNÇÕES AUXILIARES (Mantidas do código original)
+// FUNÇÕES AUXILIARES
 // ==========================================
 
 // GET /api/users/managers (Lista gestores disponíveis para equipes)
@@ -406,7 +443,7 @@ exports.getAvailableManagers = async (req, res) => {
   try {
     const managers = await User.findAll({
       where: {
-        user_type: 'manager', 
+        role_key: 'manager',
         is_active: true
       },
       attributes: ['user_id', 'full_name', 'email']
@@ -422,7 +459,7 @@ exports.getAvailableStaff = async (req, res) => {
   try {
     const staff = await User.findAll({
       where: {
-        user_type: 'collaborator', 
+        role_key: 'collaborator',
         is_active: true
       },
       attributes: ['user_id', 'full_name', 'email']

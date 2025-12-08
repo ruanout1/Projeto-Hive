@@ -4,13 +4,13 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto'); // Para o token de "esqueci a senha"
 
 // Função auxiliar para gerar o token (o "crachá")
-const generateToken = (id, user_type) => {
+const generateToken = (id, role_key) => { // ✅ MUDANÇA: user_type → role_key
   // Puxa o segredo do seu arquivo .env
   // Se não encontrar, usa um segredo temporário (NÃO FAÇA ISSO EM PRODUÇÃO)
   const secret = process.env.JWT_SECRET || 'um-salvador-puro-eterno-glorioso-sempre-reinara-&&&@!@!@***§§§';
   
   return jwt.sign(
-    { id, user_type }, // O que vai dentro do "crachá"
+    { id, role_key }, // ✅ MUDANÇA: user_type → role_key
     secret,
     { expiresIn: '1d' } // Validade do "crachá"
   );
@@ -48,23 +48,26 @@ exports.login = async (req, res) => {
       return res.status(403).json({ message: 'Esta conta está desativada.' });
     }
 
-    // 4. Gerar o token
-    const token = generateToken(user.user_id, user.user_type);
+    // 4. Atualizar last_login
+    await user.update({ last_login: new Date() }); // ✅ NOVO: registra último login
 
-    // 5. Enviar o token e dados do usuário de volta
+    // 5. Gerar o token
+    const token = generateToken(user.user_id, user.role_key); // ✅ MUDANÇA: user_type → role_key
+
+    // 6. Enviar o token e dados do usuário de volta
     res.status(200).json({
       token,
       user: {
         id: user.user_id,
         name: user.full_name,
         email: user.email,
-        type: user.user_type,
+        type: user.role_key, // ✅ MUDANÇA: user_type → role_key
         avatar_url: user.avatar_url, // Se você tiver este campo
       },
     });
 
   } catch (error) {
-    console.error('Erro no login:', error);
+    console.error('Erro de autenticação:', error.message); // ✅ Melhor log
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

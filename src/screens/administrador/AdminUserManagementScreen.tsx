@@ -67,6 +67,7 @@ export default function AdminUserManagementScreen({ onBack }: AdminUserManagemen
     name: '',
     email: '',
     phone: '',
+    password: '', // ✅ NOVO CAMPO
     role: 'colaborador' as 'gestor' | 'colaborador',
     position: '',
     team: '',
@@ -123,6 +124,24 @@ export default function AdminUserManagementScreen({ onBack }: AdminUserManagemen
       return;
     }
 
+    // ✅ NOVA VALIDAÇÃO: Senha obrigatória ao criar
+    if (!editingUser && !formData.password) {
+      toast.error('A senha é obrigatória ao criar um usuário!');
+      return;
+    }
+
+    // ✅ NOVA VALIDAÇÃO: Senha deve ter pelo menos 6 caracteres
+    if (!editingUser && formData.password && formData.password.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres!');
+      return;
+    }
+
+    // ✅ VALIDAÇÃO: Senha ao editar (opcional, mas se fornecida deve ter mínimo)
+    if (editingUser && formData.password && formData.password.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres!');
+      return;
+    }
+
     if (formData.role === 'colaborador' && !formData.position) {
       toast.error('Selecione um cargo para o colaborador!');
       return;
@@ -137,6 +156,7 @@ export default function AdminUserManagementScreen({ onBack }: AdminUserManagemen
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
+      password: formData.password || undefined, // ✅ NOVO: Envia senha se fornecida
       role: formData.role,
       position: formData.position || undefined,
       team: formData.team || undefined,
@@ -162,8 +182,9 @@ export default function AdminUserManagementScreen({ onBack }: AdminUserManagemen
         
         if (data.success) {
           await fetchUsers();
+          const passwordChanged = formData.password ? ' A senha foi atualizada.' : '';
           toast.success('Usuário atualizado com sucesso!', {
-            description: `As informações de "${formData.name}" foram atualizadas.`
+            description: `As informações de "${formData.name}" foram atualizadas.${passwordChanged}`
           });
         } else {
           toast.error(data.message || 'Erro ao atualizar usuário');
@@ -186,7 +207,7 @@ export default function AdminUserManagementScreen({ onBack }: AdminUserManagemen
         if (data.success) {
           await fetchUsers();
           toast.success('Usuário criado com sucesso!', {
-            description: `O usuário "${formData.name}" foi adicionado. Senha padrão: ${data.data.defaultPassword}`
+            description: `O usuário "${formData.name}" foi adicionado e pode fazer login com a senha definida.`
           });
         } else {
           toast.error(data.message || 'Erro ao criar usuário');
@@ -290,6 +311,7 @@ export default function AdminUserManagementScreen({ onBack }: AdminUserManagemen
         name: user.name,
         email: user.email,
         phone: user.phone,
+        password: '', // ✅ Senha vazia ao editar
         role: user.role,
         position: user.position || '',
         team: user.team || '',
@@ -304,6 +326,7 @@ export default function AdminUserManagementScreen({ onBack }: AdminUserManagemen
         name: '',
         email: '',
         phone: '',
+        password: '', // ✅ Senha vazia ao criar
         role: 'colaborador',
         position: '',
         team: '',
@@ -580,7 +603,7 @@ export default function AdminUserManagementScreen({ onBack }: AdminUserManagemen
 
       {/* Dialog de Criação/Edição */}
       <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="modal-title-purple">
               {editingUser ? 'Editar Usuário' : 'Adicionar Novo Usuário'}
@@ -623,6 +646,26 @@ export default function AdminUserManagementScreen({ onBack }: AdminUserManagemen
                 placeholder="(11) 98765-4321"
                 className="mt-1"
               />
+            </div>
+
+            {/* ✅ NOVO CAMPO: SENHA */}
+            <div>
+              <Label htmlFor="password" style={{ color: '#6400A4' }}>
+                Senha {!editingUser && '*'}
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder={editingUser ? "Deixe em branco para manter a atual" : "Mínimo 6 caracteres"}
+                className="mt-1"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {editingUser 
+                  ? "Deixe em branco para não alterar a senha atual" 
+                  : "A senha deve ter no mínimo 6 caracteres"}
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -742,6 +785,9 @@ export default function AdminUserManagementScreen({ onBack }: AdminUserManagemen
                 !formData.email || 
                 !formData.phone || 
                 !formData.role || 
+                (!editingUser && !formData.password) || // ✅ Senha obrigatória ao criar
+                (!editingUser && formData.password && formData.password.length < 6) || // ✅ Mínimo 6 ao criar
+                (editingUser && formData.password && formData.password.length < 6) || // ✅ Mínimo 6 ao editar (se fornecida)
                 (formData.role === 'colaborador' && !formData.position) ||
                 (formData.role === 'gestor' && formData.areas.length === 0) ||
                 !hasUserChanges()

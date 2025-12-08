@@ -6,7 +6,7 @@
 const checkRole = (roles) => {
   return (req, res, next) => {
     // `req.user` foi definido no middleware `protect`
-    if (!req.user || !roles.includes(req.user.user_type)) {
+    if (!req.user || !roles.includes(req.user.role_key)) { // ✅ MUDANÇA: user_type → role_key
       // Se o usuário não tem o papel (role) correto
       return res.status(403).json({ 
         message: 'Acesso negado. Você não tem permissão para executar esta ação.' 

@@ -5,7 +5,7 @@ require('dotenv').config();
 
 // 2. USA AS VARIÁVEIS
 const sequelize = new Sequelize(
-  process.env.DB_NAME, // <-- Puxa 'hive_db' do .env
+  process.env.DB_NAME, // <-- Puxa 'hive' do .env
   process.env.DB_USER, // <-- Puxa 'root' do .env
   process.env.DB_PASS, // <-- Puxa 'root' do .env
   {

@@ -29,10 +29,13 @@ const protect = async (req, res, next) => {
       const user = await User.findByPk(decoded.id, {
         attributes: [
           'user_id',
-          'user_type',
+          'role_key', // ✅ MUDANÇA: user_type → role_key
           'full_name',
+          'email', // ✅ ADICIONADO: útil para logs
+          'phone', // ✅ ADICIONADO: pode ser útil
+          'avatar_url', // ✅ ADICIONADO: para exibir foto
           'is_active',
-          // 'area' // Tente adicionar 'area' se estiver no seu model User
+          'last_login' // ✅ ADICIONADO: útil para auditoria
         ],
         // Se 'area' não estiver no User, você precisa buscá-la. Ex:
         // include: [{ model: ManagerArea, attributes: ['area_id'] }]
@@ -43,24 +46,37 @@ const protect = async (req, res, next) => {
       }
 
       // 4. Anexa o usuário ao req
-      // TODO: Simples hack para 'area'. Ajuste com sua lógica real.
-      // Se 'area' vem de outra tabela, você precisa buscá-la.
-      // Por enquanto, vamos mockar se não vier.
       req.user = user.toJSON();
-      if (req.user.user_type === 'manager' && !req.user.area) {
-        req.user.area = 'area_gestor_mock'; // Substitua isso pela busca real
+      
+      // ✅ AJUSTE: Verificar role_key em vez de user_type
+      if (req.user.role_key === 'manager' && !req.user.area) {
+        // TODO: Buscar área real do gestor da tabela manager_areas
+        // const managerAreas = await ManagerArea.findAll({
+        //   where: { manager_user_id: req.user.user_id },
+        //   include: [{ model: Area, attributes: ['name'] }]
+        // });
+        // req.user.areas = managerAreas.map(ma => ma.area.name);
+        req.user.area = 'area_gestor_mock'; // Substituir pela busca real
       }
       
       next();
 
     } catch (error) {
       console.error('Erro de autenticação:', error.message);
+      
+      // ✅ MELHORIA: Tratar diferentes tipos de erro do JWT
+      if (error.name === 'JsonWebTokenError') {
+        return res.status(401).json({ message: 'Token inválido.' });
+      }
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({ message: 'Token expirado.' });
+      }
+      
       res.status(401).json({ message: 'Não autorizado, token falhou.' });
     }
-  }
-
-  if (!token) {
-    res.status(401).json({ message: 'Não autorizado, sem token.' });
+  } else {
+    // ✅ FIX: Mover para else para evitar enviar resposta duas vezes
+    return res.status(401).json({ message: 'Não autorizado, sem token.' });
   }
 };
 

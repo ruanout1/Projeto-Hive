@@ -8,7 +8,9 @@ const adminUserData = {
   full_name: 'Administrador do Sistema',
   email: 'admin@hive.com',
   password: 'Admin@123', // Senha padrão
-  user_type: 'admin',
+  role_key: 'admin', // ✅ MUDANÇA: user_type → role_key
+  phone: null, // Opcional
+  avatar_url: null, // Opcional
   is_active: true
 };
 // ---------------------------------------------
@@ -41,19 +43,27 @@ const createDefaultAdmin = async () => {
       full_name: adminUserData.full_name,
       email: adminUserData.email,
       password_hash: password_hash,
-      user_type: adminUserData.user_type,
+      role_key: adminUserData.role_key, // ✅ MUDANÇA: user_type → role_key
+      phone: adminUserData.phone,
+      avatar_url: adminUserData.avatar_url,
       is_active: adminUserData.is_active
+      // ✅ created_at e updated_at são automáticos (DEFAULT CURRENT_TIMESTAMP)
     });
 
     console.log('✅ Admin criado com sucesso!');
     console.log(`📧 Email: ${adminUserData.email}`);
     console.log(`🔑 Senha: ${adminUserData.password}`);
+    console.log(`👤 Role: ${adminUserData.role_key}`);
     console.log('⚠️  IMPORTANTE: Altere a senha após o primeiro login!');
 
   } catch (error) {
     console.error('❌ Erro ao criar admin:', error.message);
+    
+    // Mensagens de erro mais específicas
+    if (error.name === 'SequelizeForeignKeyConstraintError') {
+      console.error('⚠️  Certifique-se de que a role "admin" existe na tabela roles!');
+    }
   }
-  // ⚠️ NÃO fechamos a conexão aqui, pois o servidor vai continuar usando!
 };
 
 module.exports = { createDefaultAdmin };

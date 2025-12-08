@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ScreenHeader from '../../components/ScreenHeader';
 import { 
   FileText, 
@@ -11,10 +11,9 @@ import {
   Clock,
   DollarSign,
   Calendar,
-  Building,
   MapPin,
-  Filter,
-  Search
+  Search,
+  Loader2
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -26,7 +25,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { toast } from 'sonner';
-
+import api from '../../lib/api';
 interface ServiceItem {
   description: string;
   quantity: number;
@@ -38,7 +37,7 @@ interface ServiceOrder {
   id: string;
   clientId: string;
   clientName: string;
-  clientArea: 'norte' | 'sul' | 'leste' | 'oeste' | 'centro';
+  clientArea: string;
   periodStart: string;
   periodEnd: string;
   services: ServiceItem[];
@@ -49,20 +48,41 @@ interface ServiceOrder {
   notes?: string;
 }
 
+interface Company {
+  id: string;
+  name: string;
+}
+
 interface ServiceOrdersScreenProps {
   onBack?: () => void;
 }
 
 export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps) {
+  // Estados de UI
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<ServiceOrder | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'paid' | 'pending'>('all');
   const [activeTab, setActiveTab] = useState<'all' | 'paid' | 'pending'>('all');
 
-  // Form states
+  // Estados de dados
+  const [orders, setOrders] = useState<ServiceOrder[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    paid: 0,
+    pending: 0,
+    totalRevenue: 0,
+    pendingRevenue: 0
+  });
+
+  // Estados de loading
+  const [loading, setLoading] = useState(true);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Estados do formulário
   const [formClientId, setFormClientId] = useState('');
   const [formPeriodStart, setFormPeriodStart] = useState('');
   const [formPeriodEnd, setFormPeriodEnd] = useState('');
@@ -72,89 +92,152 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
   const [formPaymentStatus, setFormPaymentStatus] = useState<'paid' | 'pending'>('pending');
   const [formNotes, setFormNotes] = useState('');
 
-  const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([
-    {
-      id: 'OS-2024-001',
-      clientId: 'CLI-001',
-      clientName: 'Shopping Center Norte',
-      clientArea: 'norte',
-      periodStart: '01/10/2024',
-      periodEnd: '15/10/2024',
-      services: [
-        { description: 'Limpeza Geral - Piso Térreo', quantity: 15, unitPrice: 450.00, total: 6750.00 },
-        { description: 'Limpeza de Estacionamento', quantity: 10, unitPrice: 350.00, total: 3500.00 }
-      ],
-      totalValue: 10250.00,
-      paymentStatus: 'paid',
-      createdDate: '16/10/2024',
-      createdBy: 'Admin Sistema',
-      notes: 'Serviços realizados conforme cronograma estabelecido.'
-    },
-    {
-      id: 'OS-2024-002',
-      clientId: 'CLI-003',
-      clientName: 'Condomínio Parque Sul',
-      clientArea: 'sul',
-      periodStart: '01/10/2024',
-      periodEnd: '31/10/2024',
-      services: [
-        { description: 'Jardinagem - Manutenção Mensal', quantity: 1, unitPrice: 2500.00, total: 2500.00 },
-        { description: 'Poda de Árvores', quantity: 8, unitPrice: 180.00, total: 1440.00 }
-      ],
-      totalValue: 3940.00,
-      paymentStatus: 'pending',
-      createdDate: '20/10/2024',
-      createdBy: 'Admin Sistema'
-    },
-    {
-      id: 'OS-2024-003',
-      clientId: 'CLI-005',
-      clientName: 'Escritório Tech Center',
-      clientArea: 'centro',
-      periodStart: '10/10/2024',
-      periodEnd: '20/10/2024',
-      services: [
-        { description: 'Limpeza de Vidros - Fachada Externa', quantity: 2, unitPrice: 850.00, total: 1700.00 }
-      ],
-      totalValue: 1700.00,
-      paymentStatus: 'paid',
-      createdDate: '21/10/2024',
-      createdBy: 'Admin Sistema',
-      notes: 'Pagamento realizado via transferência.'
+  // ============================================================================
+  // FUNÇÕES DE API
+  // ============================================================================
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      
+      // Buscar ordens
+      const ordersParams: any = {};
+      if (searchTerm) ordersParams.search = searchTerm;
+      if (activeTab !== 'all') ordersParams.status = activeTab;
+      
+      const ordersResponse = await api.get('/service-orders', { params: ordersParams });
+      setOrders(ordersResponse.data.data || []);
+
+      // Buscar estatísticas
+      const statsResponse = await api.get('/service-orders/stats');
+      setStats(statsResponse.data.data || {
+        total: 0,
+        paid: 0,
+        pending: 0,
+        totalRevenue: 0,
+        pendingRevenue: 0
+      });
+
+    } catch (error: any) {
+      console.error('Erro ao buscar ordens:', error);
+      toast.error(error.response?.data?.message || 'Erro ao carregar ordens de serviço');
+    } finally {
+      setLoading(false);
     }
-  ]);
-
-  const clients = [
-    { id: 'CLI-001', name: 'Shopping Center Norte', area: 'norte' as const },
-    { id: 'CLI-002', name: 'Hospital Oeste', area: 'oeste' as const },
-    { id: 'CLI-003', name: 'Condomínio Parque Sul', area: 'sul' as const },
-    { id: 'CLI-004', name: 'Prédio Comercial Leste', area: 'leste' as const },
-    { id: 'CLI-005', name: 'Escritório Tech Center', area: 'centro' as const }
-  ];
-
-  const filteredOrders = serviceOrders.filter(order => {
-    const matchesSearch = searchTerm === '' || 
-      order.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesTab = activeTab === 'all' || order.paymentStatus === activeTab;
-    
-    return matchesSearch && matchesTab;
-  });
-
-  const statusCounts = {
-    total: serviceOrders.length,
-    paid: serviceOrders.filter(o => o.paymentStatus === 'paid').length,
-    pending: serviceOrders.filter(o => o.paymentStatus === 'pending').length
   };
 
-  const totalRevenue = serviceOrders
-    .filter(o => o.paymentStatus === 'paid')
-    .reduce((sum, o) => sum + o.totalValue, 0);
+  const fetchCompanies = async () => {
+    try {
+      setLoadingCompanies(true);
+      const response = await api.get('/documents/clients');
+      
+      const mappedCompanies = (response.data.data || []).map((company: any) => ({
+        id: String(company.client_id),
+        name: company.main_company_name || company.name
+      }));
+      
+      setCompanies(mappedCompanies);
+    } catch (error: any) {
+      console.error('Erro ao buscar empresas:', error);
+      toast.error('Erro ao carregar empresas');
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
 
-  const pendingRevenue = serviceOrders
-    .filter(o => o.paymentStatus === 'pending')
-    .reduce((sum, o) => sum + o.totalValue, 0);
+  const createOrder = async () => {
+    try {
+      setSaving(true);
+      
+      const data = {
+        clientId: formClientId,
+        periodStart: formPeriodStart,
+        periodEnd: formPeriodEnd,
+        services: formServices.map(s => ({
+          description: s.description,
+          quantity: s.quantity,
+          unitPrice: s.unitPrice
+        })),
+        paymentStatus: formPaymentStatus,
+        notes: formNotes
+      };
+
+      await api.post('/service-orders', data);
+      toast.success('Ordem de serviço criada com sucesso!');
+      
+      setIsCreateDialogOpen(false);
+      resetForm();
+      fetchOrders();
+    } catch (error: any) {
+      console.error('Erro ao criar ordem:', error);
+      toast.error(error.response?.data?.message || 'Erro ao criar ordem de serviço');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateOrder = async () => {
+    if (!selectedOrder) return;
+
+    try {
+      setSaving(true);
+      
+      const data = {
+        clientId: formClientId,
+        periodStart: formPeriodStart,
+        periodEnd: formPeriodEnd,
+        services: formServices.map(s => ({
+          description: s.description,
+          quantity: s.quantity,
+          unitPrice: s.unitPrice
+        })),
+        paymentStatus: formPaymentStatus,
+        notes: formNotes
+      };
+
+      await api.put(`/service-orders/${selectedOrder.id}`, data);
+      toast.success('Ordem de serviço atualizada com sucesso!');
+      
+      setIsCreateDialogOpen(false);
+      resetForm();
+      fetchOrders();
+    } catch (error: any) {
+      console.error('Erro ao atualizar ordem:', error);
+      toast.error(error.response?.data?.message || 'Erro ao atualizar ordem de serviço');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteOrder = async (orderId: string) => {
+    if (!confirm('Deseja realmente excluir esta ordem de serviço?')) return;
+
+    try {
+      await api.delete(`/service-orders/${orderId}`);
+      toast.success('Ordem de serviço excluída com sucesso!');
+      setIsViewDialogOpen(false);
+      fetchOrders();
+    } catch (error: any) {
+      console.error('Erro ao excluir ordem:', error);
+      toast.error(error.response?.data?.message || 'Erro ao excluir ordem de serviço');
+    }
+  };
+
+  // ============================================================================
+  // EFFECTS
+  // ============================================================================
+
+  useEffect(() => {
+    fetchOrders();
+  }, [searchTerm, activeTab]);
+
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
+
+  // ============================================================================
+  // FUNÇÕES DE UI
+  // ============================================================================
 
   const handleOpenCreate = () => {
     resetForm();
@@ -190,13 +273,9 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
   };
 
   const convertToInputDate = (dateStr: string) => {
+    if (!dateStr) return '';
     const [day, month, year] = dateStr.split('/');
     return `${year}-${month}-${day}`;
-  };
-
-  const convertToDisplayDate = (dateStr: string) => {
-    const [year, month, day] = dateStr.split('-');
-    return `${day}/${month}/${year}`;
   };
 
   const calculateServiceTotal = (quantity: number, unitPrice: number) => {
@@ -235,6 +314,7 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
   };
 
   const handleSaveOrder = () => {
+    // Validações
     if (!formClientId || !formPeriodStart || !formPeriodEnd) {
       toast.error('Por favor, preencha todos os campos obrigatórios.');
       return;
@@ -245,56 +325,10 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
       return;
     }
 
-    const selectedClient = clients.find(c => c.id === formClientId);
-    if (!selectedClient) return;
-
-    const totalValue = calculateTotalValue();
-
-    if (isEditing && selectedOrder) {
-      const updatedOrder: ServiceOrder = {
-        ...selectedOrder,
-        clientId: formClientId,
-        clientName: selectedClient.name,
-        clientArea: selectedClient.area,
-        periodStart: convertToDisplayDate(formPeriodStart),
-        periodEnd: convertToDisplayDate(formPeriodEnd),
-        services: formServices,
-        totalValue,
-        paymentStatus: formPaymentStatus,
-        notes: formNotes
-      };
-
-      setServiceOrders(serviceOrders.map(o => o.id === selectedOrder.id ? updatedOrder : o));
-      toast.success('Ordem de serviço atualizada com sucesso!');
+    if (isEditing) {
+      updateOrder();
     } else {
-      const newOrder: ServiceOrder = {
-        id: `OS-2024-${String(serviceOrders.length + 1).padStart(3, '0')}`,
-        clientId: formClientId,
-        clientName: selectedClient.name,
-        clientArea: selectedClient.area,
-        periodStart: convertToDisplayDate(formPeriodStart),
-        periodEnd: convertToDisplayDate(formPeriodEnd),
-        services: formServices,
-        totalValue,
-        paymentStatus: formPaymentStatus,
-        createdDate: new Date().toLocaleDateString('pt-BR'),
-        createdBy: 'Admin Sistema',
-        notes: formNotes
-      };
-
-      setServiceOrders([newOrder, ...serviceOrders]);
-      toast.success('Ordem de serviço criada com sucesso! Disponível para o cliente.');
-    }
-
-    setIsCreateDialogOpen(false);
-    resetForm();
-  };
-
-  const handleDeleteOrder = (orderId: string) => {
-    if (confirm('Deseja realmente excluir esta ordem de serviço?')) {
-      setServiceOrders(serviceOrders.filter(o => o.id !== orderId));
-      toast.success('Ordem de serviço excluída com sucesso!');
-      setIsViewDialogOpen(false);
+      createOrder();
     }
   };
 
@@ -315,6 +349,10 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
       : { label: 'Pendente', color: '#f59e0b', bg: 'rgba(234, 179, 8, 0.1)' };
   };
 
+  // ============================================================================
+  // RENDER
+  // ============================================================================
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F5F5F5' }}>
       <ScreenHeader 
@@ -330,7 +368,11 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total de Ordens</p>
-                  <p className="text-2xl mt-1">{statusCounts.total}</p>
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin mt-1" />
+                  ) : (
+                    <p className="text-2xl mt-1">{stats.total}</p>
+                  )}
                 </div>
                 <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(100, 0, 164, 0.1)' }}>
                   <FileText style={{ color: '#6400A4' }} className="h-6 w-6" />
@@ -344,7 +386,11 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Pagas</p>
-                  <p className="text-2xl mt-1">{statusCounts.paid}</p>
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin mt-1" />
+                  ) : (
+                    <p className="text-2xl mt-1">{stats.paid}</p>
+                  )}
                 </div>
                 <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
                   <CheckCircle style={{ color: '#16a34a' }} className="h-6 w-6" />
@@ -358,7 +404,13 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Receita Recebida</p>
-                  <p className="text-2xl mt-1">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin mt-1" />
+                  ) : (
+                    <p className="text-2xl mt-1">
+                      R$ {stats.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  )}
                 </div>
                 <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
                   <DollarSign style={{ color: '#16a34a' }} className="h-6 w-6" />
@@ -372,7 +424,13 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">A Receber</p>
-                  <p className="text-2xl mt-1">R$ {pendingRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin mt-1" />
+                  ) : (
+                    <p className="text-2xl mt-1">
+                      R$ {stats.pendingRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  )}
                 </div>
                 <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(234, 179, 8, 0.1)' }}>
                   <Clock style={{ color: '#f59e0b' }} className="h-6 w-6" />
@@ -417,7 +475,16 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
 
         {/* Orders List */}
         <div className="space-y-4">
-          {filteredOrders.length === 0 ? (
+          {loading ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+                  <span className="ml-3 text-gray-600">Carregando ordens...</span>
+                </div>
+              </CardContent>
+            </Card>
+          ) : orders.length === 0 ? (
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center py-12">
@@ -427,14 +494,13 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
               </CardContent>
             </Card>
           ) : (
-            filteredOrders.map((order) => {
+            orders.map((order) => {
               const statusConfig = getStatusConfig(order.paymentStatus);
               
               return (
                 <Card key={order.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="pt-6">
                     <div className="flex flex-col lg:flex-row gap-4">
-                      {/* Left: Main Info */}
                       <div className="flex-1 space-y-3">
                         <div className="flex flex-wrap items-start gap-2">
                           <div className="flex-1">
@@ -448,15 +514,17 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
                               >
                                 {statusConfig.label}
                               </Badge>
-                              <Badge 
-                                style={{ 
-                                  backgroundColor: `${getAreaColor(order.clientArea)}15`,
-                                  color: getAreaColor(order.clientArea)
-                                }}
-                              >
-                                <MapPin className="h-3 w-3 mr-1" />
-                                {order.clientArea.toUpperCase()}
-                              </Badge>
+                              {order.clientArea && (
+                                <Badge 
+                                  style={{ 
+                                    backgroundColor: `${getAreaColor(order.clientArea)}15`,
+                                    color: getAreaColor(order.clientArea)
+                                  }}
+                                >
+                                  <MapPin className="h-3 w-3 mr-1" />
+                                  {order.clientArea.toUpperCase()}
+                                </Badge>
+                              )}
                             </div>
                             <h3 className="font-medium">{order.clientName}</h3>
                             <p className="text-sm text-gray-600">
@@ -483,7 +551,6 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
                         </div>
                       </div>
 
-                      {/* Right: Actions */}
                       <div className="flex flex-col gap-2 flex-shrink-0">
                         <Button
                           size="sm"
@@ -517,12 +584,11 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Editar' : 'Nova'} Ordem de Serviço</DialogTitle>
             <DialogDescription>
-              Preencha as informações da ordem de serviço. Ela será disponibilizada automaticamente nos documentos do cliente.
+              Preencha as informações da ordem de serviço.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Client Selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="client">
@@ -530,14 +596,20 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
                 </Label>
                 <Select value={formClientId} onValueChange={setFormClientId}>
                   <SelectTrigger id="client" className="mt-2">
-                    <SelectValue placeholder="Selecione o cliente" />
+                    <SelectValue placeholder={loadingCompanies ? "Carregando..." : "Selecione o cliente"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map(client => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name} - {client.area.toUpperCase()}
-                      </SelectItem>
-                    ))}
+                    {loadingCompanies ? (
+                      <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                    ) : companies.length === 0 ? (
+                      <SelectItem value="empty" disabled>Nenhuma empresa encontrada</SelectItem>
+                    ) : (
+                      companies.map(company => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -558,7 +630,6 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
               </div>
             </div>
 
-            {/* Period */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="period-start">
@@ -587,7 +658,6 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
               </div>
             </div>
 
-            {/* Services */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <Label>Serviços Prestados <span className="text-red-500">*</span></Label>
@@ -669,14 +739,13 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
               </div>
             </div>
 
-            {/* Notes */}
             <div>
               <Label htmlFor="notes">Observações</Label>
               <Textarea
                 id="notes"
                 value={formNotes}
                 onChange={(e) => setFormNotes(e.target.value)}
-                placeholder="Adicione observações sobre a ordem de serviço (opcional)"
+                placeholder="Adicione observações (opcional)"
                 rows={3}
                 className="mt-2"
               />
@@ -684,15 +753,25 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} disabled={saving}>
               Cancelar
             </Button>
             <Button 
               onClick={handleSaveOrder}
               style={{ backgroundColor: '#6400A4', color: '#fff' }}
+              disabled={saving}
             >
-              <FileText className="h-4 w-4 mr-2" />
-              {isEditing ? 'Atualizar' : 'Criar'} Ordem
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4 mr-2" />
+                  {isEditing ? 'Atualizar' : 'Criar'} Ordem
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -703,14 +782,10 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detalhes da Ordem de Serviço</DialogTitle>
-            <DialogDescription>
-              Visualize todas as informações da ordem de serviço
-            </DialogDescription>
           </DialogHeader>
 
           {selectedOrder && (
             <div className="space-y-4">
-              {/* Header Info */}
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
@@ -732,18 +807,6 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
                     <p className="font-medium">{selectedOrder.clientName}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600">Área</p>
-                    <Badge 
-                      style={{ 
-                        backgroundColor: `${getAreaColor(selectedOrder.clientArea)}15`,
-                        color: getAreaColor(selectedOrder.clientArea)
-                      }}
-                    >
-                      <MapPin className="h-3 w-3 mr-1" />
-                      {selectedOrder.clientArea.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <div>
                     <p className="text-gray-600">Período</p>
                     <p className="font-medium">{selectedOrder.periodStart} a {selectedOrder.periodEnd}</p>
                   </div>
@@ -751,10 +814,13 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
                     <p className="text-gray-600">Criado em</p>
                     <p className="font-medium">{selectedOrder.createdDate}</p>
                   </div>
+                  <div>
+                    <p className="text-gray-600">Criado por</p>
+                    <p className="font-medium">{selectedOrder.createdBy}</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Services Table */}
               <div>
                 <h4 className="font-medium mb-3">Serviços Prestados</h4>
                 <div className="border rounded-lg overflow-hidden">
@@ -793,7 +859,6 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
                 </div>
               </div>
 
-              {/* Notes */}
               {selectedOrder.notes && (
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <p className="text-sm font-medium text-blue-900 mb-1">Observações</p>
@@ -817,14 +882,10 @@ export default function ServiceOrdersScreen({ onBack }: ServiceOrdersScreenProps
             <Button
               variant="outline"
               style={{ borderColor: '#dc2626', color: '#dc2626' }}
-              onClick={() => selectedOrder && handleDeleteOrder(selectedOrder.id)}
+              onClick={() => selectedOrder && deleteOrder(selectedOrder.id)}
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Excluir
-            </Button>
-            <Button variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Baixar PDF
             </Button>
           </DialogFooter>
         </DialogContent>

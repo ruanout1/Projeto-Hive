@@ -1,0 +1,26 @@
+[33mc71827e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/minha-branch[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mminha-branch[m[33m)[m Ajustei a tela de usuario em admin, tanto front quanto backend
+[33m3df0ce9[m Refatoração completa da arquitetura de backend
+[33m368b499[m Merge pull request #7 from ruanout1/implementar-back-admin
+[33mfdd2acd[m[33m ([m[1;31morigin/implementar-back-admin[m[33m)[m Organização geral das pastas e arquivos
+[33m75fd7a3[m Merge pull request #6 from ruanout1/implementar-back-admin
+[33ma81e575[m Merge branch 'main' into implementar-back-admin
+[33mf698bbc[m Backend do admin, em equipes e catálogo de serviços + categorias
+[33m9d86450[m Merge pull request #5 from ruanout1/Implementar-Backend
+[33m06378db[m[33m ([m[1;31morigin/Implementar-Backend[m[33m)[m Backend na tela de gastos, opção de baixar o PDF ja implementado.
+[33mbe54678[m Implementando backend hibrido no dashboard de gastos e ativando a função de baixar PDF
+[33m9d50fc8[m Merge pull request #4 from ruanout1/Implementar-Backend
+[33md4130dc[m alterar formato da notificação
+[33m01b79f7[m Removendo indicadores de backend e frontend na interface do site
+[33m5ae41a5[m Implementado backend nas telas dashboard, avaliaçoes, solicita serviços e serviços agendados
+[33mfdd70e3[m Implementando backend dashboard cliente
+[33mae71f50[m Removendo node_modules do versionamento e limpando repositório
+[33m63e42c8[m refatorando rotas e conectando mysql
+[33m95ae3b3[m Organizando as pastas e iniciando estrutura para backend
+[33m55739e5[m Merge pull request #3 from ruanout1/Refatorar-telas-Hive
+[33m8cccf69[m[33m ([m[1;31morigin/Refatorar-telas-Hive[m[33m)[m Imports das  screens
+[33m0323ea9[m Merge pull request #2 from ruanout1/Refatorar-telas-Hive
+[33md9721b1[m Segundo refatoramento (versao final)
+[33md1fec7b[m[33m ([m[1;31morigin/Paragrafos-vazando-nos-cards-SolicitarServiço[m[33m)[m atualizar
+[33m8f87e33[m alinhar-cards
+[33mb109b46[m Update README.md
+[33m1f55327[m Commit inicial do projeto

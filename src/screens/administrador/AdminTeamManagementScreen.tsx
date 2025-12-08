@@ -25,7 +25,7 @@ interface TeamManagementScreenProps {
 
 export default function TeamManagementScreen({ onBack }: TeamManagementScreenProps) {
   const { teams, loading, error, refetch } = useTeams();
-  const { members } = useTeamMembers();
+  const { managers: availableManagers, members: availableMembers, loading: membersLoading } = useTeamMembers();
   const { createTeam, updateTeam, deleteTeam, updateTeamStatus, loading: mutationLoading } = useTeamMutations();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,18 +42,6 @@ export default function TeamManagementScreen({ onBack }: TeamManagementScreenPro
     managerId: '',
     memberIds: [] as string[]
   });
-
-  // Mock data para usuários (substituir por API real depois)
-  const availableManagers = [
-    { id: '1', name: 'Ana Paula Rodrigues', email: 'ana.rodrigues@hive.com', role: 'gestor' },
-    { id: '2', name: 'Carlos Mendes', email: 'carlos.mendes@hive.com', role: 'gestor' }
-  ];
-
-  const availableMembers = [
-    { id: '3', name: 'Fernanda Lima', email: 'fernanda.lima@hive.com', role: 'colaborador' },
-    { id: '4', name: 'Roberto Silva', email: 'roberto.silva@hive.com', role: 'colaborador' },
-    { id: '5', name: 'Juliana Santos', email: 'juliana.santos@hive.com', role: 'colaborador' }
-  ];
 
   // Estatísticas
   const activeCount = teams.filter(t => t.status === 'active').length;

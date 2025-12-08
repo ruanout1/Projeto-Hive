@@ -6,8 +6,9 @@ import { toast } from 'sonner';
 // =========================================
 const api = axios.create({
   baseURL: "http://localhost:3000/api",
-  withCredentials: true
+  withCredentials: false
 });
+
 
 // =========================================
 // 2. INTERCEPTOR DE REQUISIÇÃO (TOKEN)

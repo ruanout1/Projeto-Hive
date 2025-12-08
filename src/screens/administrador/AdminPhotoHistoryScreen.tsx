@@ -1,18 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ScreenHeader from '../../components/ScreenHeader';
 import { 
   Camera, 
   CheckCircle,
   Eye, 
-  FileText,
   User,
   MapPin,
   Calendar,
   ArrowLeft,
   ArrowRight,
   Image as ImageIcon,
-  Download,
-  Filter
+  Loader2
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -20,12 +18,13 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { Input } from '../../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import api from '../../lib/api';
 
 interface PhotoRecord {
   id: string;
   serviceRequestId: string;
   clientName: string;
-  clientArea: 'norte' | 'sul' | 'leste' | 'oeste' | 'centro';
+  clientArea: string;
   serviceType: string;
   serviceDescription: string;
   collaboratorName: string;
@@ -36,6 +35,12 @@ interface PhotoRecord {
   afterPhotos: string[];
   collaboratorNotes?: string;
   managerNotes?: string;
+}
+
+interface Stats {
+  totalRecords: number;
+  totalPhotos: number;
+  uniqueClients: number;
 }
 
 interface AdminPhotoHistoryScreenProps {
@@ -50,103 +55,37 @@ export default function AdminPhotoHistoryScreen({ onBack }: AdminPhotoHistoryScr
   const [searchTerm, setSearchTerm] = useState('');
   const [filterArea, setFilterArea] = useState<string>('all');
   const [filterManager, setFilterManager] = useState<string>('all');
+  
+  const [photoRecords, setPhotoRecords] = useState<PhotoRecord[]>([]);
+  const [stats, setStats] = useState<Stats>({ totalRecords: 0, totalPhotos: 0, uniqueClients: 0 });
+  const [loading, setLoading] = useState(true);
 
-  const [photoRecords] = useState<PhotoRecord[]>([
-    {
-      id: 'PHOTO-003',
-      serviceRequestId: 'REQ-2024-005',
-      clientName: 'Escritório Tech Center',
-      clientArea: 'centro',
-      serviceType: 'Limpeza de Vidros',
-      serviceDescription: 'Limpeza de vidraças externas',
-      collaboratorName: 'João Pedro',
-      managerName: 'Ana Paula Rodrigues',
-      uploadDate: '20/10/2024',
-      sentDate: '20/10/2024',
-      beforePhotos: ['https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=600&fit=crop'],
-      afterPhotos: ['https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&h=600&fit=crop'],
-      collaboratorNotes: 'Limpeza completa realizada.',
-      managerNotes: 'Fotos enviadas ao cliente.'
-    },
-    {
-      id: 'PHOTO-004',
-      serviceRequestId: 'REQ-2024-008',
-      clientName: 'Hospital Oeste',
-      clientArea: 'oeste',
-      serviceType: 'Limpeza Hospitalar',
-      serviceDescription: 'Desinfecção de área crítica',
-      collaboratorName: 'Maria Silva',
-      managerName: 'Carlos Mendes',
-      uploadDate: '19/10/2024',
-      sentDate: '19/10/2024',
-      beforePhotos: ['https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&h=600&fit=crop', 'https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=800&h=600&fit=crop'],
-      afterPhotos: ['https://images.unsplash.com/photo-1631248055645-c3c67ebc6e87?w=800&h=600&fit=crop', 'https://images.unsplash.com/photo-1519494140681-8b17d830a3e9?w=800&h=600&fit=crop'],
-      collaboratorNotes: 'Área desinfetada seguindo todos os protocolos de segurança.',
-      managerNotes: 'Trabalho aprovado e enviado ao cliente.'
-    },
-    {
-      id: 'PHOTO-005',
-      serviceRequestId: 'REQ-2024-012',
-      clientName: 'Shopping Center Norte',
-      clientArea: 'norte',
-      serviceType: 'Limpeza Geral',
-      serviceDescription: 'Limpeza de estacionamento',
-      collaboratorName: 'Carlos Silva',
-      managerName: 'Ana Paula Rodrigues',
-      uploadDate: '18/10/2024',
-      sentDate: '18/10/2024',
-      beforePhotos: ['https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&h=600&fit=crop', 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?w=800&h=600&fit=crop'],
-      afterPhotos: ['https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800&h=600&fit=crop', 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800&h=600&fit=crop'],
-      collaboratorNotes: 'Estacionamento limpo e sinalizado.',
-      managerNotes: 'Serviço executado conforme especificado.'
-    },
-    {
-      id: 'PHOTO-006',
-      serviceRequestId: 'REQ-2024-015',
-      clientName: 'Condomínio Parque Sul',
-      clientArea: 'sul',
-      serviceType: 'Jardinagem',
-      serviceDescription: 'Manutenção de jardins e áreas verdes',
-      collaboratorName: 'Pedro Oliveira',
-      managerName: 'Fernanda Costa',
-      uploadDate: '17/10/2024',
-      sentDate: '17/10/2024',
-      beforePhotos: ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop'],
-      afterPhotos: ['https://images.unsplash.com/photo-1599629954294-8f4a996d76e0?w=800&h=600&fit=crop', 'https://images.unsplash.com/photo-1616783940314-2574568056cc?w=800&h=600&fit=crop', 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=800&h=600&fit=crop'],
-      collaboratorNotes: 'Jardins podados e áreas limpas.',
-      managerNotes: 'Excelente trabalho na manutenção.'
-    },
-    {
-      id: 'PHOTO-007',
-      serviceRequestId: 'REQ-2024-018',
-      clientName: 'Prédio Comercial Leste',
-      clientArea: 'leste',
-      serviceType: 'Limpeza de Fachada',
-      serviceDescription: 'Lavagem de fachada e vidros externos',
-      collaboratorName: 'Ricardo Santos',
-      managerName: 'Carlos Mendes',
-      uploadDate: '16/10/2024',
-      sentDate: '16/10/2024',
-      beforePhotos: ['https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=600&fit=crop', 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&h=600&fit=crop'],
-      afterPhotos: ['https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800&h=600&fit=crop', 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800&h=600&fit=crop'],
-      collaboratorNotes: 'Fachada lavada completamente.',
-      managerNotes: 'Cliente satisfeito com o resultado.'
+  useEffect(() => {
+    fetchData();
+  }, [searchTerm, filterArea, filterManager]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      const statsResponse = await api.get('/photo-history/stats');
+      setStats(statsResponse.data.data);
+
+      const params = new URLSearchParams();
+      if (searchTerm) params.append('search', searchTerm);
+      if (filterArea !== 'all') params.append('area', filterArea);
+      if (filterManager !== 'all') params.append('manager', filterManager);
+
+      const recordsResponse = await api.get(`/photo-history?${params.toString()}`);
+      setPhotoRecords(recordsResponse.data.data);
+
+    } catch (error: any) {
+      console.error('Erro ao buscar histórico:', error);
+      alert(error.response?.data?.message || 'Erro ao carregar histórico de fotos');
+    } finally {
+      setLoading(false);
     }
-  ]);
-
-  const filteredRecords = photoRecords.filter(record => {
-    const matchesSearch = searchTerm === '' || 
-      record.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.collaboratorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.managerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.serviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesArea = filterArea === 'all' || record.clientArea === filterArea;
-    const matchesManager = filterManager === 'all' || record.managerName === filterManager;
-    
-    return matchesSearch && matchesArea && matchesManager;
-  });
+  };
 
   const uniqueManagers = Array.from(new Set(photoRecords.map(r => r.managerName)));
 
@@ -189,11 +128,6 @@ export default function AdminPhotoHistoryScreen({ onBack }: AdminPhotoHistoryScr
     return colors[area] || '#6b7280';
   };
 
-  const totalPhotos = photoRecords.reduce(
-    (acc, record) => acc + record.beforePhotos.length + record.afterPhotos.length, 
-    0
-  );
-
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F5F5F5' }}>
       <ScreenHeader 
@@ -209,7 +143,11 @@ export default function AdminPhotoHistoryScreen({ onBack }: AdminPhotoHistoryScr
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total de Envios</p>
-                  <p className="text-2xl mt-1">{photoRecords.length}</p>
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin mt-1 text-gray-400" />
+                  ) : (
+                    <p className="text-2xl mt-1">{stats.totalRecords}</p>
+                  )}
                 </div>
                 <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(100, 0, 164, 0.1)' }}>
                   <CheckCircle style={{ color: '#6400A4' }} className="h-6 w-6" />
@@ -223,7 +161,11 @@ export default function AdminPhotoHistoryScreen({ onBack }: AdminPhotoHistoryScr
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total de Fotos</p>
-                  <p className="text-2xl mt-1">{totalPhotos}</p>
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin mt-1 text-gray-400" />
+                  ) : (
+                    <p className="text-2xl mt-1">{stats.totalPhotos}</p>
+                  )}
                 </div>
                 <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(53, 186, 230, 0.1)' }}>
                   <Camera style={{ color: '#35BAE6' }} className="h-6 w-6" />
@@ -237,7 +179,11 @@ export default function AdminPhotoHistoryScreen({ onBack }: AdminPhotoHistoryScr
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Clientes Atendidos</p>
-                  <p className="text-2xl mt-1">{new Set(photoRecords.map(r => r.clientName)).size}</p>
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin mt-1 text-gray-400" />
+                  ) : (
+                    <p className="text-2xl mt-1">{stats.uniqueClients}</p>
+                  )}
                 </div>
                 <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(139, 32, 238, 0.1)' }}>
                   <User style={{ color: '#8B20EE' }} className="h-6 w-6" />
@@ -293,7 +239,16 @@ export default function AdminPhotoHistoryScreen({ onBack }: AdminPhotoHistoryScr
 
         {/* Records List */}
         <div className="space-y-4">
-          {filteredRecords.length === 0 ? (
+          {loading ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-12">
+                  <Loader2 className="h-12 w-12 mx-auto mb-4 text-gray-400 animate-spin" />
+                  <p className="text-gray-600">Carregando...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : photoRecords.length === 0 ? (
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center py-12">
@@ -303,50 +258,50 @@ export default function AdminPhotoHistoryScreen({ onBack }: AdminPhotoHistoryScr
               </CardContent>
             </Card>
           ) : (
-            filteredRecords.map((record) => (
+            photoRecords.map((record) => (
               <Card key={record.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="pt-6">
                   <div className="flex flex-col lg:flex-row gap-4">
-                    {/* Left: Photo Preview */}
                     <div className="flex gap-2 flex-shrink-0">
-                      {/* Before Photos Preview */}
-                      <div className="space-y-1">
-                        <p className="text-xs text-gray-600 mb-1">Antes</p>
-                        <div className="relative w-20 h-20 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                             onClick={() => handleViewPhotos(record.beforePhotos, 'before')}>
-                          <img 
-                            src={record.beforePhotos[0]} 
-                            alt="Antes"
-                            className="w-full h-full object-cover"
-                          />
-                          {record.beforePhotos.length > 1 && (
-                            <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
-                              +{record.beforePhotos.length - 1}
-                            </div>
-                          )}
+                      {record.beforePhotos.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs text-gray-600 mb-1">Antes</p>
+                          <div className="relative w-20 h-20 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                               onClick={() => handleViewPhotos(record.beforePhotos, 'before')}>
+                            <img 
+                              src={record.beforePhotos[0]} 
+                              alt="Antes"
+                              className="w-full h-full object-cover"
+                            />
+                            {record.beforePhotos.length > 1 && (
+                              <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                                +{record.beforePhotos.length - 1}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
-                      {/* After Photos Preview */}
-                      <div className="space-y-1">
-                        <p className="text-xs text-gray-600 mb-1">Depois</p>
-                        <div className="relative w-20 h-20 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                             onClick={() => handleViewPhotos(record.afterPhotos, 'after')}>
-                          <img 
-                            src={record.afterPhotos[0]} 
-                            alt="Depois"
-                            className="w-full h-full object-cover"
-                          />
-                          {record.afterPhotos.length > 1 && (
-                            <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
-                              +{record.afterPhotos.length - 1}
-                            </div>
-                          )}
+                      {record.afterPhotos.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs text-gray-600 mb-1">Depois</p>
+                          <div className="relative w-20 h-20 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                               onClick={() => handleViewPhotos(record.afterPhotos, 'after')}>
+                            <img 
+                              src={record.afterPhotos[0]} 
+                              alt="Depois"
+                              className="w-full h-full object-cover"
+                            />
+                            {record.afterPhotos.length > 1 && (
+                              <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                                +{record.afterPhotos.length - 1}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
-                    {/* Middle: Details */}
                     <div className="flex-1 space-y-3">
                       <div className="flex flex-wrap items-start gap-2">
                         <div>
@@ -387,7 +342,6 @@ export default function AdminPhotoHistoryScreen({ onBack }: AdminPhotoHistoryScr
                       </div>
                     </div>
 
-                    {/* Right: Actions */}
                     <div className="flex flex-col gap-2 flex-shrink-0">
                       <Button
                         size="sm"
@@ -419,7 +373,6 @@ export default function AdminPhotoHistoryScreen({ onBack }: AdminPhotoHistoryScr
 
           {selectedRecord && (
             <div className="space-y-4">
-              {/* Service Info */}
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
@@ -457,51 +410,48 @@ export default function AdminPhotoHistoryScreen({ onBack }: AdminPhotoHistoryScr
                 </div>
               </div>
 
-              {/* Before Photos */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-medium">Fotos Antes ({selectedRecord.beforePhotos.length})</p>
+              {selectedRecord.beforePhotos.length > 0 && (
+                <div>
+                  <p className="font-medium mb-2">Fotos Antes ({selectedRecord.beforePhotos.length})</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {selectedRecord.beforePhotos.map((photo, index) => (
+                      <div 
+                        key={index}
+                        className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => handleViewPhotos(selectedRecord.beforePhotos, 'before', index)}
+                      >
+                        <img 
+                          src={photo} 
+                          alt={`Antes ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {selectedRecord.beforePhotos.map((photo, index) => (
-                    <div 
-                      key={index}
-                      className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => handleViewPhotos(selectedRecord.beforePhotos, 'before', index)}
-                    >
-                      <img 
-                        src={photo} 
-                        alt={`Antes ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
 
-              {/* After Photos */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-medium">Fotos Depois ({selectedRecord.afterPhotos.length})</p>
+              {selectedRecord.afterPhotos.length > 0 && (
+                <div>
+                  <p className="font-medium mb-2">Fotos Depois ({selectedRecord.afterPhotos.length})</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {selectedRecord.afterPhotos.map((photo, index) => (
+                      <div 
+                        key={index}
+                        className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => handleViewPhotos(selectedRecord.afterPhotos, 'after', index)}
+                      >
+                        <img 
+                          src={photo} 
+                          alt={`Depois ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {selectedRecord.afterPhotos.map((photo, index) => (
-                    <div 
-                      key={index}
-                      className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => handleViewPhotos(selectedRecord.afterPhotos, 'after', index)}
-                    >
-                      <img 
-                        src={photo} 
-                        alt={`Depois ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
 
-              {/* Notes */}
               <div className="space-y-3">
                 {selectedRecord.collaboratorNotes && (
                   <div className="bg-blue-50 p-4 rounded-lg">
@@ -543,7 +493,6 @@ export default function AdminPhotoHistoryScreen({ onBack }: AdminPhotoHistoryScr
                 className="w-full h-auto max-h-[70vh] object-contain rounded-lg"
               />
               
-              {/* Navigation Buttons */}
               {selectedPhotos.photos.length > 1 && (
                 <div className="absolute inset-x-0 bottom-4 flex justify-center gap-2">
                   <Button

@@ -8,25 +8,42 @@ const User = sequelize.define('User', {
     autoIncrement: true
   },
   email: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(255), // ✅ Especifica tamanho conforme banco
     allowNull: false,
     unique: true
   },
   password_hash: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  user_type: {
-    type: DataTypes.ENUM('admin', 'manager', 'collaborator', 'client'),
+    type: DataTypes.STRING(255), // ✅ Especifica tamanho conforme banco
     allowNull: false
   },
   full_name: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(255), // ✅ Especifica tamanho conforme banco
     allowNull: false
+  },
+  phone: { // ✅ NOVO CAMPO
+    type: DataTypes.STRING(40),
+    allowNull: true
+  },
+  avatar_url: { // ✅ NOVO CAMPO
+    type: DataTypes.STRING(500),
+    allowNull: true
+  },
+  role_key: { // ✅ MUDANÇA: user_type → role_key
+    type: DataTypes.STRING(50),
+    allowNull: false,
+    references: {
+      model: 'roles', // Referencia a tabela roles
+      key: 'role_key'
+    }
   },
   is_active: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    allowNull: false
+  },
+  last_login: { // ✅ NOVO CAMPO
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   tableName: 'users',
@@ -35,7 +52,4 @@ const User = sequelize.define('User', {
   updatedAt: 'updated_at'
 });
 
-// A função setupAssociations() foi removida daqui
-
 module.exports = User;
-
