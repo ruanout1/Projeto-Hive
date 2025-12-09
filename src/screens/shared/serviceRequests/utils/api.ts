@@ -15,28 +15,53 @@ export const serviceRequestsAPI = {
       
       // Mapeia os dados do Banco (Snake Case) para a Interface do Front (Camel Case)
       return data.map((request: any) => ({
-        // Identificadores
-        id: String(request.request_id),
-        
-        // Dados do Cliente
-        clientName: request.company?.name || 'Cliente não identificado',
-        clientArea: request.company?.main_area || 'centro', // Campo novo que criamos
-        clientLocation: 'Endereço Principal', // Pode melhorar buscando da branch principal
-        
-        // Dados do Serviço
-        serviceType: request.service_catalog?.name || 'Serviço Geral',
+        // ========== CAMPOS DO BACKEND (Snake Case) ==========
+        service_request_id: request.service_request_id,
+        request_number: request.request_number,
+        company_id: request.company_id,
+        branch_id: request.branch_id,
+        service_catalog_id: request.service_catalog_id,
+        title: request.title,
         description: request.description,
-        priority: request.priority || 'medium',
-        
-        // Datas
+        desired_date: request.desired_date,
+        desired_time: request.desired_time,
+        priority_key: request.priority_key,
+        status_key: request.status_key,
+        assigned_manager_user_id: request.assigned_manager_user_id,
+        assigned_team_id: request.assigned_team_id,
+        assigned_collaborator_user_id: request.assigned_collaborator_user_id,
+        observations: request.observations,
+        created_at: request.created_at,
+        updated_at: request.updated_at,
+
+        // Relacionamentos do backend (mapeados)
+        company: request.company,
+        branch: request.branch,
+        service_catalog: request.service_catalog,
+        requester: request.requester_user,
+        scheduled_services: request.scheduled_services,
+        // Mapeia label do backend para name no frontend
+        status_key_service_status: request.status_key_service_status ? {
+          status_key: request.status_key_service_status.status_key,
+          name: request.status_key_service_status.label || 'Indefinido'
+        } : undefined,
+        priority_key_priority_level: request.priority_key_priority_level ? {
+          priority_key: request.priority_key_priority_level.priority_key,
+          name: request.priority_key_priority_level.label || 'Normal'
+        } : undefined,
+
+        // ========== CAMPOS MAPEADOS PARA O FRONTEND (Camel Case) ==========
+        id: request.request_number || String(request.service_request_id),
+        clientName: request.company?.name || 'Cliente não identificado',
+        clientArea: request.branch?.area?.name || 'centro',
+        clientLocation: request.branch?.name || 'Endereço Principal',
+        serviceType: request.service_catalog?.name || 'Serviço Geral',
         requestDate: request.created_at ? new Date(request.created_at).toLocaleDateString('pt-BR') : '',
-        requestTime: '08:00', // O banco não tem hora separada na criação, usamos padrão ou extraímos do created_at
-        preferredDate: request.preferred_date,
-        
-        // Status (Backend manda 'status', Front usa esse mesmo enum)
-        status: request.status as RequestStatus, 
-        
-        // Campos opcionais de agendamento (se já tiver virado ordem de serviço)
+        requestTime: request.desired_time || '08:00',
+        preferredDate: request.desired_date ? new Date(request.desired_date).toLocaleDateString('pt-BR') : '',
+        status: request.status_key as RequestStatus,
+
+        // Campos opcionais de agendamento
         scheduledDate: request.scheduled_services?.[0]?.scheduled_date,
         scheduledDescription: request.scheduled_services?.[0]?.notes
       }));

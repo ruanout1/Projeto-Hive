@@ -13,7 +13,8 @@ const api = axios.create({
 // Interceptor de Requisição (Envia o Token)
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken');
+    // Busca token (prioriza 'token', fallback para 'authToken' por compatibilidade)
+    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -36,7 +37,10 @@ api.interceptors.response.use(
       // Só exibe toast se não estivermos já na tela de login
       if (window.location.pathname !== '/login') {
           toast.error('Sessão expirada', { description: 'Faça login novamente.' });
+          // Limpa todos os tokens e dados de usuário
+          localStorage.removeItem('token');
           localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
           // Redirecionamento seguro
           setTimeout(() => {
               window.location.href = '/login';

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 // --- IMPORTS DAS TELAS PÚBLICAS ---
 import LoginScreen from './screens/public/LoginScreen';
@@ -13,7 +13,8 @@ import AIAssistant from './screens/public/AIAssistant';
 import ClientsScreen from './screens/shared/clients/ClientsScreen';
 import MyPersonalScheduleScreen from './screens/shared/mySchedule/MyPersonalScheduleScreen';
 import ManagerServiceRequests from './screens/shared/serviceRequests/ManagerServiceRequests';
-import PhotoReviewScreen from './screens/shared/photoReview/PhotoReviewScreen'; // ✅ ÚNICA ADIÇÃO
+// ✅ TELA UNIFICADA DE FOTOS (SUBSTITUI AS ANTIGAS)
+import PhotoReviewScreen from './screens/shared/photoReview/PhotoReviewScreen'; 
 
 // --- IMPORTS DAS TELAS DO ADMINISTRADOR ---
 import DashboardScreen from './screens/administrador/AdminDashboardScreen';
@@ -23,7 +24,7 @@ import AdminRatingsScreen from './screens/administrador/AdminRatingsScreen';
 import AdminTimeClockScreen from './screens/administrador/AdminEmployeeControlScreen';
 import ServiceCatalogScreen from './screens/administrador/catalog/AdminServiceCatalogScreen';
 import AdminPerformanceReportsScreen from './screens/administrador/AdminPerformanceReportsScreen';
-// REMOVIDO: AdminPhotoHistoryScreen
+// ❌ REMOVIDO: AdminPhotoHistoryScreen (Arquivo deletado na main)
 import ServiceOrdersScreen from './screens/administrador/AdminServiceOrdersScreen';
 import DocumentsScreen from './screens/administrador/AdminDocumentsScreen';
 
@@ -33,7 +34,7 @@ import ManagerEmployeeControlScreen from './screens/gestor/ManagerEmployeeContro
 import ServiceScheduleScreen from './screens/gestor/ManagerServiceScheduleScreen';
 import ManagerPerformanceReportsScreen from './screens/gestor/ManagerPerformanceReportsScreen';
 import CollaboratorAllocationsScreen from './screens/gestor/Alocacoes/ManagerAllocationsScreen';
-// REMOVIDO: ManagerPhotoReviewScreen
+// ❌ REMOVIDO: ManagerPhotoReviewScreen (Arquivo deletado na main)
 
 // --- IMPORTS DAS TELAS DO COLABORADOR ---
 import PhotoUploadSection from './screens/colaborador/CollaboratorPhotoUploadSection';
@@ -52,9 +53,31 @@ import ClientServicePhotosScreen from './screens/cliente/ClientServicePhotosScre
 // --- IMPORTS DAS TELAS DE COMUNICAÇÃO ---
 import CommunicationScreen from './screens/chat/CommunicationScreen';
 
+type AppUserType = 'administrador' | 'gestor' | 'colaborador' | 'cliente';
+
+function mapRoleToUserType(roleFromApi: string): AppUserType | null {
+  const role = (roleFromApi || '').toLowerCase().trim();
+
+  if (role === 'client' || role === 'cliente') return 'cliente';
+  if (role === 'admin' || role === 'administrador') return 'administrador';
+  if (role === 'manager' || role === 'gestor') return 'gestor';
+  if (role === 'collaborator' || role === 'colaborador') return 'colaborador';
+
+  return null;
+}
+
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState('administrador');
+  const [currentUser, setCurrentUser] = useState<AppUserType>('cliente');
+
+  useEffect(() => {
+    const remember = localStorage.getItem('rememberUser');
+    localStorage.clear(); 
+    if (remember) {
+      localStorage.setItem('rememberUser', remember);
+    }
+  }, []);
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeSection, setActiveSection] = useState('dashboards');
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
@@ -72,17 +95,46 @@ export default function App() {
     return { id: '0', name: 'Usuário', areas: [] };
   };
 
-  const handleLogin = () => { setIsLoggedIn(true); };
-  const handleLogout = () => { setIsLoggedIn(false); setActiveTab('dashboard'); setActiveSection('dashboards'); };
-  const handleUserTypeChange = (userType: string) => { setCurrentUser(userType); setActiveSection('dashboards'); };
+  const handleLogin = (roleFromApi: string) => {
+    const mapped = mapRoleToUserType(roleFromApi);
+
+    if (mapped) {
+      setCurrentUser(mapped);
+      setIsLoggedIn(true);
+      setActiveSection('dashboards');
+      setActiveTab('dashboard');
+    } else {
+      console.error('Tipo de usuário desconhecido:', roleFromApi);
+      handleLogout();
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    setIsLoggedIn(false);
+    setActiveTab('dashboard');
+    setActiveSection('dashboards');
+    setCurrentUser('cliente'); 
+  };
+
+  const handleUserTypeChange = (userType: string) => {
+    setCurrentUser(userType as AppUserType);
+    setActiveSection('dashboards');
+  };
+
   const handleProfileSettings = () => { setActiveSection('profile-settings'); };
   const handleOpenAIAssistant = () => { setIsAIAssistantOpen(true); };
   const handleCloseAIAssistant = () => { setIsAIAssistantOpen(false); };
-  
+
   const handleSectionChange = (section: string, params?: any) => {
     setActiveSection(section);
     setIsMobileSidebarOpen(false);
-    if (section === 'solicitar-servicos' && params?.tab) { setServiceRequestTab(params.tab); } else { setServiceRequestTab(undefined); }
+
+    if (section === 'solicitar-servicos' && params?.tab) {
+      setServiceRequestTab(params.tab);
+    } else {
+      setServiceRequestTab(undefined);
+    }
   };
 
   const renderContent = () => {
@@ -98,7 +150,7 @@ export default function App() {
         if (currentUser === 'administrador') return <DashboardScreen onSectionChange={handleSectionChange} />;
         if (currentUser === 'gestor') return <ManagerDashboard onSectionChange={handleSectionChange} />;
         if (currentUser === 'colaborador') return <TeamReportsScreen onBack={() => {}} />; 
-        if (currentUser === 'cliente') return <ClientExpensesDashboardScreen onBack={() => {}} />;
+        if (currentUser === 'cliente') return <ClientDashboard />;
     }
 
     // 3. TELAS COMPARTILHADAS
@@ -123,14 +175,12 @@ export default function App() {
       }
     }
 
-    // --- FOTOS (HISTÓRICO E REVISÃO) - LÓGICA CORRIGIDA E UNIFICADA ---
+    // ✅ FOTOS (HISTÓRICO E REVISÃO) - USA A NOVA TELA UNIFICADA
     if (activeSection === 'revisao-fotos' || activeSection === 'historico-fotos') {
        if (currentUser === 'administrador') {
-          // Admin vê histórico (apenas leitura)
           return <PhotoReviewScreen userRole="admin" onBack={() => handleSectionChange('dashboards')} />;
        }
        if (currentUser === 'gestor') {
-          // Gestor vê revisão (com ações)
           return <PhotoReviewScreen userRole="manager" onBack={() => handleSectionChange('dashboards')} />;
        }
     }
@@ -145,6 +195,7 @@ export default function App() {
       if (activeSection === 'relatorios-equipes') return <AdminPerformanceReportsScreen onBack={() => setActiveSection('dashboards')} />;
       if (activeSection === 'documentos') return <DocumentsScreen onBack={() => handleSectionChange('dashboards')} />;
       if (activeSection === 'agenda-servicos') return <ServiceScheduleScreen userRole="admin" />;
+      // Removido AdminPhotoHistoryScreen pois agora usa o bloco unificado acima
       if (activeSection === 'ordens-servico') return <ServiceOrdersScreen onBack={() => setActiveSection('dashboards')} />;
     }
 
@@ -154,12 +205,14 @@ export default function App() {
       if (activeSection === 'relatorios-equipes') return <ManagerPerformanceReportsScreen onBack={() => setActiveSection('dashboards')} />;
       if (activeSection === 'agenda-servicos') return <ServiceScheduleScreen userRole="manager" managerArea="norte" />;
       if (activeSection === 'alocacoes-colaboradores') return <CollaboratorAllocationsScreen onBack={() => setActiveSection('dashboards')} />;
+      // Removido ManagerPhotoReviewScreen pois agora usa o bloco unificado acima
     }
 
     // 6. TELAS ESPECÍFICAS DO COLABORADOR
     if (currentUser === 'colaborador') {
       if (activeSection === 'fotos-servicos') return <div className="p-6"><PhotoUploadSection onBack={() => handleSectionChange('dashboards')} /></div>;
       if (activeSection === 'meu-ponto') return <CollaboratorTimeClockScreen onBack={() => handleSectionChange('dashboards')} />;
+      if (activeSection === 'relatorios-equipes') return <TeamReportsScreen onBack={() => setActiveSection('dashboards')} />;
     }
 
     // 7. TELAS ESPECÍFICAS DO CLIENTE
@@ -175,12 +228,6 @@ export default function App() {
       }
     }
 
-    // --- TELAS DE RELATÓRIOS (Públicas/Compartilhadas) ---
-    if (activeSection === 'relatorios-equipes' && currentUser === 'colaborador') {
-      return <TeamReportsScreen onBack={() => setActiveSection('dashboards')} />;
-    }
-
-    // Fallback
     return <div className="p-10 text-center">Selecione uma opção no menu</div>;
   };
 
@@ -234,7 +281,7 @@ export default function App() {
             {['administrador', 'gestor', 'colaborador', 'cliente'].map((type) => (
               <button
                 key={type}
-                onClick={() => handleUserTypeChange(type)}
+                onClick={() => handleUserTypeChange(type as string)}
                 className={`px-3 py-1 text-sm rounded-md transition-colors ${
                   currentUser === type ? 'text-white' : 'text-black hover:bg-gray-100'
                 }`}

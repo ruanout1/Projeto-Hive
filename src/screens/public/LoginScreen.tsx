@@ -10,7 +10,16 @@ import { Checkbox } from '../../components/ui/checkbox';
 import HiveLogo from '../../components/Logo/HiveLogo';
 import ForgotPasswordScreen from './ForgotPasswordScreen';
 
-export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
+type LoginResponseUser = {
+  id: number | string;
+  name: string;
+  email: string;
+  role: string; // "client" | "admin" | ...
+  avatar?: string | null;
+  client_id?: number | string | null;
+};
+
+export default function LoginScreen({ onLogin }: { onLogin: (role: string) => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -18,34 +27,28 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();  // impede reload
+    e.preventDefault();
     setIsLoading(true);
 
     try {
-      const response = await api.post('/auth/login', {
-        email,
-        password,
-      });
+      const response = await api.post('/auth/login', { email, password });
 
-      const { token, user } = response.data;
+      const { token, user } = response.data as { token: string; user: LoginResponseUser };
 
-      // salva token
+      // ✅ padroniza storage: App.tsx lê "token" e "user"
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+
+      // compat: se algum lugar antigo usa authToken, mantém também
       localStorage.setItem('authToken', token);
 
-      // remember me
-      if (rememberMe) {
-        localStorage.setItem('rememberUser', email);
-      } else {
-        localStorage.removeItem('rememberUser');
-      }
+      if (rememberMe) localStorage.setItem('rememberUser', email);
+      else localStorage.removeItem('rememberUser');
 
       toast.success(`Bem-vindo de volta, ${user.name}!`);
 
-      // 🔥 AQUI ESTAVA SEU BUG PRINCIPAL:
-      // redirecionava ANTES do token ser 100% salvo
-      setTimeout(() => {
-        onLogin();
-      }, 80);
+      // ✅ chama App passando o role real
+      onLogin(user.role);
 
     } catch (err: any) {
       const errorMsg =
@@ -78,7 +81,6 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        
         <div className="flex justify-center mb-8">
           <div className="scale-75">
             <HiveLogo />
@@ -92,7 +94,6 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-
             <div>
               <Label htmlFor="email" className="text-black">E-mail</Label>
               <Input
@@ -152,7 +153,6 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
             </div>
           </form>
 
-          {/* 🔥 Botão alternativo movido para FORA do formulário */}
           <div className="mt-4 text-center">
             <button
               type="button"
@@ -163,7 +163,6 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
               Entrar com Matrícula
             </button>
           </div>
-
         </div>
       </div>
     </div>

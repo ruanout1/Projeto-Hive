@@ -3,6 +3,10 @@ const router = express.Router();
 const PDFDocument = require('pdfkit');
 const { protect } = require('../middleware/authMiddleware');
 const { checkRole } = require('../middleware/authorizationMiddleware');
+const { QueryTypes } = require('sequelize');
+const dbConnection = require('../database/connection');
+const db = dbConnection.sequelize || dbConnection;
+
 
 // Importa os dados mock (temporário - depois será substituído por banco de dados real)
 const {
@@ -159,36 +163,108 @@ router.get('/branches', async (req, res) => {
 // AVALIAÇÕES
 // =====================
 
-// Listar avaliações passadas
-router.get('/ratings', (req, res) => {
-  // TODO: Filtrar avaliações do cliente logado
-  res.json(pastRatingsData);
-});
+// 1. Listar serviços PENDENTES de avaliação
+router.get('/ratings/pending', async (req, res) => {
+  try {
+    // Fallback de ID
+    const clientId = req.user.client_id || req.user.company_id || req.user.user_id || req.user.id;
 
-// Criar nova avaliação
-router.post('/ratings', (req, res) => {
-  const newRating = req.body;
-  
-  // Validação básica
-  if (!newRating.rating || !newRating.serviceId) {
-    return res.status(400).json({ 
-      message: 'Rating e serviceId são obrigatórios' 
+    if (!clientId) return res.status(400).json({ message: 'Cliente não identificado.' });
+
+    const pendingServices = await db.query(`
+      SELECT 
+        ss.scheduled_service_id AS id,
+        sc.name,
+        DATE_FORMAT(ss.scheduled_date, '%d/%m/%Y') AS date,
+        'Equipe Alpha' AS team,
+        COALESCE(sc.description, 'Serviço realizado') AS description,
+        CONCAT(TIMESTAMPDIFF(HOUR, ss.start_time, ss.end_time), 'h') AS duration,
+        'pending' AS status
+      FROM scheduled_services ss
+      JOIN service_catalog sc ON ss.service_catalog_id = sc.service_catalog_id
+      LEFT JOIN ratings r ON ss.scheduled_service_id = r.scheduled_service_id
+      WHERE ss.company_id = :clientId
+        AND ss.status_key = 'completed'
+        AND r.rating_id IS NULL 
+      ORDER BY ss.scheduled_date DESC
+    `, {
+      replacements: { clientId },
+      type: QueryTypes.SELECT // ✅ CORRIGIDO (removemos o 'db.')
     });
-  }
 
-  // TODO: Adicionar clientId do req.user.id
-  // newRating.clientId = req.user.id;
-  
-  newRating.date = new Date().toLocaleDateString('pt-BR');
-  pastRatingsData.unshift(newRating);
-  
-  console.log('⭐ Nova avaliação recebida:', newRating);
-  res.status(201).json({ 
-    message: 'Avaliação enviada com sucesso!', 
-    data: newRating 
-  });
+    res.json(pendingServices);
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar pendentes:', error);
+    res.status(500).json({ message: 'Erro ao buscar pendentes' });
+  }
 });
 
+// 2. Listar Histórico
+router.get('/ratings', async (req, res) => {
+  try {
+    const clientId = req.user.client_id || req.user.company_id || req.user.user_id || req.user.id;
+
+    const ratedServices = await db.query(`
+      SELECT 
+        ss.scheduled_service_id AS serviceId,
+        sc.name AS service,
+        DATE_FORMAT(ss.scheduled_date, '%d/%m/%Y') AS date,
+        'Equipe Beta' AS team,
+        sc.description,
+        CONCAT(TIMESTAMPDIFF(HOUR, ss.start_time, ss.end_time), 'h') AS duration,
+        r.rating,
+        r.comment AS feedback, 
+        DATE_FORMAT(r.created_at, '%d/%m/%Y %H:%i') AS ratedAt
+      FROM ratings r
+      JOIN scheduled_services ss ON r.scheduled_service_id = ss.scheduled_service_id
+      JOIN service_catalog sc ON ss.service_catalog_id = sc.service_catalog_id
+      WHERE r.company_id = :clientId
+      ORDER BY r.created_at DESC
+    `, {
+      replacements: { clientId },
+      type: QueryTypes.SELECT // ✅ CORRIGIDO
+    });
+
+    res.json(ratedServices);
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar histórico:', error);
+    res.status(500).json({ message: 'Erro ao buscar histórico' });
+  }
+});
+
+// 3. Salvar Avaliação
+router.post('/ratings', async (req, res) => {
+  try {
+    const clientId = req.user.client_id || req.user.company_id || req.user.user_id || req.user.id;
+    const { serviceId, rating, feedback } = req.body;
+
+    if (!serviceId || !rating) return res.status(400).json({ message: 'Dados incompletos.' });
+
+    await db.query(`
+      INSERT INTO ratings (
+        company_id, scheduled_service_id, rating, comment, is_public, created_at, updated_at
+      ) VALUES (
+        :clientId, :serviceId, :rating, :comment, TRUE, NOW(), NOW()
+      )
+    `, {
+      replacements: {
+        clientId, 
+        serviceId,
+        rating,
+        comment: feedback || ''
+      },
+      type: QueryTypes.INSERT // ✅ CORRIGIDO
+    });
+
+    res.status(201).json({ message: 'Avaliação salva com sucesso!' });
+
+  } catch (error) {
+    console.error('❌ Erro ao salvar avaliação:', error);
+    res.status(500).json({ message: 'Erro ao salvar avaliação' });
+  }
+});
 // =====================
 // SOLICITAÇÕES DE SERVIÇO
 // =====================
@@ -952,7 +1028,7 @@ router.get('/invoices/:id/pdf', (req, res) => {
 // =====================================================
 // SERVIÇOS AGENDADOS DO CLIENTE (DADOS REAIS DO BANCO)
 // =====================================================
-const db = require('../database/connection');
+
 
 router.get('/scheduled-services', async (req, res) => {
   try {

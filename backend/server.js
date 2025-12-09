@@ -22,8 +22,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Vá descomentando conforme formos arrumando os controllers.
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
-app.use('/api/schedule', require('./routes/scheduleRoutes')); 
+app.use('/api/schedule', require('./routes/scheduleRoutes'));
 app.use('/api/clients', require('./routes/clientRoutes'));
+app.use('/api/client-portal', require('./routes/clientPortalRoutes'));
 app.use('/api/service-catalog', require('./routes/serviceCatalogRoutes'));
 app.use('/api/service-requests', require('./routes/serviceRequestRoutes'));
 app.use('/api/teams', require('./routes/teamRoutes'));

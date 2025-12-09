@@ -44,7 +44,12 @@ module.exports = {
           {
             model: models.service_catalog,
             as: 'service_catalog',
-            attributes: ['service_catalog_id', 'name', 'price', 'description']
+            attributes: ['service_catalog_id', 'name', 'price', 'description', 'category_id'],
+            include: [{
+              model: models.service_categories,
+              as: 'category',
+              attributes: ['category_id', 'name', 'icon', 'color']
+            }]
           },
           {
             model: models.users,
@@ -55,6 +60,16 @@ module.exports = {
             model: models.client_branches,
             as: 'branch',
             attributes: ['branch_id', 'name', 'street', 'number', 'neighborhood', 'city', 'state', 'area']
+          },
+          {
+            model: models.service_statuses,
+            as: 'status_key_service_status',
+            attributes: ['status_key', 'label']
+          },
+          {
+            model: models.priority_levels,
+            as: 'priority_key_priority_level',
+            attributes: ['priority_key', 'label']
           }
         ],
         attributes: [
@@ -252,13 +267,13 @@ async listManagerRequests(req, res) {
     const requests = await models.service_requests.findAll({
       where: whereClause,
       include: [
-        { 
-          model: models.companies, 
+        {
+          model: models.companies,
           as: 'company',
           attributes: ['company_id', 'name', 'cnpj']
         },
-        { 
-          model: models.client_branches, 
+        {
+          model: models.client_branches,
           as: 'branch',
           attributes: ['branch_id', 'name', 'address_reference', 'area_id'],
           include: [{
@@ -267,20 +282,35 @@ async listManagerRequests(req, res) {
             attributes: ['area_id', 'name']
           }]
         },
-        { 
-          model: models.service_catalog, 
+        {
+          model: models.service_catalog,
           as: 'service_catalog',
-          attributes: ['service_catalog_id', 'name', 'price']
+          attributes: ['service_catalog_id', 'name', 'price', 'category_id'],
+          include: [{
+            model: models.service_categories,
+            as: 'category',
+            attributes: ['category_id', 'name', 'icon', 'color']
+          }]
         },
         {
           model: models.users,
-          as: 'requester',
+          as: 'requester_user',
           attributes: ['user_id', 'full_name']
         },
         {
           model: models.scheduled_services,
           as: 'scheduled_services',
           attributes: ['scheduled_service_id', 'scheduled_date', 'notes', 'status_key']
+        },
+        {
+          model: models.service_statuses,
+          as: 'status_key_service_status',
+          attributes: ['status_key', 'label']
+        },
+        {
+          model: models.priority_levels,
+          as: 'priority_key_priority_level',
+          attributes: ['priority_key', 'label']
         }
       ],
       order: [

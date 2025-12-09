@@ -80,6 +80,13 @@ export interface ServiceRequest {
     service_catalog_id: number;
     name: string;
     price: number;
+    category_id?: number;
+    category?: {
+      category_id: number;
+      name: string;
+      icon: string;
+      color: string;
+    };
   };
   requester?: {
     user_id: number;
@@ -91,7 +98,15 @@ export interface ServiceRequest {
     notes: string;
     status_key: string;
   }>;
-  
+  status_key_service_status?: {
+    status_key: string;
+    name: string;
+  };
+  priority_key_priority_level?: {
+    priority_key: string;
+    name: string;
+  };
+
   // Campos mapeados para o frontend
   id: string; // Usa request_number
   clientName: string;
